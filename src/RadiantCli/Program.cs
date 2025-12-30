@@ -20,6 +20,7 @@ namespace RadiantCli
                 "circles" => new CirclesCommand(),
                 "lines" => new LinesCommand(),
                 "polygons" => new PolygonsCommand(),
+                "text" => new TextCommand(),
                 _ => null
             };
 
@@ -44,6 +45,7 @@ namespace RadiantCli
             Console.WriteLine("  circles     - Draw circles and ellipses");
             Console.WriteLine("  lines       - Draw lines and polylines");
             Console.WriteLine("  polygons    - Draw triangles and polygons");
+            Console.WriteLine("  text        - Draw text using bitmap font");
         }
     }
 }

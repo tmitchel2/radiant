@@ -430,6 +430,39 @@ namespace Radiant.Graphics2D
             }
         }
 
+        public void DrawText(string text, float x, float y, float pixelSize, Vector4 color)
+        {
+            var cursorX = x;
+
+            foreach (var c in text)
+            {
+                if (!BitmapFont.HasGlyph(c))
+                {
+                    cursorX += (BitmapFont.CharWidth + BitmapFont.CharSpacing) * pixelSize;
+                    continue;
+                }
+
+                var glyph = BitmapFont.GetGlyph(c);
+
+                // Draw each pixel of the glyph
+                for (var row = 0; row < BitmapFont.CharHeight; row++)
+                {
+                    for (var col = 0; col < BitmapFont.CharWidth; col++)
+                    {
+                        var bit = (glyph[row] >> (BitmapFont.CharWidth - 1 - col)) & 1;
+                        if (bit == 1)
+                        {
+                            var px = cursorX + col * pixelSize;
+                            var py = y - row * pixelSize;
+                            DrawRectangleFilled(px, py, pixelSize, pixelSize, color);
+                        }
+                    }
+                }
+
+                cursorX += (BitmapFont.CharWidth + BitmapFont.CharSpacing) * pixelSize;
+            }
+        }
+
         public void EndFrame(RenderPassEncoder* renderPass)
         {
             _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
