@@ -2,7 +2,7 @@ using System;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public class SilkGPU : IGPU
     {

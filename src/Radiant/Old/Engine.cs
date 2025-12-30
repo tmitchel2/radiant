@@ -14,7 +14,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using Color = SixLabors.ImageSharp.Color;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public sealed class Engine
     {

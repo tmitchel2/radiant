@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace RadiantCli.Graphics2D
+namespace Radiant.Graphics2D
 {
     public class Camera2D
     {

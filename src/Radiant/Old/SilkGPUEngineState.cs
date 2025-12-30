@@ -1,6 +1,6 @@
 using Silk.NET.WebGPU;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public sealed unsafe class SilkGPUEngineState
     {

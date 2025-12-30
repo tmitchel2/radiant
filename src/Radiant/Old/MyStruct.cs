@@ -2,7 +2,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public unsafe struct MyStruct
     {

@@ -1,7 +1,7 @@
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public sealed unsafe class EngineState
     {

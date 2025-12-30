@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.InteropServices;
-using Radiant;
-using RadiantCli.Graphics2D.Shaders;
+using Radiant.Graphics2D.Shaders;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 
-namespace RadiantCli.Graphics2D
+namespace Radiant.Graphics2D
 {
     public unsafe class Renderer2D : IDisposable
     {
@@ -94,8 +92,8 @@ namespace RadiantCli.Graphics2D
 
         private void CreateShaders()
         {
-            _filledShader = CreateShaderModule(ShaderLibrary.FILLED_SHAPE_SHADER);
-            _lineShader = CreateShaderModule(ShaderLibrary.LINE_SHADER);
+            _filledShader = CreateShaderModule(ShaderLibrary.FilledShapeShader);
+            _lineShader = CreateShaderModule(ShaderLibrary.LineShader);
         }
 
         private ShaderModule* CreateShaderModule(string code)

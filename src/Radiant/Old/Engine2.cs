@@ -5,7 +5,7 @@ using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public static unsafe class Engine2
     {

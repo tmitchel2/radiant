@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace RadiantCli.Graphics2D
+namespace Radiant.Graphics2D
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct Vertex2D

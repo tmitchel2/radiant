@@ -8,7 +8,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
 using Silk.NET.WebGPU.Extensions.WGPU;
 
-namespace Radiant
+namespace Radiant.Old
 {
     public class SilkGPUEngine<T> where T : unmanaged
     {

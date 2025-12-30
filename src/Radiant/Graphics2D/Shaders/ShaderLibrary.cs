@@ -1,8 +1,8 @@
-namespace RadiantCli.Graphics2D.Shaders
+namespace Radiant.Graphics2D.Shaders
 {
     public static class ShaderLibrary
     {
-        public const string FILLED_SHAPE_SHADER = @"
+        public const string FilledShapeShader = @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -33,7 +33,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return input.color;
 }";
 
-        public const string LINE_SHADER = @"
+        public const string LineShader = @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
