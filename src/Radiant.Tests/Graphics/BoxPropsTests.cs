@@ -1,4 +1,3 @@
-using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Radiant.Graphics;
 
