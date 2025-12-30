@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using Radiant.Graphics2D;
 using Silk.NET.Core.Native;
 using Silk.NET.Maths;
@@ -15,10 +16,12 @@ namespace Radiant
         private Camera2D? _camera;
         private Action<Renderer2D>? _renderCallback;
         private bool _disposed;
+        private Vector4 _backgroundColor;
 
-        public void Run(string title, int width, int height, Action<Renderer2D> renderCallback)
+        public void Run(string title, int width, int height, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
             _renderCallback = renderCallback;
+            _backgroundColor = backgroundColor ?? new Vector4(0.1f, 0.1f, 0.1f, 1f);
 
             var options = WindowOptions.Default;
             options.API = GraphicsAPI.None;
@@ -90,7 +93,7 @@ namespace Radiant
                 ResolveTarget = null,
                 LoadOp = LoadOp.Clear,
                 StoreOp = StoreOp.Store,
-                ClearValue = new Color { R = 0.1, G = 0.1, B = 0.1, A = 1 }
+                ClearValue = new Color { R = _backgroundColor.X, G = _backgroundColor.Y, B = _backgroundColor.Z, A = _backgroundColor.W }
             };
 
             var renderPassDescriptor = new RenderPassDescriptor

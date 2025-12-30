@@ -9,8 +9,17 @@ namespace Radiant.Graphics2D
         public float Bottom { get; set; }
         public float Top { get; set; }
 
+        private readonly float _originalWidth;
+        private readonly float _originalHeight;
+        private readonly float _originalAspect;
+
         public Camera2D(float width, float height)
         {
+            // Store original dimensions and aspect ratio
+            _originalWidth = width;
+            _originalHeight = height;
+            _originalAspect = width / height;
+
             // Default: origin at center, 1:1 pixel mapping at default zoom
             Left = -width / 2f;
             Right = width / 2f;
@@ -26,26 +35,30 @@ namespace Radiant.Graphics2D
 
         public void SetViewportSize(float width, float height)
         {
-            var aspectRatio = width / height;
-            var currentAspect = (Right - Left) / (Top - Bottom);
+            // Maintain original aspect ratio with letterboxing/pillarboxing
+            var newAspect = width / height;
 
-            if (aspectRatio > currentAspect)
+            if (newAspect > _originalAspect)
             {
-                // Wider viewport - expand left/right
-                var centerX = (Left + Right) / 2f;
-                var halfHeight = (Top - Bottom) / 2f;
-                var halfWidth = halfHeight * aspectRatio;
-                Left = centerX - halfWidth;
-                Right = centerX + halfWidth;
+                // Window is wider than original - add letterboxing (pillarboxing on sides)
+                // Keep original height, expand width
+                var halfHeight = _originalHeight / 2f;
+                var halfWidth = halfHeight * newAspect;
+                Left = -halfWidth;
+                Right = halfWidth;
+                Bottom = -halfHeight;
+                Top = halfHeight;
             }
             else
             {
-                // Taller viewport - expand top/bottom
-                var centerY = (Bottom + Top) / 2f;
-                var halfWidth = (Right - Left) / 2f;
-                var halfHeight = halfWidth / aspectRatio;
-                Bottom = centerY - halfHeight;
-                Top = centerY + halfHeight;
+                // Window is taller than original - add pillarboxing (letterboxing on top/bottom)
+                // Keep original width, expand height
+                var halfWidth = _originalWidth / 2f;
+                var halfHeight = halfWidth / newAspect;
+                Left = -halfWidth;
+                Right = halfWidth;
+                Bottom = -halfHeight;
+                Top = halfHeight;
             }
         }
     }

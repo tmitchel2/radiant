@@ -1,6 +1,4 @@
-using System.Numerics;
 using Radiant;
-using Radiant.Graphics2D;
 
 namespace RadiantCli.Commands
 {
@@ -11,19 +9,19 @@ namespace RadiantCli.Commands
             using var app = new RadiantApplication();
             app.Run("Radiant - Rectangles Demo", 800, 600, renderer =>
             {
-                // Draw demo rectangles
-                renderer.DrawRectangleFilled(-300, -200, 200, 150, new Vector4(1, 0, 0, 1)); // Red
-                renderer.DrawRectangleFilled(-50, -200, 200, 150, new Vector4(0, 1, 0, 1));  // Green
-                renderer.DrawRectangleFilled(200, -200, 200, 150, new Vector4(0, 0, 1, 1));  // Blue
+                // Draw demo rectangles with Tailwind colors
+                renderer.DrawRectangleFilled(-300, -200, 200, 150, Colors.Red500);
+                renderer.DrawRectangleFilled(-50, -200, 200, 150, Colors.Green500);
+                renderer.DrawRectangleFilled(200, -200, 200, 150, Colors.Blue500);
 
-                renderer.DrawRectangleOutline(-300, 50, 200, 150, new Vector4(1, 1, 0, 1)); // Yellow outline
-                renderer.DrawRectangleOutline(-50, 50, 200, 150, new Vector4(0, 1, 1, 1));  // Cyan outline
-                renderer.DrawRectangleOutline(200, 50, 200, 150, new Vector4(1, 0, 1, 1));  // Magenta outline
+                renderer.DrawRectangleOutline(-300, 50, 200, 150, Colors.Yellow500);
+                renderer.DrawRectangleOutline(-50, 50, 200, 150, Colors.Cyan500);
+                renderer.DrawRectangleOutline(200, 50, 200, 150, Colors.Fuchsia500);
 
                 // Mixed filled and outlined
-                renderer.DrawRectangleFilled(-100, -50, 200, 100, new Vector4(0.5f, 0.5f, 0.5f, 0.5f));
-                renderer.DrawRectangleOutline(-100, -50, 200, 100, new Vector4(1, 1, 1, 1));
-            });
+                renderer.DrawRectangleFilled(-100, -50, 200, 100, Colors.Slate400);
+                renderer.DrawRectangleOutline(-100, -50, 200, 100, Colors.White);
+            }, Colors.Slate50);
         }
     }
 }

@@ -47,7 +47,7 @@ namespace RadiantCli.Commands
                 {
                     renderer.DrawLine(new Vector2(-300, y), new Vector2(300, y), new Vector4(0.5f, 0.5f, 0.5f, 1));
                 }
-            });
+            }, Colors.Slate50);
         }
     }
 }
