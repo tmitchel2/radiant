@@ -192,7 +192,8 @@ namespace Radiant.Graphics2D
                 {
                     Topology = topology,
                     StripIndexFormat = IndexFormat.Undefined,
-                    FrontFace = FrontFace.Ccw,
+                    // Use clockwise winding for left-handed coordinate system
+                    FrontFace = FrontFace.CW,
                     CullMode = CullMode.None
                 },
                 Multisample = new MultisampleState

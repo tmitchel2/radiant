@@ -29,7 +29,8 @@ namespace Radiant.Graphics2D
 
         public Matrix4x4 GetProjectionMatrix()
         {
-            return Matrix4x4.CreateOrthographicOffCenter(
+            // Use left-handed coordinate system
+            return Matrix4x4.CreateOrthographicOffCenterLeftHanded(
                 Left, Right, Bottom, Top, -1.0f, 1.0f);
         }
 

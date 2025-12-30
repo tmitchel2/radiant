@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Old;
 
 namespace Radiant.Tests
 {

@@ -1,6 +1,7 @@
 using System;
 using System.Linq.Expressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Old;
 
 namespace Radiant.Tests
 {
