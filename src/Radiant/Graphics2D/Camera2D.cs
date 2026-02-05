@@ -1,4 +1,6 @@
+using System;
 using System.Numerics;
+using Radiant.Graphics;
 
 namespace Radiant.Graphics2D
 {
@@ -8,13 +10,18 @@ namespace Radiant.Graphics2D
         public float Right { get; set; }
         public float Bottom { get; set; }
         public float Top { get; set; }
+        public Handedness Handedness { get; }
 
         private readonly float _originalWidth;
         private readonly float _originalHeight;
         private readonly float _originalAspect;
 
-        public Camera2D(float width, float height)
+        public Camera2D(float width, float height, Handedness handedness)
         {
+            if (handedness != Handedness.LeftHanded && handedness != Handedness.RightHanded)
+                throw new ArgumentOutOfRangeException(nameof(handedness));
+
+            Handedness = handedness;
             // Store original dimensions and aspect ratio
             _originalWidth = width;
             _originalHeight = height;
@@ -29,9 +36,14 @@ namespace Radiant.Graphics2D
 
         public Matrix4x4 GetProjectionMatrix()
         {
-            // Use left-handed coordinate system
-            return Matrix4x4.CreateOrthographicOffCenterLeftHanded(
-                Left, Right, Bottom, Top, -1.0f, 1.0f);
+            return Handedness switch
+            {
+                Handedness.LeftHanded => Matrix4x4.CreateOrthographicOffCenterLeftHanded(
+                    Left, Right, Bottom, Top, -1.0f, 1.0f),
+                Handedness.RightHanded => Matrix4x4.CreateOrthographicOffCenter(
+                    Left, Right, Bottom, Top, -1.0f, 1.0f),
+                _ => throw new InvalidOperationException($"Unexpected handedness: {Handedness}")
+            };
         }
 
         public void SetViewportSize(float width, float height)

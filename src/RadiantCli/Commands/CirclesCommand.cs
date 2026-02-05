@@ -1,4 +1,5 @@
 using Radiant;
+using Radiant.Graphics;
 
 namespace RadiantCli.Commands
 {
@@ -7,7 +8,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            app.Run("Radiant - Circles Demo", 800, 600, renderer =>
+            app.Run("Radiant - Circles Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Draw filled circles with Tailwind colors
                 renderer.DrawCircleFilled(-250, -150, 80, Colors.Rose500, 32);

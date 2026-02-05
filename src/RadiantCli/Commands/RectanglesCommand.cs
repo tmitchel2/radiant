@@ -1,4 +1,5 @@
 using Radiant;
+using Radiant.Graphics;
 
 namespace RadiantCli.Commands
 {
@@ -7,7 +8,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            app.Run("Radiant - Rectangles Demo", 800, 600, renderer =>
+            app.Run("Radiant - Rectangles Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Draw demo rectangles with Tailwind colors
                 renderer.DrawRectangleFilled(-300, -200, 200, 150, Colors.Red500);

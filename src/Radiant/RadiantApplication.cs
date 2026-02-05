@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Radiant.Graphics;
 using Radiant.Graphics2D;
 using Radiant.Input;
 using Silk.NET.Core.Native;
@@ -19,6 +20,7 @@ namespace Radiant
         private Action<Renderer2D>? _renderCallback;
         private Action<double>? _updateCallback;
         private bool _disposed;
+        private Handedness _handedness;
         private Vector4 _backgroundColor;
 
         // Input state
@@ -34,15 +36,16 @@ namespace Radiant
         /// <summary>Gets the window height in pixels.</summary>
         public int WindowHeight => _window?.Size.Y ?? 0;
 
-        public void Run(string title, int width, int height, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
+        public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
-            Run(title, width, height, renderCallback, null, backgroundColor);
+            Run(title, width, height, handedness, renderCallback, null, backgroundColor);
         }
 
-        public void Run(string title, int width, int height, Action<Renderer2D> renderCallback, Action<double>? updateCallback, Vector4? backgroundColor = null)
+        public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Action<double>? updateCallback, Vector4? backgroundColor = null)
         {
             _renderCallback = renderCallback;
             _updateCallback = updateCallback;
+            _handedness = handedness;
             _backgroundColor = backgroundColor ?? new Vector4(0.1f, 0.1f, 0.1f, 1f);
 
             var options = WindowOptions.Default;
@@ -68,7 +71,7 @@ namespace Radiant
             if (_window == null) return;
 
             _engineState = InitializeEngine(_window);
-            _camera = new Camera2D(_window.Size.X, _window.Size.Y);
+            _camera = new Camera2D(_window.Size.X, _window.Size.Y, _handedness);
             _renderer = new Renderer2D();
             _renderer.Initialize(_engineState, _camera);
 

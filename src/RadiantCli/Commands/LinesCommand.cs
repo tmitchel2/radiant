@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Radiant;
+using Radiant.Graphics;
 
 namespace RadiantCli.Commands
 {
@@ -9,7 +10,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            app.Run("Radiant - Lines Demo", 800, 600, renderer =>
+            app.Run("Radiant - Lines Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Draw individual lines
                 renderer.DrawLine(new Vector2(-350, -250), new Vector2(-150, -250), new Vector4(1, 0, 0, 1)); // Red horizontal

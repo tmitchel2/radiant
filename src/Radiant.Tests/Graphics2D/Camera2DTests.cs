@@ -1,5 +1,7 @@
+using System;
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Graphics;
 using Radiant.Graphics2D;
 
 namespace Radiant.Tests.Graphics2D
@@ -10,7 +12,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void Constructor_InitializesWithCorrectBounds()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
 
             Assert.AreEqual(-400f, camera.Left);
             Assert.AreEqual(400f, camera.Right);
@@ -21,7 +23,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void GetProjectionMatrix_ReturnsLeftHandedMatrix()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Verify the matrix is left-handed by checking the Z transformation
@@ -46,7 +48,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void GetProjectionMatrix_MapsNearPlaneToZero()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Test point at near plane (z = -1)
@@ -61,7 +63,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void GetProjectionMatrix_MapsFarPlaneToOne()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Test point at far plane (z = 1)
@@ -76,7 +78,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void GetProjectionMatrix_TransformsScreenCoordinatesCorrectly()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Test corners of the screen
@@ -96,7 +98,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void GetProjectionMatrix_CenterPointMapsToMiddleDepth()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Center of screen should map to center in NDC
@@ -112,7 +114,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void SetViewportSize_MaintainsAspectRatio_WiderWindow()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             camera.SetViewportSize(1600, 600); // Twice as wide
 
             // Height should remain the same, width should expand
@@ -125,7 +127,7 @@ namespace Radiant.Tests.Graphics2D
         [TestMethod]
         public void SetViewportSize_MaintainsAspectRatio_TallerWindow()
         {
-            var camera = new Camera2D(800, 600);
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             camera.SetViewportSize(800, 1200); // Twice as tall
 
             // Width should remain the same, height should expand
@@ -141,7 +143,7 @@ namespace Radiant.Tests.Graphics2D
             // This test verifies the fundamental property of left-handed coordinate systems:
             // With X pointing right and Y pointing up, Z points into the screen (away from viewer)
 
-            var camera = new Camera2D(100, 100);
+            var camera = new Camera2D(100, 100, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
             // Two points at same X,Y but different Z
@@ -174,6 +176,93 @@ namespace Radiant.Tests.Graphics2D
             Assert.AreEqual(0f, cross.X, 0.0001f);
             Assert.AreEqual(0f, cross.Y, 0.0001f);
             Assert.AreEqual(1f, cross.Z, 0.0001f);
+        }
+
+        [TestMethod]
+        public void Constructor_StoresHandedness_LeftHanded()
+        {
+            var camera = new Camera2D(800, 600, Handedness.LeftHanded);
+            Assert.AreEqual(Handedness.LeftHanded, camera.Handedness);
+        }
+
+        [TestMethod]
+        public void Constructor_StoresHandedness_RightHanded()
+        {
+            var camera = new Camera2D(800, 600, Handedness.RightHanded);
+            Assert.AreEqual(Handedness.RightHanded, camera.Handedness);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void Constructor_RejectsDefaultHandedness()
+        {
+            _ = new Camera2D(800, 600, default);
+        }
+
+        [TestMethod]
+        public void RightHanded_GetProjectionMatrix_ReturnsRightHandedMatrix()
+        {
+            var camera = new Camera2D(800, 600, Handedness.RightHanded);
+            var matrix = camera.GetProjectionMatrix();
+
+            // Test point at near plane (z = -1) and far plane (z = 1)
+            var nearPoint = new Vector4(0, 0, -1, 1);
+            var transformedNear = Vector4.Transform(nearPoint, matrix);
+            var ndcNear = transformedNear.Z / transformedNear.W;
+
+            var farPoint = new Vector4(0, 0, 1, 1);
+            var transformedFar = Vector4.Transform(farPoint, matrix);
+            var ndcFar = transformedFar.Z / transformedFar.W;
+
+            // In right-handed system, near plane should map to higher NDC Z than far plane
+            // (opposite of left-handed)
+            Assert.IsTrue(ndcNear > ndcFar,
+                $"Right-handed system should have near plane ({ndcNear}) > far plane ({ndcFar})");
+        }
+
+        [TestMethod]
+        public void RightHanded_PositiveZPointsTowardViewer()
+        {
+            var camera = new Camera2D(100, 100, Handedness.RightHanded);
+            var matrix = camera.GetProjectionMatrix();
+
+            // Two points at same X,Y but different Z
+            var point1 = new Vector4(0, 0, -0.5f, 1); // Further from viewer
+            var point2 = new Vector4(0, 0, 0.5f, 1);  // Closer to viewer (toward viewer)
+
+            var transformed1 = Vector4.Transform(point1, matrix);
+            var transformed2 = Vector4.Transform(point2, matrix);
+
+            var ndcZ1 = transformed1.Z / transformed1.W;
+            var ndcZ2 = transformed2.Z / transformed2.W;
+
+            // In right-handed system, positive Z points toward viewer
+            // so point2 (positive Z) should have smaller NDC Z (closer to near plane)
+            Assert.IsTrue(ndcZ1 > ndcZ2,
+                "In right-handed system, positive Z should point toward viewer");
+        }
+
+        [TestMethod]
+        public void RightHanded_XYMappingIsIdenticalToLeftHanded()
+        {
+            var leftCamera = new Camera2D(800, 600, Handedness.LeftHanded);
+            var rightCamera = new Camera2D(800, 600, Handedness.RightHanded);
+
+            var leftMatrix = leftCamera.GetProjectionMatrix();
+            var rightMatrix = rightCamera.GetProjectionMatrix();
+
+            // Test that X and Y mapping are identical
+            var testPoint = new Vector4(200, -150, 0, 1);
+
+            var leftTransformed = Vector4.Transform(testPoint, leftMatrix);
+            var rightTransformed = Vector4.Transform(testPoint, rightMatrix);
+
+            Assert.AreEqual(leftTransformed.X / leftTransformed.W,
+                rightTransformed.X / rightTransformed.W, 0.0001f,
+                "X mapping should be identical");
+            Assert.AreEqual(leftTransformed.Y / leftTransformed.W,
+                rightTransformed.Y / rightTransformed.W, 0.0001f,
+                "Y mapping should be identical");
         }
     }
 }

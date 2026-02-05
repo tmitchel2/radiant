@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Radiant.Graphics;
 using Radiant.Graphics2D.Shaders;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
@@ -192,8 +193,9 @@ namespace Radiant.Graphics2D
                 {
                     Topology = topology,
                     StripIndexFormat = IndexFormat.Undefined,
-                    // Use clockwise winding for left-handed coordinate system
-                    FrontFace = FrontFace.CW,
+                    FrontFace = _camera.Handedness == Handedness.LeftHanded
+                        ? FrontFace.CW
+                        : FrontFace.Ccw,
                     CullMode = CullMode.None
                 },
                 Multisample = new MultisampleState

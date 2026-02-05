@@ -13,7 +13,8 @@ namespace Radiant.Graphics
             Vector3 size,
             int gridX,
             int gridY,
-            Geometry geometry)
+            Geometry geometry,
+            Handedness handedness)
         {
             var segmentWidth = size.X / (double)gridX;
             var segmentHeight = size.Y / (double)gridY;
@@ -56,13 +57,26 @@ namespace Radiant.Graphics
                     var d = numberOfVertices + (ix + 1) + gridX1 * iy;
 
                     // Two triangles per quad
-                    geometry.Vertices.Add(geometry.Vertices[a]);
-                    geometry.Vertices.Add(geometry.Vertices[b]);
-                    geometry.Vertices.Add(geometry.Vertices[d]);
+                    if (handedness == Handedness.LeftHanded)
+                    {
+                        geometry.Vertices.Add(geometry.Vertices[a]);
+                        geometry.Vertices.Add(geometry.Vertices[b]);
+                        geometry.Vertices.Add(geometry.Vertices[d]);
 
-                    geometry.Vertices.Add(geometry.Vertices[b]);
-                    geometry.Vertices.Add(geometry.Vertices[c]);
-                    geometry.Vertices.Add(geometry.Vertices[d]);
+                        geometry.Vertices.Add(geometry.Vertices[b]);
+                        geometry.Vertices.Add(geometry.Vertices[c]);
+                        geometry.Vertices.Add(geometry.Vertices[d]);
+                    }
+                    else
+                    {
+                        geometry.Vertices.Add(geometry.Vertices[a]);
+                        geometry.Vertices.Add(geometry.Vertices[d]);
+                        geometry.Vertices.Add(geometry.Vertices[b]);
+
+                        geometry.Vertices.Add(geometry.Vertices[b]);
+                        geometry.Vertices.Add(geometry.Vertices[d]);
+                        geometry.Vertices.Add(geometry.Vertices[c]);
+                    }
                 }
             }
         }
@@ -78,7 +92,7 @@ namespace Radiant.Graphics
             };
         }
 
-        public static Geometry Box(BoxProps props)
+        public static Geometry Box(BoxProps props, Handedness handedness)
         {
             var geometry = new Geometry(
                 PrimitiveType.Triangles,
@@ -90,42 +104,42 @@ namespace Radiant.Graphics
                 new Plane(2, 1, 0, -1),
                 new Vector3(props.Depth, props.Height, props.Width),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             // Left face (-X)
             DrawRectangle(
                 new Plane(2, 1, 0, 1),
                 new Vector3(props.Depth, props.Height, -props.Width),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             // Top face (+Y)
             DrawRectangle(
                 new Plane(0, 2, 1, 1),
                 new Vector3(props.Width, props.Depth, props.Height),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             // Bottom face (-Y)
             DrawRectangle(
                 new Plane(0, 2, 1, 1),
                 new Vector3(props.Width, props.Depth, -props.Height),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             // Front face (+Z)
             DrawRectangle(
                 new Plane(0, 1, 2, 1),
                 new Vector3(props.Width, props.Height, props.Depth),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             // Back face (-Z)
             DrawRectangle(
                 new Plane(0, 1, 2, -1),
                 new Vector3(props.Width, props.Height, -props.Depth),
                 1, 1,
-                geometry);
+                geometry, handedness);
 
             return geometry;
         }

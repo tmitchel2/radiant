@@ -1,5 +1,6 @@
 using System.Numerics;
 using Radiant;
+using Radiant.Graphics;
 
 namespace RadiantCli.Commands
 {
@@ -8,7 +9,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            app.Run("Radiant - Polygons Demo", 800, 600, renderer =>
+            app.Run("Radiant - Polygons Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Row 1: Filled polygons
                 renderer.DrawPolygonFilled(-300, -150, 70, 3, new Vector4(1, 0, 0, 1));     // Triangle (red)

@@ -1,4 +1,5 @@
 using Radiant;
+using Radiant.Graphics;
 
 namespace RadiantCli.Commands
 {
@@ -7,7 +8,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            app.Run("Radiant - Text Demo", 800, 600, renderer =>
+            app.Run("Radiant - Text Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Title
                 renderer.DrawText("RADIANT ENGINE", -200, -250, 4, Colors.Cyan500);
