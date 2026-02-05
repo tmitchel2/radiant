@@ -27,11 +27,11 @@ namespace Radiant.Graphics2D
             _originalHeight = height;
             _originalAspect = width / height;
 
-            // Default: origin at center, 1:1 pixel mapping at default zoom
-            Left = -width / 2f;
-            Right = width / 2f;
-            Bottom = -height / 2f;
-            Top = height / 2f;
+            // Screen-space: origin at top-left, Y increases downward
+            Left = 0;
+            Right = width;
+            Bottom = height;
+            Top = 0;
         }
 
         public Matrix4x4 GetProjectionMatrix()
@@ -53,25 +53,19 @@ namespace Radiant.Graphics2D
 
             if (newAspect > _originalAspect)
             {
-                // Window is wider than original - add letterboxing (pillarboxing on sides)
-                // Keep original height, expand width
-                var halfHeight = _originalHeight / 2f;
-                var halfWidth = halfHeight * newAspect;
-                Left = -halfWidth;
-                Right = halfWidth;
-                Bottom = -halfHeight;
-                Top = halfHeight;
+                // Window is wider than original - keep height, expand width
+                Left = 0;
+                Right = _originalHeight * newAspect;
+                Top = 0;
+                Bottom = _originalHeight;
             }
             else
             {
-                // Window is taller than original - add pillarboxing (letterboxing on top/bottom)
-                // Keep original width, expand height
-                var halfWidth = _originalWidth / 2f;
-                var halfHeight = halfWidth / newAspect;
-                Left = -halfWidth;
-                Right = halfWidth;
-                Bottom = -halfHeight;
-                Top = halfHeight;
+                // Window is taller than original - keep width, expand height
+                Left = 0;
+                Right = _originalWidth;
+                Top = 0;
+                Bottom = _originalWidth / newAspect;
             }
         }
     }

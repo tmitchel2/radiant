@@ -26,6 +26,9 @@ namespace Radiant.Graphics2D
         private Camera2D _camera = null!;
         private readonly List<Vertex2D> _filledVertices = [];
         private readonly List<Vertex2D> _lineVertices = [];
+
+        internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
+        internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
         private TextureFormat _surfaceFormat;
         private readonly List<IntPtr> _frameBuffers = [];
 
@@ -249,14 +252,21 @@ namespace Radiant.Graphics2D
         {
             var matrix = _camera.GetProjectionMatrix();
             var matrixData = stackalloc float[16];
-
-            // Matrix4x4 to flat array (column-major for WGSL)
-            matrixData[0] = matrix.M11; matrixData[1] = matrix.M21; matrixData[2] = matrix.M31; matrixData[3] = matrix.M41;
-            matrixData[4] = matrix.M12; matrixData[5] = matrix.M22; matrixData[6] = matrix.M32; matrixData[7] = matrix.M42;
-            matrixData[8] = matrix.M13; matrixData[9] = matrix.M23; matrixData[10] = matrix.M33; matrixData[11] = matrix.M43;
-            matrixData[12] = matrix.M14; matrixData[13] = matrix.M24; matrixData[14] = matrix.M34; matrixData[15] = matrix.M44;
-
+            SerializeMatrixForGpu(matrix, new Span<float>(matrixData, 16));
             _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, matrixData, 64);
+        }
+
+        /// <summary>
+        /// Serializes a System.Numerics Matrix4x4 (row-vector convention) into a flat float buffer
+        /// for WGSL consumption (column-vector convention, column-major storage).
+        /// Writes M in row-major order so the GPU interprets it as M^T in column-major.
+        /// </summary>
+        internal static void SerializeMatrixForGpu(Matrix4x4 matrix, Span<float> destination)
+        {
+            destination[0] = matrix.M11; destination[1] = matrix.M12; destination[2] = matrix.M13; destination[3] = matrix.M14;
+            destination[4] = matrix.M21; destination[5] = matrix.M22; destination[6] = matrix.M23; destination[7] = matrix.M24;
+            destination[8] = matrix.M31; destination[9] = matrix.M32; destination[10] = matrix.M33; destination[11] = matrix.M34;
+            destination[12] = matrix.M41; destination[13] = matrix.M42; destination[14] = matrix.M43; destination[15] = matrix.M44;
         }
 
         public void DrawRectangleFilled(float x, float y, float width, float height, Vector4 color)
@@ -456,7 +466,7 @@ namespace Radiant.Graphics2D
                         if (bit == 1)
                         {
                             var px = cursorX + col * pixelSize;
-                            var py = y - row * pixelSize;
+                            var py = y + row * pixelSize;
                             DrawRectangleFilled(px, py, pixelSize, pixelSize, color);
                         }
                     }

@@ -14,10 +14,10 @@ namespace Radiant.Tests.Graphics2D
         {
             var camera = new Camera2D(800, 600, Handedness.LeftHanded);
 
-            Assert.AreEqual(-400f, camera.Left);
-            Assert.AreEqual(400f, camera.Right);
-            Assert.AreEqual(-300f, camera.Bottom);
-            Assert.AreEqual(300f, camera.Top);
+            Assert.AreEqual(0f, camera.Left);
+            Assert.AreEqual(800f, camera.Right);
+            Assert.AreEqual(600f, camera.Bottom);
+            Assert.AreEqual(0f, camera.Top);
         }
 
         [TestMethod]
@@ -81,15 +81,15 @@ namespace Radiant.Tests.Graphics2D
             var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
-            // Test corners of the screen
-            // Top-left corner
-            var topLeft = new Vector4(-400, 300, 0, 1);
+            // Test corners of the screen (screen-space: origin top-left, Y-down)
+            // Top-left corner (0, 0)
+            var topLeft = new Vector4(0, 0, 0, 1);
             var transformedTL = Vector4.Transform(topLeft, matrix);
             Assert.AreEqual(-1f, transformedTL.X / transformedTL.W, 0.0001f);
             Assert.AreEqual(1f, transformedTL.Y / transformedTL.W, 0.0001f);
 
-            // Bottom-right corner
-            var bottomRight = new Vector4(400, -300, 0, 1);
+            // Bottom-right corner (800, 600)
+            var bottomRight = new Vector4(800, 600, 0, 1);
             var transformedBR = Vector4.Transform(bottomRight, matrix);
             Assert.AreEqual(1f, transformedBR.X / transformedBR.W, 0.0001f);
             Assert.AreEqual(-1f, transformedBR.Y / transformedBR.W, 0.0001f);
@@ -101,8 +101,8 @@ namespace Radiant.Tests.Graphics2D
             var camera = new Camera2D(800, 600, Handedness.LeftHanded);
             var matrix = camera.GetProjectionMatrix();
 
-            // Center of screen should map to center in NDC
-            var center = new Vector4(0, 0, 0, 1);
+            // Center of screen (400, 300) should map to center in NDC
+            var center = new Vector4(400, 300, 0, 1);
             var transformed = Vector4.Transform(center, matrix);
 
             Assert.AreEqual(0f, transformed.X / transformed.W, 0.0001f);
@@ -118,10 +118,10 @@ namespace Radiant.Tests.Graphics2D
             camera.SetViewportSize(1600, 600); // Twice as wide
 
             // Height should remain the same, width should expand
-            Assert.AreEqual(-300f, camera.Bottom);
-            Assert.AreEqual(300f, camera.Top);
-            Assert.IsTrue(camera.Right > 400f);
-            Assert.IsTrue(camera.Left < -400f);
+            Assert.AreEqual(0f, camera.Left);
+            Assert.AreEqual(0f, camera.Top);
+            Assert.AreEqual(600f, camera.Bottom);
+            Assert.IsTrue(camera.Right > 800f);
         }
 
         [TestMethod]
@@ -131,10 +131,10 @@ namespace Radiant.Tests.Graphics2D
             camera.SetViewportSize(800, 1200); // Twice as tall
 
             // Width should remain the same, height should expand
-            Assert.AreEqual(-400f, camera.Left);
-            Assert.AreEqual(400f, camera.Right);
-            Assert.IsTrue(camera.Bottom < -300f);
-            Assert.IsTrue(camera.Top > 300f);
+            Assert.AreEqual(0f, camera.Left);
+            Assert.AreEqual(800f, camera.Right);
+            Assert.AreEqual(0f, camera.Top);
+            Assert.IsTrue(camera.Bottom > 600f);
         }
 
         [TestMethod]
@@ -252,7 +252,7 @@ namespace Radiant.Tests.Graphics2D
             var rightMatrix = rightCamera.GetProjectionMatrix();
 
             // Test that X and Y mapping are identical
-            var testPoint = new Vector4(200, -150, 0, 1);
+            var testPoint = new Vector4(200, 150, 0, 1);
 
             var leftTransformed = Vector4.Transform(testPoint, leftMatrix);
             var rightTransformed = Vector4.Transform(testPoint, rightMatrix);
