@@ -464,6 +464,38 @@ namespace Radiant.Graphics2D
             }
         }
 
+        // ==================== UI Helper Methods ====================
+
+        /// <summary>Draws text at a position with default pixel size of 1.</summary>
+        public void DrawText(string text, Vector2 position, Vector4 color, float scale = 1f)
+        {
+            DrawText(text, position.X, position.Y, scale, color);
+        }
+
+        /// <summary>Draws a filled rectangle.</summary>
+        public void DrawFilledRect(Vector2 position, Vector2 size, Vector4 color)
+        {
+            DrawRectangleFilled(position.X, position.Y, size.X, size.Y, color);
+        }
+
+        /// <summary>Draws a rectangle outline.</summary>
+        public void DrawRect(Vector2 position, Vector2 size, Vector4 color)
+        {
+            DrawRectangleOutline(position.X, position.Y, size.X, size.Y, color);
+        }
+
+        /// <summary>Draws a filled circle.</summary>
+        public void DrawFilledCircle(Vector2 center, float radius, Vector4 color, int segments = 32)
+        {
+            DrawCircleFilled(center.X, center.Y, radius, color, segments);
+        }
+
+        /// <summary>Draws a circle outline.</summary>
+        public void DrawCircle(Vector2 center, float radius, Vector4 color, int segments = 32)
+        {
+            DrawCircleOutline(center.X, center.Y, radius, color, segments);
+        }
+
         public void EndFrame(RenderPassEncoder* renderPass)
         {
             _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);

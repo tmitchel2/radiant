@@ -1,7 +1,9 @@
 using System;
 using System.Numerics;
 using Radiant.Graphics2D;
+using Radiant.Input;
 using Silk.NET.Core.Native;
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -15,12 +17,32 @@ namespace Radiant
         private Renderer2D? _renderer;
         private Camera2D? _camera;
         private Action<Renderer2D>? _renderCallback;
+        private Action<double>? _updateCallback;
         private bool _disposed;
         private Vector4 _backgroundColor;
 
+        // Input state
+        private IInputContext? _inputContext;
+        private readonly InputState _inputState = new();
+
+        /// <summary>Gets the current input state.</summary>
+        public InputState Input => _inputState;
+
+        /// <summary>Gets the window width in pixels.</summary>
+        public int WindowWidth => _window?.Size.X ?? 0;
+
+        /// <summary>Gets the window height in pixels.</summary>
+        public int WindowHeight => _window?.Size.Y ?? 0;
+
         public void Run(string title, int width, int height, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
+            Run(title, width, height, renderCallback, null, backgroundColor);
+        }
+
+        public void Run(string title, int width, int height, Action<Renderer2D> renderCallback, Action<double>? updateCallback, Vector4? backgroundColor = null)
+        {
             _renderCallback = renderCallback;
+            _updateCallback = updateCallback;
             _backgroundColor = backgroundColor ?? new Vector4(0.1f, 0.1f, 0.1f, 1f);
 
             var options = WindowOptions.Default;
@@ -35,6 +57,7 @@ namespace Radiant
             _window.Load += OnLoad;
             _window.Closing += OnClosing;
             _window.FramebufferResize += OnFramebufferResize;
+            _window.Update += OnUpdate;
             _window.Render += OnRender;
 
             _window.Run();
@@ -48,6 +71,75 @@ namespace Radiant
             _camera = new Camera2D(_window.Size.X, _window.Size.Y);
             _renderer = new Renderer2D();
             _renderer.Initialize(_engineState, _camera);
+
+            // Initialize input
+            _inputContext = _window.CreateInput();
+            InitializeInput();
+        }
+
+        private void InitializeInput()
+        {
+            if (_inputContext == null) return;
+
+            // Set up mouse input
+            foreach (var mouse in _inputContext.Mice)
+            {
+                mouse.MouseMove += OnMouseMove;
+                mouse.MouseDown += OnMouseDown;
+                mouse.MouseUp += OnMouseUp;
+                mouse.Scroll += OnMouseScroll;
+            }
+
+            // Set up keyboard input
+            foreach (var keyboard in _inputContext.Keyboards)
+            {
+                keyboard.KeyDown += OnKeyDown;
+                keyboard.KeyUp += OnKeyUp;
+                keyboard.KeyChar += OnKeyChar;
+            }
+        }
+
+        private void OnMouseMove(IMouse mouse, Vector2 position)
+        {
+            var delta = position - _inputState.MousePosition;
+            _inputState.MousePosition = position;
+            _inputState.MouseDelta = delta;
+        }
+
+        private void OnMouseDown(IMouse mouse, MouseButton button)
+        {
+            _inputState.SetMouseButton(button, true);
+        }
+
+        private void OnMouseUp(IMouse mouse, MouseButton button)
+        {
+            _inputState.SetMouseButton(button, false);
+        }
+
+        private void OnMouseScroll(IMouse mouse, ScrollWheel wheel)
+        {
+            _inputState.ScrollDelta = new Vector2(wheel.X, wheel.Y);
+        }
+
+        private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
+        {
+            _inputState.SetKey(key, true);
+        }
+
+        private void OnKeyUp(IKeyboard keyboard, Key key, int scancode)
+        {
+            _inputState.SetKey(key, false);
+        }
+
+        private void OnKeyChar(IKeyboard keyboard, char character)
+        {
+            _inputState.LastCharacter = character;
+        }
+
+        private void OnUpdate(double delta)
+        {
+            _updateCallback?.Invoke(delta);
+            _inputState.EndFrame();
         }
 
         private void OnClosing()
@@ -222,6 +314,9 @@ namespace Radiant
 
             _renderer?.Dispose();
             _renderer = null;
+
+            _inputContext?.Dispose();
+            _inputContext = null;
 
             if (_engineState != null)
             {
