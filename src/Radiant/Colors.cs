@@ -312,4 +312,10 @@ namespace Radiant
             return new Vector4(r, g, b, 1f);
         }
     }
+
+    public static class ColorExtensions
+    {
+        public static Vector4 WithAlpha(this Vector4 color, float alpha) =>
+            new(color.X, color.Y, color.Z, alpha);
+    }
 }

@@ -46,7 +46,7 @@ namespace Radiant
             _renderCallback = renderCallback;
             _updateCallback = updateCallback;
             _handedness = handedness;
-            _backgroundColor = backgroundColor ?? new Vector4(0.1f, 0.1f, 0.1f, 1f);
+            _backgroundColor = backgroundColor ?? Colors.Neutral900;
 
             var options = WindowOptions.Default;
             options.API = GraphicsAPI.None;
