@@ -28,7 +28,7 @@ namespace RadiantCli.Commands
                 // Center: mixed filled and outlined
                 renderer.DrawPolygonFilled(0, -25, 50, 7, new Vector4(0.5f, 0.5f, 0.5f, 0.5f)); // Heptagon (semi-transparent gray)
                 renderer.DrawPolygonOutline(0, -25, 50, 7, new Vector4(1, 1, 1, 1));            // White outline
-            }, Colors.Slate50);
+            }, Colors.Slate50.WithAlpha(1f));
         }
     }
 }

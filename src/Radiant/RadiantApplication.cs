@@ -46,7 +46,7 @@ namespace Radiant
             _renderCallback = renderCallback;
             _updateCallback = updateCallback;
             _handedness = handedness;
-            _backgroundColor = backgroundColor ?? Colors.Neutral900;
+            _backgroundColor = backgroundColor ?? Colors.Neutral900.WithAlpha(1f);
 
             var options = WindowOptions.Default;
             options.API = GraphicsAPI.None;
