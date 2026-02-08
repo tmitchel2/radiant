@@ -308,8 +308,11 @@ namespace Radiant
             var r = int.Parse(hex.AsSpan(0, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
             var g = int.Parse(hex.AsSpan(2, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
             var b = int.Parse(hex.AsSpan(4, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
-            return new Vector3(r, g, b);
+            return new Vector3(SrgbToLinear(r), SrgbToLinear(g), SrgbToLinear(b));
         }
+
+        private static float SrgbToLinear(float c) =>
+            c <= 0.04045f ? c / 12.92f : MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
     }
 
     public static class ColorExtensions
