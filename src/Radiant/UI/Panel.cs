@@ -62,6 +62,16 @@ public class Panel : UIElement
     {
         if (!Visible || !Enabled) return;
 
+        // If a child is capturing input (e.g. open dropdown), only update that child
+        for (var i = _children.Count - 1; i >= 0; i--)
+        {
+            if (_children[i].IsCapturingInput)
+            {
+                _children[i].Update(input, deltaTime);
+                return;
+            }
+        }
+
         // Update children in reverse order (top elements first)
         for (var i = _children.Count - 1; i >= 0; i--)
         {
@@ -96,6 +106,12 @@ public class Panel : UIElement
         foreach (var child in _children)
         {
             child.Draw(renderer);
+        }
+
+        // Draw overlays (e.g. dropdown lists) on top of all children
+        foreach (var child in _children)
+        {
+            child.DrawOverlay(renderer);
         }
     }
 

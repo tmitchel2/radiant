@@ -38,6 +38,9 @@ public abstract class UIElement
     /// <summary>Called when the element needs to be rendered.</summary>
     public abstract void Draw(Renderer2D renderer);
 
+    /// <summary>Called after all siblings have drawn, for overlay content (e.g. dropdown lists).</summary>
+    public virtual void DrawOverlay(Renderer2D renderer) { }
+
     /// <summary>Called to update the element state.</summary>
     public virtual void Update(InputState input, double deltaTime) { }
 

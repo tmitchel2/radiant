@@ -34,6 +34,16 @@ public class UIManager
     /// <summary>Updates all elements with current input state.</summary>
     public void Update(InputState input, double deltaTime)
     {
+        // If an element is capturing input (e.g. open dropdown), only update that element
+        for (var i = _elements.Count - 1; i >= 0; i--)
+        {
+            if (_elements[i].Visible && _elements[i].IsCapturingInput)
+            {
+                _elements[i].Update(input, deltaTime);
+                return;
+            }
+        }
+
         // Update in reverse order so top elements get input first
         for (var i = _elements.Count - 1; i >= 0; i--)
         {
@@ -52,6 +62,15 @@ public class UIManager
             if (element.Visible)
             {
                 element.Draw(renderer);
+            }
+        }
+
+        // Draw overlays on top of all elements
+        foreach (var element in _elements)
+        {
+            if (element.Visible)
+            {
+                element.DrawOverlay(renderer);
             }
         }
     }
