@@ -12,20 +12,12 @@ namespace Radiant.Graphics2D
         public float Top { get; set; }
         public Handedness Handedness { get; }
 
-        private readonly float _originalWidth;
-        private readonly float _originalHeight;
-        private readonly float _originalAspect;
-
         public Camera2D(float width, float height, Handedness handedness)
         {
             if (handedness != Handedness.LeftHanded && handedness != Handedness.RightHanded)
                 throw new ArgumentOutOfRangeException(nameof(handedness));
 
             Handedness = handedness;
-            // Store original dimensions and aspect ratio
-            _originalWidth = width;
-            _originalHeight = height;
-            _originalAspect = width / height;
 
             // Screen-space: origin at top-left, Y increases downward
             Left = 0;
@@ -48,25 +40,10 @@ namespace Radiant.Graphics2D
 
         public void SetViewportSize(float width, float height)
         {
-            // Maintain original aspect ratio with letterboxing/pillarboxing
-            var newAspect = width / height;
-
-            if (newAspect > _originalAspect)
-            {
-                // Window is wider than original - keep height, expand width
-                Left = 0;
-                Right = _originalHeight * newAspect;
-                Top = 0;
-                Bottom = _originalHeight;
-            }
-            else
-            {
-                // Window is taller than original - keep width, expand height
-                Left = 0;
-                Right = _originalWidth;
-                Top = 0;
-                Bottom = _originalWidth / newAspect;
-            }
+            Left = 0;
+            Right = width;
+            Top = 0;
+            Bottom = height;
         }
     }
 }
