@@ -32,6 +32,41 @@ namespace Radiant.Graphics2D
         private TextureFormat _surfaceFormat;
         private readonly List<IntPtr> _frameBuffers = [];
 
+        // Clip/scissor state
+        private readonly Stack<ClipRect> _clipStack = new();
+        private readonly List<DrawRange> _ranges = [];
+        private DrawRange _currentRange;
+        private bool _clipEnabled;
+        private uint _attachmentWidth;
+        private uint _attachmentHeight;
+        private float _pixelScale = 1f;
+
+        /// <summary>
+        /// Integer pixel rectangle in logical (window) coordinates. Used as the
+        /// unit of a clip region; intersections are trivial because rects are
+        /// axis-aligned.
+        /// </summary>
+        public readonly record struct ClipRect(int X, int Y, int Width, int Height)
+        {
+            public ClipRect Intersect(ClipRect b)
+            {
+                var x0 = Math.Max(X, b.X);
+                var y0 = Math.Max(Y, b.Y);
+                var x1 = Math.Min(X + Width, b.X + b.Width);
+                var y1 = Math.Min(Y + Height, b.Y + b.Height);
+                return new ClipRect(x0, y0, Math.Max(0, x1 - x0), Math.Max(0, y1 - y0));
+            }
+        }
+
+        private struct DrawRange
+        {
+            public ClipRect? Clip;
+            public int FilledStart;
+            public int FilledCount;
+            public int LineStart;
+            public int LineCount;
+        }
+
         public void Initialize(Engine2State engineState, Camera2D camera)
         {
             _wgpu = engineState._wgpu;
@@ -236,6 +271,17 @@ namespace Radiant.Graphics2D
 
         public void BeginFrame()
         {
+            BeginFrame(0, 0, 1f);
+        }
+
+        /// <summary>
+        /// Starts a new frame with clipping support enabled. Pass the render
+        /// attachment size in physical pixels and the logical-to-physical
+        /// pixel scale so <see cref="PushClip"/> rectangles can be translated
+        /// to a WebGPU scissor rectangle.
+        /// </summary>
+        public void BeginFrame(uint attachmentWidth, uint attachmentHeight, float pixelScale)
+        {
             // Release buffers from previous frame
             foreach (var bufferPtr in _frameBuffers)
             {
@@ -245,7 +291,57 @@ namespace Radiant.Graphics2D
 
             _filledVertices.Clear();
             _lineVertices.Clear();
+            _clipStack.Clear();
+            _ranges.Clear();
+            _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
+            _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
+            _attachmentWidth = attachmentWidth;
+            _attachmentHeight = attachmentHeight;
+            _pixelScale = pixelScale;
             UpdateUniformBuffer();
+        }
+
+        /// <summary>
+        /// Pushes a clip rectangle in logical window coordinates. Subsequent
+        /// geometry is restricted to the intersection of this rect with the
+        /// current clip stack. Must be paired with <see cref="PopClip"/>.
+        /// Requires the frame to have been started with the clipping-aware
+        /// <see cref="BeginFrame(uint,uint,float)"/> overload.
+        /// </summary>
+        public void PushClip(float x, float y, float width, float height)
+        {
+            if (!_clipEnabled) return;
+            var newClip = new ClipRect(
+                (int)MathF.Floor(x),
+                (int)MathF.Floor(y),
+                (int)MathF.Ceiling(width),
+                (int)MathF.Ceiling(height));
+            if (_clipStack.Count > 0)
+                newClip = _clipStack.Peek().Intersect(newClip);
+            CloseCurrentRange();
+            _clipStack.Push(newClip);
+        }
+
+        /// <summary>Pops the most recent clip rectangle.</summary>
+        public void PopClip()
+        {
+            if (!_clipEnabled) return;
+            if (_clipStack.Count == 0) return;
+            CloseCurrentRange();
+            _clipStack.Pop();
+        }
+
+        private void CloseCurrentRange()
+        {
+            _currentRange.FilledCount = _filledVertices.Count - _currentRange.FilledStart;
+            _currentRange.LineCount = _lineVertices.Count - _currentRange.LineStart;
+            _currentRange.Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null;
+            _ranges.Add(_currentRange);
+            _currentRange = new DrawRange
+            {
+                FilledStart = _filledVertices.Count,
+                LineStart = _lineVertices.Count,
+            };
         }
 
         private void UpdateUniformBuffer()
@@ -512,27 +608,99 @@ namespace Radiant.Graphics2D
         {
             _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
 
-            // Draw filled shapes
-            if (_filledVertices.Count > 0)
+            if (!_clipEnabled)
             {
-                var vertexBuffer = CreateAndUploadVertexBuffer(_filledVertices);
-                _frameBuffers.Add((IntPtr)vertexBuffer);
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                    (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)_filledVertices.Count, 1, 0, 0);
+                // Fast path: draw all vertices in one call each.
+                if (_filledVertices.Count > 0)
+                {
+                    var vertexBuffer = CreateAndUploadVertexBuffer(_filledVertices);
+                    _frameBuffers.Add((IntPtr)vertexBuffer);
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
+                        (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
+                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_filledVertices.Count, 1, 0, 0);
+                }
+
+                if (_lineVertices.Count > 0)
+                {
+                    var vertexBuffer = CreateAndUploadVertexBuffer(_lineVertices);
+                    _frameBuffers.Add((IntPtr)vertexBuffer);
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
+                        (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
+                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_lineVertices.Count, 1, 0, 0);
+                }
+                return;
             }
 
-            // Draw lines
+            // Close the final range and emit one draw per range with its scissor.
+            CloseCurrentRange();
+
+            Buffer* filledBuffer = null;
+            Buffer* lineBuffer = null;
+            if (_filledVertices.Count > 0)
+            {
+                filledBuffer = CreateAndUploadVertexBuffer(_filledVertices);
+                _frameBuffers.Add((IntPtr)filledBuffer);
+            }
             if (_lineVertices.Count > 0)
             {
-                var vertexBuffer = CreateAndUploadVertexBuffer(_lineVertices);
-                _frameBuffers.Add((IntPtr)vertexBuffer);
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                    (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)_lineVertices.Count, 1, 0, 0);
+                lineBuffer = CreateAndUploadVertexBuffer(_lineVertices);
+                _frameBuffers.Add((IntPtr)lineBuffer);
             }
+
+            if (filledBuffer != null)
+            {
+                _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
+                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, filledBuffer, 0,
+                    (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
+                foreach (var range in _ranges)
+                {
+                    if (range.FilledCount == 0) continue;
+                    ApplyScissor(renderPass, range.Clip);
+                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.FilledCount, 1, (uint)range.FilledStart, 0);
+                }
+            }
+
+            if (lineBuffer != null)
+            {
+                _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
+                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, lineBuffer, 0,
+                    (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
+                foreach (var range in _ranges)
+                {
+                    if (range.LineCount == 0) continue;
+                    ApplyScissor(renderPass, range.Clip);
+                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.LineCount, 1, (uint)range.LineStart, 0);
+                }
+            }
+
+            // Restore full-attachment scissor for any subsequent consumer.
+            _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
+        }
+
+        private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
+        {
+            if (clip == null)
+            {
+                _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
+                return;
+            }
+            var c = clip.Value;
+            var px = (int)MathF.Round(c.X * _pixelScale);
+            var py = (int)MathF.Round(c.Y * _pixelScale);
+            var pw = (int)MathF.Round(c.Width * _pixelScale);
+            var ph = (int)MathF.Round(c.Height * _pixelScale);
+            // Clamp into attachment bounds so WebGPU validation is satisfied.
+            if (px < 0) { pw += px; px = 0; }
+            if (py < 0) { ph += py; py = 0; }
+            if (px > (int)_attachmentWidth) px = (int)_attachmentWidth;
+            if (py > (int)_attachmentHeight) py = (int)_attachmentHeight;
+            if (pw < 0) pw = 0;
+            if (ph < 0) ph = 0;
+            if (px + pw > (int)_attachmentWidth) pw = (int)_attachmentWidth - px;
+            if (py + ph > (int)_attachmentHeight) ph = (int)_attachmentHeight - py;
+            _wgpu.RenderPassEncoderSetScissorRect(renderPass, (uint)px, (uint)py, (uint)pw, (uint)ph);
         }
 
         private Buffer* CreateAndUploadVertexBuffer(List<Vertex2D> vertices)
