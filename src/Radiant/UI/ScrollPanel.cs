@@ -64,12 +64,6 @@ public class ScrollPanel : UIElement
     {
         if (!Visible || !Enabled) return;
 
-        if (ContainsPoint(input.MousePosition) && MathF.Abs(input.ScrollDelta.Y) > 0.001f)
-        {
-            _scrollOffset -= input.ScrollDelta.Y * WheelStep;
-            _scrollOffset = Math.Clamp(_scrollOffset, 0f, MaxScrollOffset);
-        }
-
         var delta = _scrollOffset - _appliedOffset;
         if (MathF.Abs(delta) > 0.001f)
         {
@@ -84,6 +78,12 @@ public class ScrollPanel : UIElement
                 _children[i].Update(input, deltaTime);
                 return;
             }
+        }
+
+        if (ContainsPoint(input.MousePosition) && MathF.Abs(input.ScrollDelta.Y) > 0.001f)
+        {
+            _scrollOffset -= input.ScrollDelta.Y * WheelStep;
+            _scrollOffset = Math.Clamp(_scrollOffset, 0f, MaxScrollOffset);
         }
 
         for (var i = _children.Count - 1; i >= 0; i--)
