@@ -1,4 +1,4 @@
-namespace Radiant.Graphics
+﻿namespace Radiant.Graphics
 {
     public enum Handedness
     {

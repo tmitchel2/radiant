@@ -1,4 +1,4 @@
-namespace Radiant.Graphics2D.Shaders
+﻿namespace Radiant.Graphics2D.Shaders
 {
     public static class ShaderLibrary
     {

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Radiant.Graphics2D;
 
 namespace Radiant.UI;

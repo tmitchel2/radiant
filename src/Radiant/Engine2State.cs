@@ -1,4 +1,4 @@
-#pragma warning disable CA1051 // Do not declare visible instance fields
+﻿#pragma warning disable CA1051 // Do not declare visible instance fields
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
 
