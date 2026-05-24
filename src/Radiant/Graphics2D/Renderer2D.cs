@@ -5,6 +5,8 @@ using Radiant.Graphics;
 using Radiant.Graphics2D.Shaders;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using Buffer = Silk.NET.WebGPU.Buffer;
 
 namespace Radiant.Graphics2D
@@ -27,8 +29,18 @@ namespace Radiant.Graphics2D
         private readonly List<Vertex2D> _filledVertices = [];
         private readonly List<Vertex2D> _lineVertices = [];
 
+        // MSDF text pipeline (additive — bitmap DrawText is untouched).
+        private RenderPipeline* _msdfPipeline;
+        private ShaderModule* _msdfShader;
+        private BindGroupLayout* _msdfAtlasBindGroupLayout;
+        private PipelineLayout* _msdfPipelineLayout;
+        private readonly List<MsdfVertex2D> _msdfVertices = [];
+        private readonly List<MsdfDrawRange> _msdfRanges = [];
+        private readonly List<MsdfFont> _ownedFonts = [];
+
         internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
         internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
+        internal IReadOnlyList<MsdfVertex2D> MsdfVertices => _msdfVertices;
         private TextureFormat _surfaceFormat;
         private readonly List<IntPtr> _frameBuffers = [];
 
@@ -67,6 +79,14 @@ namespace Radiant.Graphics2D
             public int LineCount;
         }
 
+        private struct MsdfDrawRange
+        {
+            public MsdfFont Font;
+            public ClipRect? Clip;
+            public int VertexStart;
+            public int VertexCount;
+        }
+
         public void Initialize(Engine2State engineState, Camera2D camera)
         {
             _wgpu = engineState._wgpu;
@@ -81,6 +101,7 @@ namespace Radiant.Graphics2D
             CreateShaders();
             CreatePipelines();
             CreateBindGroup();
+            CreateMsdfPipeline();
         }
 
         private void CreateUniformBuffer()
@@ -249,6 +270,157 @@ namespace Radiant.Graphics2D
             return _wgpu.DeviceCreateRenderPipeline(_device, in renderPipelineDescriptor);
         }
 
+        private void CreateMsdfPipeline()
+        {
+            // Bind group 1: sampler + texture (per-font).
+            var entries = stackalloc BindGroupLayoutEntry[2];
+            entries[0] = new BindGroupLayoutEntry
+            {
+                Binding = 0,
+                Visibility = ShaderStage.Fragment,
+                Sampler = new SamplerBindingLayout { Type = SamplerBindingType.Filtering },
+            };
+            entries[1] = new BindGroupLayoutEntry
+            {
+                Binding = 1,
+                Visibility = ShaderStage.Fragment,
+                Texture = new TextureBindingLayout
+                {
+                    SampleType = TextureSampleType.Float,
+                    ViewDimension = TextureViewDimension.Dimension2D,
+                    Multisampled = false,
+                },
+            };
+            var layoutDesc = new BindGroupLayoutDescriptor
+            {
+                EntryCount = 2,
+                Entries = entries,
+            };
+            _msdfAtlasBindGroupLayout = _wgpu.DeviceCreateBindGroupLayout(_device, in layoutDesc);
+
+            var layouts = stackalloc BindGroupLayout*[2];
+            layouts[0] = _bindGroupLayout;
+            layouts[1] = _msdfAtlasBindGroupLayout;
+            var pipelineLayoutDesc = new PipelineLayoutDescriptor
+            {
+                BindGroupLayoutCount = 2,
+                BindGroupLayouts = layouts,
+            };
+            _msdfPipelineLayout = _wgpu.DeviceCreatePipelineLayout(_device, in pipelineLayoutDesc);
+
+            _msdfShader = CreateShaderModule(ShaderLibrary.MsdfTextShader);
+
+            var vertexAttributes = stackalloc VertexAttribute[3];
+            vertexAttributes[0] = new VertexAttribute
+            {
+                Format = VertexFormat.Float32x2,
+                Offset = 0,
+                ShaderLocation = 0,
+            };
+            vertexAttributes[1] = new VertexAttribute
+            {
+                Format = VertexFormat.Float32x4,
+                Offset = 8,
+                ShaderLocation = 1,
+            };
+            vertexAttributes[2] = new VertexAttribute
+            {
+                Format = VertexFormat.Float32x2,
+                Offset = 24,
+                ShaderLocation = 2,
+            };
+
+            var vertexBufferLayout = new VertexBufferLayout
+            {
+                ArrayStride = (ulong)sizeof(MsdfVertex2D),
+                StepMode = VertexStepMode.Vertex,
+                AttributeCount = 3,
+                Attributes = vertexAttributes,
+            };
+
+            var blendState = new BlendState
+            {
+                Color = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.SrcAlpha,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+                Alpha = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.One,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+            };
+
+            var colorTargetState = new ColorTargetState
+            {
+                Format = _surfaceFormat,
+                Blend = &blendState,
+                WriteMask = ColorWriteMask.All,
+            };
+
+            var fragmentState = new FragmentState
+            {
+                Module = _msdfShader,
+                TargetCount = 1,
+                Targets = &colorTargetState,
+                EntryPoint = (byte*)SilkMarshal.StringToPtr("fs_main"),
+            };
+
+            var pipelineDesc = new RenderPipelineDescriptor
+            {
+                Layout = _msdfPipelineLayout,
+                Vertex = new VertexState
+                {
+                    Module = _msdfShader,
+                    EntryPoint = (byte*)SilkMarshal.StringToPtr("vs_main"),
+                    BufferCount = 1,
+                    Buffers = &vertexBufferLayout,
+                },
+                Primitive = new PrimitiveState
+                {
+                    Topology = PrimitiveTopology.TriangleList,
+                    StripIndexFormat = IndexFormat.Undefined,
+                    FrontFace = _camera.Handedness == Handedness.LeftHanded
+                        ? FrontFace.CW
+                        : FrontFace.Ccw,
+                    CullMode = CullMode.None,
+                },
+                Multisample = new MultisampleState
+                {
+                    Count = 1,
+                    Mask = ~0u,
+                    AlphaToCoverageEnabled = false,
+                },
+                Fragment = &fragmentState,
+                DepthStencil = null,
+            };
+
+            _msdfPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+        }
+
+        /// <summary>
+        /// Register an MSDF font with this renderer. The renderer takes
+        /// ownership of the font's GPU resources and disposes them with the
+        /// renderer. Must be called after Initialize.
+        /// </summary>
+        public void RegisterMsdfFont(MsdfFont font)
+        {
+            if (font.AtlasPngBytes.Length == 0)
+            {
+                throw new InvalidOperationException("MsdfFont has no atlas PNG bytes loaded.");
+            }
+            using var img = Image.Load<Rgba32>(font.AtlasPngBytes);
+            var width = img.Width;
+            var height = img.Height;
+            var pixelBytes = new byte[width * height * 4];
+            img.CopyPixelDataTo(pixelBytes);
+            font.InitializeGpuResources(_wgpu, _device, _queue, _msdfAtlasBindGroupLayout, pixelBytes, width, height);
+            _ownedFonts.Add(font);
+        }
+
         private void CreateBindGroup()
         {
             var entry = new BindGroupEntry
@@ -291,6 +463,8 @@ namespace Radiant.Graphics2D
 
             _filledVertices.Clear();
             _lineVertices.Clear();
+            _msdfVertices.Clear();
+            _msdfRanges.Clear();
             _clipStack.Clear();
             _ranges.Clear();
             _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
@@ -572,6 +746,78 @@ namespace Radiant.Graphics2D
             }
         }
 
+        /// <summary>
+        /// Draw text using a baked MSDF font. <paramref name="pixelHeight"/>
+        /// is the em-square size in pixels — i.e. the font's nominal "1.0"
+        /// height. The baseline sits at <paramref name="y"/> + font.AscenderEm
+        /// * pixelHeight; the pen origin is <paramref name="x"/>.
+        /// </summary>
+        public void DrawText(MsdfFont font, string text, float x, float y, float pixelHeight, Vector4 color)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            var penX = x;
+            var baseline = y + font.AscenderEm * pixelHeight;
+            var startVertex = _msdfVertices.Count;
+            int prev = -1;
+
+            foreach (var rune in text.EnumerateRunes())
+            {
+                if (!font.TryGetGlyph(rune.Value, out var glyph))
+                {
+                    penX += 0.25f * pixelHeight;
+                    prev = -1;
+                    continue;
+                }
+                if (prev >= 0)
+                {
+                    penX += font.Kerning(prev, rune.Value) * pixelHeight;
+                }
+                if (glyph.Width > 0 && glyph.Height > 0)
+                {
+                    var w = glyph.Width * pixelHeight;
+                    var h = glyph.Height * pixelHeight;
+                    var x0 = penX + glyph.BearingX * pixelHeight;
+                    var y0 = baseline + glyph.BearingY * pixelHeight;
+                    var x1 = x0 + w;
+                    var y1 = y0 + h;
+                    var u0 = glyph.U0;
+                    var v0 = glyph.V0;
+                    var u1 = glyph.U1;
+                    var v1 = glyph.V1;
+                    var tl = new MsdfVertex2D(new Vector2(x0, y0), color, new Vector2(u0, v0));
+                    var tr = new MsdfVertex2D(new Vector2(x1, y0), color, new Vector2(u1, v0));
+                    var bl = new MsdfVertex2D(new Vector2(x0, y1), color, new Vector2(u0, v1));
+                    var br = new MsdfVertex2D(new Vector2(x1, y1), color, new Vector2(u1, v1));
+                    // Two triangles, CCW: (tl, bl, br) and (tl, br, tr).
+                    _msdfVertices.Add(tl);
+                    _msdfVertices.Add(bl);
+                    _msdfVertices.Add(br);
+                    _msdfVertices.Add(tl);
+                    _msdfVertices.Add(br);
+                    _msdfVertices.Add(tr);
+                }
+                penX += glyph.Advance * pixelHeight;
+                prev = rune.Value;
+            }
+
+            var added = _msdfVertices.Count - startVertex;
+            if (added == 0) return;
+
+            var clip = _clipStack.Count > 0 ? _clipStack.Peek() : (ClipRect?)null;
+            _msdfRanges.Add(new MsdfDrawRange
+            {
+                Font = font,
+                Clip = clip,
+                VertexStart = startVertex,
+                VertexCount = added,
+            });
+        }
+
+        /// <summary>Measure pixel width of a string drawn with an MSDF font at the given pixel height.</summary>
+        public static float MeasureText(MsdfFont font, string text, float pixelHeight)
+            => font.MeasureTextWidth(text, pixelHeight);
+
         // ==================== UI Helper Methods ====================
 
         /// <summary>Draws text at a position with default pixel size of 1.</summary>
@@ -675,8 +921,35 @@ namespace Radiant.Graphics2D
                 }
             }
 
+            EmitMsdfDraws(renderPass);
+
             // Restore full-attachment scissor for any subsequent consumer.
             _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
+        }
+
+        private void EmitMsdfDraws(RenderPassEncoder* renderPass)
+        {
+            if (_msdfVertices.Count == 0 || _msdfRanges.Count == 0) return;
+
+            var msdfBuffer = CreateAndUploadMsdfVertexBuffer(_msdfVertices);
+            _frameBuffers.Add((IntPtr)msdfBuffer);
+
+            _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
+            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
+            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0,
+                (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
+
+            MsdfFont? boundFont = null;
+            foreach (var range in _msdfRanges)
+            {
+                ApplyScissor(renderPass, range.Clip);
+                if (!ReferenceEquals(boundFont, range.Font))
+                {
+                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, range.Font.BindGroup, 0, null);
+                    boundFont = range.Font;
+                }
+                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+            }
         }
 
         private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
@@ -701,6 +974,27 @@ namespace Radiant.Graphics2D
             if (px + pw > (int)_attachmentWidth) pw = (int)_attachmentWidth - px;
             if (py + ph > (int)_attachmentHeight) ph = (int)_attachmentHeight - py;
             _wgpu.RenderPassEncoderSetScissorRect(renderPass, (uint)px, (uint)py, (uint)pw, (uint)ph);
+        }
+
+        private Buffer* CreateAndUploadMsdfVertexBuffer(List<MsdfVertex2D> vertices)
+        {
+            var bufferDescriptor = new BufferDescriptor
+            {
+                Size = (ulong)(vertices.Count * sizeof(MsdfVertex2D)),
+                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
+                MappedAtCreation = false,
+            };
+
+            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
+
+            var array = vertices.ToArray();
+            fixed (MsdfVertex2D* dataPtr = array)
+            {
+                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
+                    (nuint)(vertices.Count * sizeof(MsdfVertex2D)));
+            }
+
+            return buffer;
         }
 
         private Buffer* CreateAndUploadVertexBuffer(List<Vertex2D> vertices)
@@ -741,6 +1035,13 @@ namespace Radiant.Graphics2D
             if (_linePipeline != null) _wgpu.RenderPipelineRelease(_linePipeline);
             if (_filledShader != null) _wgpu.ShaderModuleRelease(_filledShader);
             if (_lineShader != null) _wgpu.ShaderModuleRelease(_lineShader);
+
+            foreach (var font in _ownedFonts) font.Dispose();
+            _ownedFonts.Clear();
+            if (_msdfPipeline != null) _wgpu.RenderPipelineRelease(_msdfPipeline);
+            if (_msdfShader != null) _wgpu.ShaderModuleRelease(_msdfShader);
+            if (_msdfPipelineLayout != null) _wgpu.PipelineLayoutRelease(_msdfPipelineLayout);
+            if (_msdfAtlasBindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_msdfAtlasBindGroupLayout);
 
             GC.SuppressFinalize(this);
         }

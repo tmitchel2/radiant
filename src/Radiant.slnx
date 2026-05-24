@@ -7,4 +7,5 @@
   <Project Path="Radiant/Radiant.csproj" />
   <Project Path="Radiant.Tests/Radiant.Tests.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
+  <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>
