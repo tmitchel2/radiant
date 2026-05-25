@@ -10,6 +10,7 @@ namespace Radiant.Tests.UI;
 public class DropdownTests
 {
     private static Dropdown CreateDropdown() => new(
+        TestFonts.Default,
         ["Alpha", "Beta", "Gamma"],
         0,
         new Vector2(10, 10),
@@ -100,11 +101,11 @@ public class DropdownTests
     public void PanelInputGating_OpenDropdownBlocksSiblingButton()
     {
         var dropdown = CreateDropdown();
-        var button = new Radiant.UI.Button("Test", new Vector2(10, 50), new Vector2(200, 25));
+        var button = new Radiant.UI.Button(TestFonts.Default, "Test", new Vector2(10, 50), new Vector2(200, 25));
         var buttonClicked = false;
         button.Clicked += () => buttonClicked = true;
 
-        var panel = new Panel(new Vector2(0, 0), new Vector2(300, 200));
+        var panel = new Panel(TestFonts.Default, new Vector2(0, 0), new Vector2(300, 200));
         panel.Add(dropdown);
         panel.Add(button);
 

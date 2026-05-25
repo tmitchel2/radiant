@@ -11,6 +11,7 @@ namespace Radiant.UI;
 /// </summary>
 public class Dropdown : UIElement
 {
+    private readonly MsdfFont _font;
     private bool _isOpen;
     private int _hoveredIndex = -1;
     private int _selectedIndex;
@@ -62,10 +63,11 @@ public class Dropdown : UIElement
     /// <inheritdoc/>
     public override bool IsCapturingInput => _isOpen;
 
-    public Dropdown() { }
+    public Dropdown(MsdfFont font) { _font = font; }
 
-    public Dropdown(string[] items, int selectedIndex, Vector2 position, Vector2 size)
+    public Dropdown(MsdfFont font, string[] items, int selectedIndex, Vector2 position, Vector2 size)
     {
+        _font = font;
         Items = items;
         _selectedIndex = selectedIndex;
         Position = position;
@@ -157,12 +159,12 @@ public class Dropdown : UIElement
         // Draw selected text
         var textHeight = 12f;
         var textPos = Position + new Vector2(8, (Size.Y - textHeight) / 2);
-        renderer.DrawText(SelectedText, textPos, TextColor);
+        renderer.DrawText(_font, SelectedText, textPos, TextColor);
 
         // Draw chevron arrow
         var chevron = _isOpen ? "^" : "v";
         var chevronPos = Position + new Vector2(Size.X - 16, (Size.Y - textHeight) / 2);
-        renderer.DrawText(chevron, chevronPos, TextColor);
+        renderer.DrawText(_font, chevron, chevronPos, TextColor);
     }
 
     public override void DrawOverlay(Renderer2D renderer)
@@ -202,7 +204,7 @@ public class Dropdown : UIElement
             }
 
             var textPos = itemPos + new Vector2(8, (ItemHeight - textHeight) / 2);
-            renderer.DrawText(Items[i], textPos, TextColor);
+            renderer.DrawText(_font, Items[i], textPos, TextColor);
         }
 
         // Draw scrollbar if the list is longer than the visible window

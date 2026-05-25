@@ -16,7 +16,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Label_LeftHanded()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            var label = new Label("HELLO", new Vector2(10, 10));
+            var label = new Label(TestFonts.Default, "HELLO", new Vector2(10, 10));
             label.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Label_LH");
         }
@@ -25,7 +25,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Label_RightHanded()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.RightHanded);
-            var label = new Label("HELLO", new Vector2(10, 10));
+            var label = new Label(TestFonts.Default, "HELLO", new Vector2(10, 10));
             label.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Label_RH");
         }
@@ -34,7 +34,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Label_Scaled()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            var label = new Label("AB", new Vector2(10, 10)) { TextScale = 2f };
+            var label = new Label(TestFonts.Default, "AB", new Vector2(10, 10)) { TextScale = 2f };
             label.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Label_Scaled");
         }
@@ -43,7 +43,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Label_Invisible_RendersNothing()
         {
             using var lh = new VisualTestHelper(128, 64, Handedness.LeftHanded);
-            var label = new Label("HIDDEN", new Vector2(10, 10)) { Visible = false };
+            var label = new Label(TestFonts.Default, "HIDDEN", new Vector2(10, 10)) { Visible = false };
             label.Draw(lh.Renderer);
             using var image = lh.Rasterize();
 
@@ -60,7 +60,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Button_Idle_LeftHanded()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            var button = new Button("OK", new Vector2(10, 10), new Vector2(80, 30));
+            var button = new Button(TestFonts.Default, "OK", new Vector2(10, 10), new Vector2(80, 30));
             button.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Button_Idle_LH");
         }
@@ -69,7 +69,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Button_Idle_RightHanded()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.RightHanded);
-            var button = new Button("OK", new Vector2(10, 10), new Vector2(80, 30));
+            var button = new Button(TestFonts.Default, "OK", new Vector2(10, 10), new Vector2(80, 30));
             button.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Button_Idle_RH");
         }
@@ -78,7 +78,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Button_Disabled()
         {
             using var helper = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            var button = new Button("SAVE", new Vector2(10, 10), new Vector2(80, 30)) { Enabled = false };
+            var button = new Button(TestFonts.Default, "SAVE", new Vector2(10, 10), new Vector2(80, 30)) { Enabled = false };
             button.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Button_Disabled");
         }
@@ -89,7 +89,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_ZeroValue_LeftHanded()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            var slider = new Slider("X", 0, 100, 0, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "X", 0, 100, 0, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Zero_LH");
         }
@@ -98,7 +98,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_ZeroValue_RightHanded()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.RightHanded);
-            var slider = new Slider("X", 0, 100, 0, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "X", 0, 100, 0, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Zero_RH");
         }
@@ -107,7 +107,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_MidValue_LeftHanded()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            var slider = new Slider("X", 0, 100, 50, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "X", 0, 100, 50, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Mid_LH");
         }
@@ -116,7 +116,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_MidValue_RightHanded()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.RightHanded);
-            var slider = new Slider("X", 0, 100, 50, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "X", 0, 100, 50, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Mid_RH");
         }
@@ -125,7 +125,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_MaxValue()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            var slider = new Slider("X", 0, 100, 100, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "X", 0, 100, 100, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Max");
         }
@@ -134,7 +134,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_NoLabel()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            var slider = new Slider("", 0, 1, 0.5f, new Vector2(10, 20), 230);
+            var slider = new Slider(TestFonts.Default, "", 0, 1, 0.5f, new Vector2(10, 20), 230);
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_NoLabel");
         }
@@ -143,7 +143,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Slider_Focused()
         {
             using var helper = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            var slider = new Slider("V", 0, 10, 5, new Vector2(10, 20), 230) { IsFocused = true };
+            var slider = new Slider(TestFonts.Default, "V", 0, 10, 5, new Vector2(10, 20), 230) { IsFocused = true };
             slider.Draw(helper.Renderer);
             helper.AssertMatchesGolden("UI_Slider_Focused");
         }
@@ -271,7 +271,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Panel_Empty_LeftHanded()
         {
             using var helper = new VisualTestHelper(192, 128, Handedness.LeftHanded);
-            var panel = new Panel(new Vector2(10, 10), new Vector2(160, 100))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100))
             {
                 Title = "TEST"
             };
@@ -283,7 +283,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Panel_Empty_RightHanded()
         {
             using var helper = new VisualTestHelper(192, 128, Handedness.RightHanded);
-            var panel = new Panel(new Vector2(10, 10), new Vector2(160, 100))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100))
             {
                 Title = "TEST"
             };
@@ -295,7 +295,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Panel_NoBorder()
         {
             using var helper = new VisualTestHelper(192, 128, Handedness.LeftHanded);
-            var panel = new Panel(new Vector2(10, 10), new Vector2(160, 100))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100))
             {
                 DrawBorder = false,
                 Title = "NO BORDER"
@@ -308,7 +308,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Panel_NoBackground()
         {
             using var helper = new VisualTestHelper(192, 128, Handedness.LeftHanded);
-            var panel = new Panel(new Vector2(10, 10), new Vector2(160, 100))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100))
             {
                 DrawBackground = false,
                 Title = "NO BG"
@@ -447,11 +447,11 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Parity_Label()
         {
             using var lh = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            new Label("TEST", new Vector2(10, 10)).Draw(lh.Renderer);
+            new Label(TestFonts.Default, "TEST", new Vector2(10, 10)).Draw(lh.Renderer);
             using var lhImage = lh.Rasterize();
 
             using var rh = new VisualTestHelper(192, 64, Handedness.RightHanded);
-            new Label("TEST", new Vector2(10, 10)).Draw(rh.Renderer);
+            new Label(TestFonts.Default, "TEST", new Vector2(10, 10)).Draw(rh.Renderer);
             using var rhImage = rh.Rasterize();
 
             GoldenImageHelper.AssertImagesIdentical(lhImage, rhImage);
@@ -461,11 +461,11 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Parity_Button()
         {
             using var lh = new VisualTestHelper(192, 64, Handedness.LeftHanded);
-            new Button("GO", new Vector2(10, 10), new Vector2(80, 30)).Draw(lh.Renderer);
+            new Button(TestFonts.Default, "GO", new Vector2(10, 10), new Vector2(80, 30)).Draw(lh.Renderer);
             using var lhImage = lh.Rasterize();
 
             using var rh = new VisualTestHelper(192, 64, Handedness.RightHanded);
-            new Button("GO", new Vector2(10, 10), new Vector2(80, 30)).Draw(rh.Renderer);
+            new Button(TestFonts.Default, "GO", new Vector2(10, 10), new Vector2(80, 30)).Draw(rh.Renderer);
             using var rhImage = rh.Rasterize();
 
             GoldenImageHelper.AssertImagesIdentical(lhImage, rhImage);
@@ -475,11 +475,11 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Parity_Slider()
         {
             using var lh = new VisualTestHelper(256, 64, Handedness.LeftHanded);
-            new Slider("V", 0, 100, 50, new Vector2(10, 20), 230).Draw(lh.Renderer);
+            new Slider(TestFonts.Default, "V", 0, 100, 50, new Vector2(10, 20), 230).Draw(lh.Renderer);
             using var lhImage = lh.Rasterize();
 
             using var rh = new VisualTestHelper(256, 64, Handedness.RightHanded);
-            new Slider("V", 0, 100, 50, new Vector2(10, 20), 230).Draw(rh.Renderer);
+            new Slider(TestFonts.Default, "V", 0, 100, 50, new Vector2(10, 20), 230).Draw(rh.Renderer);
             using var rhImage = rh.Rasterize();
 
             GoldenImageHelper.AssertImagesIdentical(lhImage, rhImage);
@@ -489,11 +489,11 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Parity_Panel()
         {
             using var lh = new VisualTestHelper(192, 128, Handedness.LeftHanded);
-            new Panel(new Vector2(10, 10), new Vector2(160, 100)) { Title = "P" }.Draw(lh.Renderer);
+            new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100)) { Title = "P" }.Draw(lh.Renderer);
             using var lhImage = lh.Rasterize();
 
             using var rh = new VisualTestHelper(192, 128, Handedness.RightHanded);
-            new Panel(new Vector2(10, 10), new Vector2(160, 100)) { Title = "P" }.Draw(rh.Renderer);
+            new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(160, 100)) { Title = "P" }.Draw(rh.Renderer);
             using var rhImage = rh.Rasterize();
 
             GoldenImageHelper.AssertImagesIdentical(lhImage, rhImage);
@@ -536,23 +536,23 @@ namespace Radiant.Tests.Graphics2D.Visual
         private static void DrawStackedSlidersAB(Renderer2D renderer)
         {
             // Slider A at top with 25% value
-            var sliderA = new Slider("A", 0, 100, 25, new Vector2(10, 20), 230);
+            var sliderA = new Slider(TestFonts.Default, "A", 0, 100, 25, new Vector2(10, 20), 230);
             sliderA.Draw(renderer);
 
             // Slider B below with 75% value
-            var sliderB = new Slider("B", 0, 100, 75, new Vector2(10, 60), 230);
+            var sliderB = new Slider(TestFonts.Default, "B", 0, 100, 75, new Vector2(10, 60), 230);
             sliderB.Draw(renderer);
         }
 
         private static void DrawPanelWithSlidersAB(Renderer2D renderer)
         {
-            var panel = new Panel(new Vector2(10, 10), new Vector2(260, 140))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(260, 140))
             {
                 Title = "SLIDERS"
             };
 
-            var sliderA = new Slider();
-            var sliderB = new Slider();
+            var sliderA = new Slider(TestFonts.Default);
+            var sliderB = new Slider(TestFonts.Default);
 
             panel.AddSliderGroup("VALUES", 40, 260,
                 ("A", 0, 100, 30, sliderA),
@@ -564,15 +564,15 @@ namespace Radiant.Tests.Graphics2D.Visual
         private static void DrawThreeStackedSliders(Renderer2D renderer)
         {
             // R/G/B color sliders stacked vertically
-            var sliderR = new Slider("R", 0, 255, 200, new Vector2(10, 20), 230)
+            var sliderR = new Slider(TestFonts.Default, "R", 0, 255, 200, new Vector2(10, 20), 230)
             {
                 FillColor = new Vector4(1, 0.2f, 0.2f, 1)
             };
-            var sliderG = new Slider("G", 0, 255, 128, new Vector2(10, 60), 230)
+            var sliderG = new Slider(TestFonts.Default, "G", 0, 255, 128, new Vector2(10, 60), 230)
             {
                 FillColor = new Vector4(0.2f, 1, 0.2f, 1)
             };
-            var sliderB = new Slider("B", 0, 255, 50, new Vector2(10, 100), 230)
+            var sliderB = new Slider(TestFonts.Default, "B", 0, 255, 50, new Vector2(10, 100), 230)
             {
                 FillColor = new Vector4(0.2f, 0.2f, 1, 1)
             };
@@ -585,30 +585,30 @@ namespace Radiant.Tests.Graphics2D.Visual
         private static void DrawUIManagerScene(Renderer2D renderer)
         {
             var manager = new UIManager();
-            manager.Add(new Label("STATUS", new Vector2(10, 10)));
-            manager.Add(new Button("RESET", new Vector2(10, 30), new Vector2(60, 24)));
-            manager.Add(new Slider("X", 0, 100, 50, new Vector2(10, 65), 230));
-            manager.Add(new Slider("Y", 0, 100, 25, new Vector2(10, 95), 230));
+            manager.Add(new Label(TestFonts.Default, "STATUS", new Vector2(10, 10)));
+            manager.Add(new Button(TestFonts.Default, "RESET", new Vector2(10, 30), new Vector2(60, 24)));
+            manager.Add(new Slider(TestFonts.Default, "X", 0, 100, 50, new Vector2(10, 65), 230));
+            manager.Add(new Slider(TestFonts.Default, "Y", 0, 100, 25, new Vector2(10, 95), 230));
             manager.Draw(renderer);
         }
 
         private static void DrawCompositeUIScene(Renderer2D renderer)
         {
             // Panel with title, two stacked sliders, a button, and a label
-            var panel = new Panel(new Vector2(10, 10), new Vector2(280, 180))
+            var panel = new Panel(TestFonts.Default, new Vector2(10, 10), new Vector2(280, 180))
             {
                 Title = "CONTROLS"
             };
 
-            var sliderA = new Slider();
-            var sliderB = new Slider();
+            var sliderA = new Slider(TestFonts.Default);
+            var sliderB = new Slider(TestFonts.Default);
 
             panel.AddSliderGroup("PARAMS", 40, 280,
                 ("A", 0, 1, 0.3f, sliderA),
                 ("B", 0, 1, 0.8f, sliderB));
 
-            panel.Add(new Button("APPLY", new Vector2(20, 120), new Vector2(80, 28)));
-            panel.Add(new Label("READY", new Vector2(110, 126)));
+            panel.Add(new Button(TestFonts.Default, "APPLY", new Vector2(20, 120), new Vector2(80, 28)));
+            panel.Add(new Label(TestFonts.Default, "READY", new Vector2(110, 126)));
 
             panel.Draw(renderer);
         }

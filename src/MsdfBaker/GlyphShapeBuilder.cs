@@ -18,6 +18,7 @@ namespace Radiant.MsdfBaker
 
         public Shape Result => _shape ?? new Shape();
         public FontRectangle Bounds => _bounds;
+        public bool IsFallback { get; private set; }
 
         public void BeginText(in FontRectangle bounds)
         {
@@ -31,6 +32,7 @@ namespace Radiant.MsdfBaker
         {
             _shape = new Shape { InverseYAxis = false };
             _bounds = bounds;
+            IsFallback = parameters.GlyphType == GlyphType.Fallback;
             return true;
         }
 
