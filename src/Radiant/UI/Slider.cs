@@ -11,6 +11,7 @@ namespace Radiant.UI;
 /// </summary>
 public class Slider : UIElement
 {
+    private readonly MsdfFont _font;
     private bool _isHovered;
     private bool _isDragging;
 
@@ -71,10 +72,11 @@ public class Slider : UIElement
     /// <inheritdoc/>
     public override bool IsCapturingInput => _isDragging;
 
-    public Slider() { }
+    public Slider(MsdfFont font) { _font = font; }
 
-    public Slider(string label, float minValue, float maxValue, float initialValue, Vector2 position, float width)
+    public Slider(MsdfFont font, string label, float minValue, float maxValue, float initialValue, Vector2 position, float width)
     {
+        _font = font;
         Label = label;
         MinValue = minValue;
         MaxValue = maxValue;
@@ -167,7 +169,7 @@ public class Slider : UIElement
         // Draw label
         if (!string.IsNullOrEmpty(Label))
         {
-            renderer.DrawText(Label, new Vector2(Position.X, centerY - 6), TextColor);
+            renderer.DrawText(_font, Label, new Vector2(Position.X, centerY - 6), TextColor);
         }
 
         // Draw track background
@@ -199,7 +201,7 @@ public class Slider : UIElement
         {
             var valueText = Value.ToString(ValueFormat, System.Globalization.CultureInfo.InvariantCulture);
             var valueX = trackX + trackWidth + HandleRadius + 4;
-            renderer.DrawText(valueText, new Vector2(valueX, centerY - 6), TextColor);
+            renderer.DrawText(_font, valueText, new Vector2(valueX, centerY - 6), TextColor);
         }
     }
 }

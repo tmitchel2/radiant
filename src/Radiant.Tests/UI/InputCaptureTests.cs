@@ -13,7 +13,7 @@ public class InputCaptureTests
     public void Slider_WhenNotDragging_IsNotCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),
@@ -34,7 +34,7 @@ public class InputCaptureTests
     public void Slider_WhenDragging_IsCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),
@@ -67,7 +67,7 @@ public class InputCaptureTests
     public void Slider_WhenClickOnTrack_IsCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),
@@ -94,7 +94,7 @@ public class InputCaptureTests
     public void Slider_WhenReleased_IsNotCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),
@@ -128,7 +128,7 @@ public class InputCaptureTests
     public void Panel_WhenChildCapturing_IsCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 60),
             Size = new Vector2(200, 24),
@@ -139,7 +139,7 @@ public class InputCaptureTests
             ShowValue = true
         };
 
-        var panel = new Panel(new Vector2(10, 50), new Vector2(220, 100));
+        var panel = new Panel(TestFonts.Default, new Vector2(10, 50), new Vector2(220, 100));
         panel.Add(slider);
 
         // Panel should not be capturing initially
@@ -165,7 +165,7 @@ public class InputCaptureTests
     public void Panel_WhenNoChildCapturing_IsNotCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 60),
             Size = new Vector2(200, 24),
@@ -176,7 +176,7 @@ public class InputCaptureTests
             ShowValue = true
         };
 
-        var panel = new Panel(new Vector2(10, 50), new Vector2(220, 100));
+        var panel = new Panel(TestFonts.Default, new Vector2(10, 50), new Vector2(220, 100));
         panel.Add(slider);
 
         // Act - no interaction
@@ -189,7 +189,7 @@ public class InputCaptureTests
     public void UIManager_WhenElementCapturing_IsCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 60),
             Size = new Vector2(200, 24),
@@ -200,7 +200,7 @@ public class InputCaptureTests
             ShowValue = true
         };
 
-        var panel = new Panel(new Vector2(10, 50), new Vector2(220, 100));
+        var panel = new Panel(TestFonts.Default, new Vector2(10, 50), new Vector2(220, 100));
         panel.Add(slider);
 
         var uiManager = new UIManager();
@@ -227,7 +227,7 @@ public class InputCaptureTests
     public void UIManager_WhenNoElementCapturing_IsNotCapturingInput()
     {
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 60),
             Size = new Vector2(200, 24),
@@ -238,7 +238,7 @@ public class InputCaptureTests
             ShowValue = true
         };
 
-        var panel = new Panel(new Vector2(10, 50), new Vector2(220, 100));
+        var panel = new Panel(TestFonts.Default, new Vector2(10, 50), new Vector2(220, 100));
         panel.Add(slider);
 
         var uiManager = new UIManager();
@@ -258,7 +258,7 @@ public class InputCaptureTests
         // 2. Check uiManager.IsCapturingInput
 
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 60),
             Size = new Vector2(200, 24),
@@ -269,7 +269,7 @@ public class InputCaptureTests
             ShowValue = true
         };
 
-        var panel = new Panel(new Vector2(10, 50), new Vector2(220, 100));
+        var panel = new Panel(TestFonts.Default, new Vector2(10, 50), new Vector2(220, 100));
         panel.Add(slider);
 
         var uiManager = new UIManager();
@@ -310,7 +310,7 @@ public class InputCaptureTests
         // Verify the exact sequence matters: Update first, then check IsCapturingInput
 
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),
@@ -346,7 +346,7 @@ public class InputCaptureTests
         // because position is still at default (0, 0).
 
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 70),
             Size = new Vector2(200, 24),
@@ -378,7 +378,7 @@ public class InputCaptureTests
         // (simulating the fix where MouseDown handler updates position)
 
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(20, 70),
             Size = new Vector2(200, 24),
@@ -408,7 +408,7 @@ public class InputCaptureTests
         // Ensure slider drag actually modifies value (sanity check)
 
         // Arrange
-        var slider = new Slider
+        var slider = new Slider(TestFonts.Default)
         {
             Position = new Vector2(10, 50),
             Size = new Vector2(200, 24),

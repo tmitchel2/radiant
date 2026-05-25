@@ -11,6 +11,7 @@ namespace Radiant.UI;
 /// </summary>
 public class Button : UIElement
 {
+    private readonly MsdfFont _font;
     private bool _isHovered;
     private bool _isPressed;
 
@@ -44,10 +45,11 @@ public class Button : UIElement
     /// <inheritdoc/>
     public override bool IsCapturingInput => _isPressed;
 
-    public Button() { }
+    public Button(MsdfFont font) { _font = font; }
 
-    public Button(string text, Vector2 position, Vector2 size)
+    public Button(MsdfFont font, string text, Vector2 position, Vector2 size)
     {
+        _font = font;
         Text = text;
         Position = position;
         Size = size;
@@ -110,6 +112,6 @@ public class Button : UIElement
             (Size.X - textWidth) / 2,
             (Size.Y - textHeight) / 2);
 
-        renderer.DrawText(Text, textPos, Enabled ? TextColor : UIColors.TextDisabled);
+        renderer.DrawText(_font, Text, textPos, Enabled ? TextColor : UIColors.TextDisabled);
     }
 }

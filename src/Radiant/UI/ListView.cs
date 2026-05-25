@@ -13,9 +13,12 @@ namespace Radiant.UI;
 /// </summary>
 public class ListView : UIElement
 {
+    private readonly MsdfFont _font;
     private int _hoveredIndex = -1;
     private int _selectedIndex;
     private float _scrollOffset;
+
+    public ListView(MsdfFont font) { _font = font; }
 
     public IReadOnlyList<string> Items { get; set; } = Array.Empty<string>();
 
@@ -98,7 +101,7 @@ public class ListView : UIElement
 
             var textY = y + (RowHeight - 8f) / 2f;
             var color = i == _selectedIndex ? SelectedTextColor : TextColor;
-            renderer.DrawText(Items[i], new Vector2(rowPos.X + 8f, textY), color);
+            renderer.DrawText(_font, Items[i], new Vector2(rowPos.X + 8f, textY), color);
         }
         renderer.PopClip();
 

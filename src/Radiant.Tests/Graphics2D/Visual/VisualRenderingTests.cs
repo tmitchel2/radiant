@@ -241,7 +241,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Text_LeftHanded()
         {
             using var helper = new VisualTestHelper(handedness: Handedness.LeftHanded);
-            helper.Renderer.DrawText("HELLO", 10, 10, 2, White);
+            helper.Renderer.DrawText(TestFonts.Default, "HELLO", 10, 10, 14, White);
             helper.AssertMatchesGolden("Text_LH");
         }
 
@@ -249,7 +249,7 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Text_RightHanded()
         {
             using var helper = new VisualTestHelper(handedness: Handedness.RightHanded);
-            helper.Renderer.DrawText("HELLO", 10, 10, 2, White);
+            helper.Renderer.DrawText(TestFonts.Default, "HELLO", 10, 10, 14, White);
             helper.AssertMatchesGolden("Text_RH");
         }
 
@@ -330,11 +330,11 @@ namespace Radiant.Tests.Graphics2D.Visual
         public void Parity_Text()
         {
             using var lh = new VisualTestHelper(handedness: Handedness.LeftHanded);
-            lh.Renderer.DrawText("HI", 20, 20, 2, White);
+            lh.Renderer.DrawText(TestFonts.Default, "HI", 20, 20, 14, White);
             using var lhImage = lh.Rasterize();
 
             using var rh = new VisualTestHelper(handedness: Handedness.RightHanded);
-            rh.Renderer.DrawText("HI", 20, 20, 2, White);
+            rh.Renderer.DrawText(TestFonts.Default, "HI", 20, 20, 14, White);
             using var rhImage = rh.Rasterize();
 
             GoldenImageHelper.AssertImagesIdentical(lhImage, rhImage);
@@ -567,7 +567,7 @@ namespace Radiant.Tests.Graphics2D.Visual
             renderer.DrawLine(new Vector2(5, 70), new Vector2(123, 70), new Vector4(0.5f, 0.5f, 0.5f, 1));
 
             // Text
-            renderer.DrawText("TEST", 40, 110, 1, White);
+            renderer.DrawText(TestFonts.Default, "TEST", 40, 110, 7, White);
         }
 
         private static void AssertPixelIs(Image<Rgba32> image, int x, int y, Vector4 expectedColor, int tolerance = 5)

@@ -48,7 +48,12 @@ namespace Radiant.MsdfBaker
                 renderer.RenderText(glyphString, options);
 
                 var shape = builder.Result;
-                if (shape.Contours.Count == 0)
+                // Skip when the source font has no glyph for this codepoint —
+                // SixLabors fires the .notdef placeholder (IsFallback=true) which
+                // post-bake is indistinguishable from a real glyph. Leaving an
+                // empty manifest entry lets a runtime font-fallback chain try
+                // the next font.
+                if (builder.IsFallback || shape.Contours.Count == 0)
                 {
                     glyphs.Add(new AtlasGlyph
                     {

@@ -17,7 +17,7 @@ public class ScrollPanelTests
             Size = new Vector2(200, 100),
             WheelStep = 10f,
         };
-        var label = panel.Add(new Label("row", new Vector2(5, 50)));
+        var label = panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
         panel.ContentHeight = 400f;
 
         var input = new InputState { MousePosition = new Vector2(10, 50), ScrollDelta = new Vector2(0, -1) };
@@ -36,7 +36,7 @@ public class ScrollPanelTests
             Size = new Vector2(200, 100),
             WheelStep = 500f, // one tick exceeds content
         };
-        var label = panel.Add(new Label("row", new Vector2(5, 50)));
+        var label = panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
         panel.ContentHeight = 150f;
 
         var input = new InputState { MousePosition = new Vector2(10, 50), ScrollDelta = new Vector2(0, -1) };
@@ -55,7 +55,7 @@ public class ScrollPanelTests
             Size = new Vector2(200, 100),
             WheelStep = 10f,
         };
-        var label = panel.Add(new Label("row", new Vector2(5, 80)));
+        var label = panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 80)));
         panel.ContentHeight = 400f;
 
         var input = new InputState { MousePosition = new Vector2(10, 50), ScrollDelta = new Vector2(0, -1) };
@@ -75,7 +75,7 @@ public class ScrollPanelTests
             Size = new Vector2(200, 100),
             WheelStep = 10f,
         };
-        var label = panel.Add(new Label("row", new Vector2(5, 50)));
+        var label = panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
         panel.ContentHeight = 400f;
 
         var input = new InputState { MousePosition = new Vector2(500, 500), ScrollDelta = new Vector2(0, -1) };

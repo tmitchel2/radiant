@@ -1,0 +1,73 @@
+{
+  "FontFamily": "Noto Sans Math",
+  "AtlasWidth": 256,
+  "AtlasHeight": 256,
+  "GlyphPixelSize": 40,
+  "DistanceRange": 6,
+  "LineHeight": 1.492,
+  "Ascender": 1.069,
+  "Descender": -0.423,
+  "Glyphs": [
+    {
+      "Codepoint": 8869,
+      "U0": 0,
+      "V0": 0,
+      "U1": 0.15234375,
+      "V1": 0.15234375,
+      "Advance": 0.75600004,
+      "BearingX": -0.099,
+      "BearingY": -1.05,
+      "Width": 0.975,
+      "Height": 0.975
+    },
+    {
+      "Codepoint": 8736,
+      "U0": 0.16015625,
+      "V0": 0,
+      "U1": 0.29296875,
+      "V1": 0.12890625,
+      "Advance": 0.652,
+      "BearingX": -0.099,
+      "BearingY": -0.9110001,
+      "Width": 0.85,
+      "Height": 0.825
+    },
+    {
+      "Codepoint": 8741,
+      "U0": 0.30078125,
+      "V0": 0,
+      "U1": 0.390625,
+      "V1": 0.1875,
+      "Advance": 0.36,
+      "BearingX": -0.099,
+      "BearingY": -1.1140001,
+      "Width": 0.575,
+      "Height": 1.2
+    },
+    {
+      "Codepoint": 8212,
+      "U0": 0,
+      "V0": 0,
+      "U1": 0,
+      "V1": 0,
+      "Advance": 0.6,
+      "BearingX": 0,
+      "BearingY": 0,
+      "Width": 0,
+      "Height": 0
+    },
+    {
+      "Codepoint": 8599,
+      "U0": 0.3984375,
+      "V0": 0,
+      "U1": 0.5546875,
+      "V1": 0.15625,
+      "Advance": 0.78000003,
+      "BearingX": -0.099,
+      "BearingY": -1.0139999,
+      "Width": 1,
+      "Height": 1
+    }
+  ],
+  "Kerning": []
+}

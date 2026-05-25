@@ -713,39 +713,6 @@ namespace Radiant.Graphics2D
             }
         }
 
-        public void DrawText(string text, float x, float y, float pixelSize, Vector4 color)
-        {
-            var cursorX = x;
-
-            foreach (var c in text)
-            {
-                if (!BitmapFont.HasGlyph(c))
-                {
-                    cursorX += (BitmapFont.CharWidth + BitmapFont.CharSpacing) * pixelSize;
-                    continue;
-                }
-
-                var glyph = BitmapFont.GetGlyph(c);
-
-                // Draw each pixel of the glyph
-                for (var row = 0; row < BitmapFont.CharHeight; row++)
-                {
-                    for (var col = 0; col < BitmapFont.CharWidth; col++)
-                    {
-                        var bit = (glyph[row] >> (BitmapFont.CharWidth - 1 - col)) & 1;
-                        if (bit == 1)
-                        {
-                            var px = cursorX + col * pixelSize;
-                            var py = y + row * pixelSize;
-                            DrawRectangleFilled(px, py, pixelSize, pixelSize, color);
-                        }
-                    }
-                }
-
-                cursorX += (BitmapFont.CharWidth + BitmapFont.CharSpacing) * pixelSize;
-            }
-        }
-
         /// <summary>
         /// Draw text using a baked MSDF font. <paramref name="pixelHeight"/>
         /// is the em-square size in pixels — i.e. the font's nominal "1.0"
@@ -818,12 +785,42 @@ namespace Radiant.Graphics2D
         public static float MeasureText(MsdfFont font, string text, float pixelHeight)
             => font.MeasureTextWidth(text, pixelHeight);
 
+        /// <summary>
+        /// Draw a single MSDF glyph with its <em>visible bounding box</em> centred
+        /// at <paramref name="center"/>. Inverts the pen-origin → glyph-quad
+        /// transform that <see cref="DrawText(MsdfFont, string, float, float, float, Vector4)"/>
+        /// applies internally, so callers don't have to chase the font's ascender
+        /// or each glyph's per-side bearings — useful for icon-in-a-box layouts
+        /// (FCF symbol cells, button glyphs, etc.) where the visible centre needs
+        /// to align with a known anchor across glyphs from different fonts with
+        /// different metrics.
+        /// </summary>
+        public void DrawGlyphCentered(MsdfFont font, MsdfAtlasGlyph glyph, string text,
+            Vector2 center, float pixelHeight, Vector4 color)
+        {
+            // For DrawText(font, text, pen.X, pen.Y, h, color), the rendered
+            // glyph quad lives at:
+            //   left = pen.X + glyph.BearingX * h
+            //   top  = pen.Y + (font.AscenderEm + glyph.BearingY) * h
+            // and is (glyph.Width * h) × (glyph.Height * h) in size. Solving for
+            // pen so that the quad centre coincides with `center`:
+            var pen = new Vector2(
+                center.X - (glyph.BearingX + glyph.Width  * 0.5f) * pixelHeight,
+                center.Y - (font.AscenderEm + glyph.BearingY + glyph.Height * 0.5f) * pixelHeight);
+            DrawText(font, text, pen.X, pen.Y, pixelHeight, color);
+        }
+
         // ==================== UI Helper Methods ====================
 
-        /// <summary>Draws text at a position with default pixel size of 1.</summary>
-        public void DrawText(string text, Vector2 position, Vector4 color, float scale = 1f)
+        /// <summary>
+        /// Draws MSDF text at a position. <paramref name="pixelHeight"/> is the
+        /// font's em-square height in pixels. Default 7f matches the legacy
+        /// bitmap-font character height so callers ported from the bitmap path
+        /// keep their existing layout pitch.
+        /// </summary>
+        public void DrawText(MsdfFont font, string text, Vector2 position, Vector4 color, float pixelHeight = 7f)
         {
-            DrawText(text, position.X, position.Y, scale, color);
+            DrawText(font, text, position.X, position.Y, pixelHeight, color);
         }
 
         /// <summary>Draws a filled rectangle.</summary>

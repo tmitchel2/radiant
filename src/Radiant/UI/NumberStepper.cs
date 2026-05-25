@@ -14,6 +14,7 @@ namespace Radiant.UI;
 /// </summary>
 public class NumberStepper : UIElement
 {
+    private readonly MsdfFont _font;
     private bool _minusHovered;
     private bool _plusHovered;
     private bool _minusPressed;
@@ -44,10 +45,11 @@ public class NumberStepper : UIElement
 
     public override bool IsCapturingInput => _minusPressed || _plusPressed;
 
-    public NumberStepper() { }
+    public NumberStepper(MsdfFont font) { _font = font; }
 
-    public NumberStepper(string label, double value, double step, Vector2 position, float width)
+    public NumberStepper(MsdfFont font, string label, double value, double step, Vector2 position, float width)
     {
+        _font = font;
         Label = label;
         Value = value;
         Step = step;
@@ -173,7 +175,7 @@ public class NumberStepper : UIElement
 
         if (!string.IsNullOrEmpty(Label))
         {
-            renderer.DrawText(Label, new Vector2(Position.X, centerY - 6), TextColor);
+            renderer.DrawText(_font, Label, new Vector2(Position.X, centerY - 6), TextColor);
         }
 
         DrawButton(renderer, minus, "-", _minusHovered, _minusPressed);
@@ -183,7 +185,7 @@ public class NumberStepper : UIElement
         renderer.DrawRect(new Vector2(readout.X, readout.Y), new Vector2(readout.Width, readout.Height), BorderColor);
         var text = Value.ToString(ValueFormat, CultureInfo.InvariantCulture);
         var textX = readout.X + 4;
-        renderer.DrawText(text, new Vector2(textX, centerY - 6), TextColor);
+        renderer.DrawText(_font, text, new Vector2(textX, centerY - 6), TextColor);
     }
 
     private void DrawButton(Renderer2D renderer, Rectangle rect, string glyph, bool hovered, bool pressed)
@@ -193,6 +195,6 @@ public class NumberStepper : UIElement
         renderer.DrawRect(new Vector2(rect.X, rect.Y), new Vector2(rect.Width, rect.Height), BorderColor);
         var textX = rect.X + (rect.Width - 8) / 2f;
         var textY = rect.Y + (rect.Height - 12) / 2f;
-        renderer.DrawText(glyph, new Vector2(textX, textY), TextColor);
+        renderer.DrawText(_font, glyph, new Vector2(textX, textY), TextColor);
     }
 }

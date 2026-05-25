@@ -8,6 +8,8 @@ namespace Radiant.UI;
 /// </summary>
 public class Label : UIElement
 {
+    private readonly MsdfFont _font;
+
     /// <summary>The text to display.</summary>
     public string Text { get; set; } = "";
 
@@ -17,10 +19,11 @@ public class Label : UIElement
     /// <summary>Text scale (1.0 = normal size).</summary>
     public float TextScale { get; set; } = 1f;
 
-    public Label() { }
+    public Label(MsdfFont font) { _font = font; }
 
-    public Label(string text, Vector2 position)
+    public Label(MsdfFont font, string text, Vector2 position)
     {
+        _font = font;
         Text = text;
         Position = position;
         Size = new Vector2(text.Length * 8 * TextScale, 16 * TextScale);
@@ -30,6 +33,6 @@ public class Label : UIElement
     {
         if (!Visible || string.IsNullOrEmpty(Text)) return;
 
-        renderer.DrawText(Text, Position, TextColor, TextScale);
+        renderer.DrawText(_font, Text, Position, TextColor, TextScale * 7f);
     }
 }

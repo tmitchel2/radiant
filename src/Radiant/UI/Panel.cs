@@ -11,6 +11,7 @@ namespace Radiant.UI;
 /// </summary>
 public class Panel : UIElement
 {
+    private readonly MsdfFont _font;
     private readonly List<UIElement> _children = [];
 
     /// <summary>Background color.</summary>
@@ -37,10 +38,11 @@ public class Panel : UIElement
     /// <inheritdoc/>
     public override bool IsCapturingInput => _children.Any(c => c.IsCapturingInput);
 
-    public Panel() { }
+    public Panel(MsdfFont font) { _font = font; }
 
-    public Panel(Vector2 position, Vector2 size)
+    public Panel(MsdfFont font, Vector2 position, Vector2 size)
     {
+        _font = font;
         Position = position;
         Size = size;
     }
@@ -99,7 +101,7 @@ public class Panel : UIElement
         if (!string.IsNullOrEmpty(Title))
         {
             var titlePos = Position + new Vector2(Padding, Padding);
-            renderer.DrawText(Title, titlePos, UIColors.Text, 1.2f);
+            renderer.DrawText(_font, Title, titlePos, UIColors.Text, 1.2f * 7f);
         }
 
         // Draw children
@@ -123,7 +125,7 @@ public class Panel : UIElement
 
         if (!string.IsNullOrEmpty(groupLabel))
         {
-            Add(new Label(groupLabel, new Vector2(Position.X + Padding, currentY)) { TextColor = UIColors.TextDim });
+            Add(new Label(_font, groupLabel, new Vector2(Position.X + Padding, currentY)) { TextColor = UIColors.TextDim });
             currentY += 20f;
         }
 
