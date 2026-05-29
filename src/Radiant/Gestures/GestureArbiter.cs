@@ -23,14 +23,15 @@ public sealed class GestureArbiter
         // Sticky ownership: drive the active owner, never re-negotiate while it holds.
         if (Owner != null)
         {
-            Owner.Observe(frame, inside);
+            Owner.Observe(frame, EffectiveInside(Owner, frame, inside));
             if (Owner.WantsEnd) { Owner.EndActive(); Owner = null; }
             else if (Owner.State == GestureState.Failed) { Owner = null; }
             else { Owner.Continue(); }
             return;
         }
 
-        for (var i = 0; i < gestures.Count; i++) gestures[i].Observe(frame, inside);
+        for (var i = 0; i < gestures.Count; i++)
+            gestures[i].Observe(frame, EffectiveInside(gestures[i], frame, inside));
 
         Gesture? winner = null;
         for (var i = 0; i < gestures.Count; i++)
@@ -55,6 +56,9 @@ public sealed class GestureArbiter
     }
 
     public void Reset() => Owner = null;
+
+    private static bool EffectiveInside(Gesture g, in PointerFrame frame, bool detectorInside) =>
+        g.HitArea?.Invoke(frame.Position) ?? detectorInside;
 
     private static bool Eligible(Gesture g)
     {

@@ -56,6 +56,13 @@ public abstract class Gesture
     public Action<Gesture>? OnEnd { get; set; }
     public Action<Gesture>? OnCancel { get; set; }
 
+    /// <summary>
+    /// Optional per-gesture hit area. When set, the gesture treats a frame as "inside"
+    /// only when the pointer is within this area (e.g. a scrollbar thumb), overriding the
+    /// detector-level inside flag. When null, the detector's flag is used.
+    /// </summary>
+    public Func<Vector2, bool>? HitArea { get; set; }
+
     /// <summary>This gesture will not activate until <paramref name="other"/> has failed.</summary>
     public Gesture RequireToFail(Gesture other) { RequiredToFail.Add(other); return this; }
 

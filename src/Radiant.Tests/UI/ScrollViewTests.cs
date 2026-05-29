@@ -44,11 +44,13 @@ public class ScrollViewTests
     public void ChildrenAreHitTestedInContentSpace()
     {
         var sv = MakeScrollable(out var probe);
-        // First frame scrolls down by 56.
-        var input = new InputState { MousePosition = new Vector2(50, 10), ScrollDelta = new Vector2(0, -2) };
-        sv.Update(input, 1.0 / 60.0);
+        // Frame 1: wheel applies (offset becomes 56) after children are updated.
+        var f1 = new InputState { MousePosition = new Vector2(50, 10), ScrollDelta = new Vector2(0, -2) };
+        sv.Update(f1, 1.0 / 60.0);
+        // Frame 2: children are now hit-tested against the applied offset (screen + offset).
+        var f2 = new InputState { MousePosition = new Vector2(50, 10) };
+        sv.Update(f2, 1.0 / 60.0);
 
-        // The child should have seen the pointer shifted into content space (screen + offset).
         Assert.AreEqual(new Vector2(50, 66), probe.SeenMouse);
     }
 

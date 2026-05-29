@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Animation;
@@ -7,6 +7,7 @@ using Radiant.Graphics2D;
 using Radiant.Input;
 using Radiant.Layout;
 using Radiant.Scrolling;
+using Silk.NET.Input;
 
 namespace Radiant.UI;
 
@@ -18,21 +19,37 @@ namespace Radiant.UI;
 /// (<see cref="Renderer2D.PushScrollOffset"/>) — O(1) per frame, sub-pixel safe, and
 /// able to express momentum, bounce, snap and animated programmatic scroll.
 ///
-/// Children are hit-tested in content space: while updating children the pointer is
-/// shifted by the current offset so input lines up with the translated render.
+/// Input sources: mouse wheel, drag-to-pan, a draggable scrollbar thumb (+ track
+/// paging), and the keyboard (PageUp/Down/Home/End/arrows while hovered). Children are
+/// hit-tested in content space (the pointer is shifted by the offset while updating
+/// them) and a hovered, scrollable child takes priority (nested-scroll yield).
 /// </summary>
 public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
 {
     private readonly List<UIElement> _children = [];
     private readonly PanGesture _pan;
+    private readonly PanGesture _thumbPan;
+    private readonly TapGesture _trackTap;
     private readonly GestureDetector _detector;
     private bool _mouseOver;
+    private float _idleTime;
 
     public ScrollView(ScrollBehaviour? behaviour = null)
     {
         Controller = new ScrollController(behaviour ?? new ScrollBehaviour());
 
-        // Drag-to-pan: a press-drag on the body scrolls the content kinetically.
+        // Draggable scrollbar thumb (highest priority — its hit area is the thumb rect).
+        _thumbPan = new PanGesture { Axis = ScrollAxes.Vertical, ActivationThreshold = 1f, HitArea = HitThumb };
+        _thumbPan.OnBegin = _ => Controller.BeginDrag();
+        _thumbPan.OnChange = g => DragThumb(g.FrameDelta.Y);
+        _thumbPan.OnEnd = _ => Controller.EndDrag();
+        _thumbPan.OnCancel = _ => Controller.EndDrag();
+
+        // Track click pages toward the click.
+        _trackTap = new TapGesture { HitArea = HitTrack };
+        _trackTap.OnEnd = g => PageToward(g.Position.Y);
+
+        // Drag-to-pan the body.
         _pan = new PanGesture
         {
             Axis = Controller.Behaviour.Axes,
@@ -42,7 +59,8 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
         _pan.OnChange = g => Controller.Drag(g.FrameDelta, g.Dt);
         _pan.OnEnd = _ => Controller.EndDrag();
         _pan.OnCancel = _ => Controller.EndDrag();
-        _detector = new GestureDetector(_pan);
+
+        _detector = new GestureDetector(_thumbPan, _trackTap, _pan);
     }
 
     /// <summary>The scroll physics engine. Subscribe to its events; call its programmatic API.</summary>
@@ -61,10 +79,7 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
     {
         get
         {
-            // A live or claiming gesture (drag-to-pan) captures input.
             if (_detector.HasActiveOrClaimingOwner) return true;
-            // Hovering scrollable content consumes the wheel — report capture so the
-            // event can't fall through to whatever is underneath (e.g. a 3D camera).
             if (_mouseOver && (Controller.CanScrollVertical || Controller.CanScrollHorizontal))
                 return true;
             foreach (var c in _children)
@@ -98,29 +113,37 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
         _mouseOver = ContainsPoint(input.MousePosition);
         Controller.SetExtents(Size, MeasureContentSize());
 
-        // Drag-to-pan via the gesture arbiter (begins/drags/ends the controller).
-        _detector.Update(PointerFrame.From(input, deltaTime), _mouseOver);
+        // Children first, in content space; a hovered scrollable child takes the input.
+        var savedMouse = input.MousePosition;
+        input.MousePosition = savedMouse + Controller.Offset;
+        var childCaptured = UpdateChildren(input, deltaTime);
+        input.MousePosition = savedMouse;
 
-        // Wheel is instantaneous and needs no arbitration; poll it directly.
-        if (_mouseOver && MathF.Abs(input.ScrollDelta.Y) > 0.001f && Controller.CanScrollVertical)
-            Controller.ApplyWheel(new Vector2(0, input.ScrollDelta.Y));
-        if (_mouseOver && MathF.Abs(input.ScrollDelta.X) > 0.001f && Controller.CanScrollHorizontal)
-            Controller.ApplyWheel(new Vector2(input.ScrollDelta.X, 0));
+        // Drag/keyboard yield to a hovered scrollable child; an in-progress drag of our own
+        // keeps priority.
+        if (!childCaptured || _detector.Owner != null)
+        {
+            _detector.Update(PointerFrame.From(input, deltaTime), _mouseOver);
+            HandleKeyboard(input);
+        }
+
+        // Wheel arbitration is by consumption (ScrollDelta zeroing), not the drag-yield gate:
+        // an inner scroller zeroes the delta when it consumes; an unconsumed notch (inner at
+        // its boundary) still reaches us here.
+        ApplyWheelWithBoundary(input);
 
         Controller.Update(deltaTime);
+        UpdateIndicatorFade(deltaTime);
+    }
 
-        // Update children in content space so their hit-testing matches the translated render.
-        var offset = Controller.Offset;
-        var savedMouse = input.MousePosition;
-        input.MousePosition = savedMouse + offset;
-
+    private bool UpdateChildren(InputState input, double deltaTime)
+    {
         for (var i = _children.Count - 1; i >= 0; i--)
         {
             if (_children[i].Visible && _children[i].IsCapturingInput)
             {
                 _children[i].Update(input, deltaTime);
-                input.MousePosition = savedMouse;
-                return;
+                return true;
             }
         }
 
@@ -128,7 +151,70 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
             if (_children[i].Visible)
                 _children[i].Update(input, deltaTime);
 
-        input.MousePosition = savedMouse;
+        for (var i = 0; i < _children.Count; i++)
+            if (_children[i].Visible && _children[i].IsCapturingInput)
+                return true;
+        return false;
+    }
+
+    private void HandleKeyboard(InputState input)
+    {
+        if (!_mouseOver || !Controller.CanScrollVertical) return;
+        var line = Controller.Behaviour.LineStep;
+        if (input.IsKeyPressed(Key.PageDown)) Controller.ApplyStep(new Vector2(0, Size.Y));
+        if (input.IsKeyPressed(Key.PageUp)) Controller.ApplyStep(new Vector2(0, -Size.Y));
+        if (input.IsKeyPressed(Key.Down)) Controller.ApplyStep(new Vector2(0, line));
+        if (input.IsKeyPressed(Key.Up)) Controller.ApplyStep(new Vector2(0, -line));
+        if (input.IsKeyPressed(Key.Home)) Controller.ScrollTo(Vector2.Zero, animated: true);
+        if (input.IsKeyPressed(Key.End)) Controller.ScrollToEnd(animated: true);
+    }
+
+    private void ApplyWheelWithBoundary(InputState input)
+    {
+        if (!_mouseOver) return;
+        var wheel = input.ScrollDelta;
+
+        // Consume by zeroing ScrollDelta so a parent scroller doesn't also scroll. A notch
+        // that would only push past an edge is left unconsumed, propagating to the parent
+        // (nested-scroll boundary handoff).
+        if (MathF.Abs(wheel.Y) > 0.001f && Controller.CanScrollVertical
+            && CanConsumeWheel(wheel.Y, Controller.Offset.Y, Controller.MaxOffset.Y))
+        {
+            Controller.ApplyWheel(new Vector2(0, wheel.Y));
+            input.ScrollDelta = new Vector2(input.ScrollDelta.X, 0);
+        }
+        if (MathF.Abs(wheel.X) > 0.001f && Controller.CanScrollHorizontal
+            && CanConsumeWheel(wheel.X, Controller.Offset.X, Controller.MaxOffset.X))
+        {
+            Controller.ApplyWheel(new Vector2(wheel.X, 0));
+            input.ScrollDelta = new Vector2(0, input.ScrollDelta.Y);
+        }
+    }
+
+    // Don't consume a wheel notch that would only push further past an edge, so it can
+    // propagate to a parent scroller (basic nested-scroll handoff).
+    private bool CanConsumeWheel(float wheel, float offset, float maxOffset)
+    {
+        var intended = -wheel * Controller.Behaviour.WheelStep;
+        if (intended < 0f && offset <= 0.5f) return false;
+        if (intended > 0f && offset >= maxOffset - 0.5f) return false;
+        return true;
+    }
+
+    private void DragThumb(float thumbDeltaY)
+    {
+        var thumbHeight = ThumbHeight();
+        var travel = Size.Y - thumbHeight;
+        if (travel <= 0f) return;
+        var offsetDelta = thumbDeltaY * (Controller.MaxOffset.Y / travel);
+        Controller.ScrollTo(new Vector2(Controller.Offset.X, Controller.Offset.Y + offsetDelta), animated: false);
+    }
+
+    private void PageToward(float clickY)
+    {
+        var (_, thumbY, thumbHeight) = ThumbGeometry();
+        var page = clickY < thumbY ? -Size.Y : clickY > thumbY + thumbHeight ? Size.Y : 0f;
+        if (page != 0f) Controller.ApplyStep(new Vector2(0, page));
     }
 
     public override void Draw(Renderer2D renderer)
@@ -150,7 +236,6 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
 
     public override void DrawOverlay(Renderer2D renderer)
     {
-        // Overlays (e.g. dropdown popups) draw outside the clip but still follow the scroll.
         renderer.PushScrollOffset(-Controller.Offset);
         foreach (var c in _children)
             if (c.Visible) c.DrawOverlay(renderer);
@@ -165,7 +250,6 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
 
         if (overrideExtent is { } ov)
         {
-            // The override applies to the primary scroll axis.
             if (Controller.Behaviour.Axes == ScrollAxes.Horizontal) width = ov;
             else height = ov;
             return new Vector2(width, height);
@@ -182,24 +266,67 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
         return new Vector2(MathF.Max(width, maxRight), MathF.Max(height, maxBottom));
     }
 
+    private float ThumbHeight()
+    {
+        var content = Controller.ContentSize.Y;
+        return content <= 0f ? Size.Y : MathF.Max(20f, Size.Y * (Size.Y / content));
+    }
+
+    private (float trackX, float thumbY, float thumbHeight) ThumbGeometry()
+    {
+        var maxScroll = Controller.MaxOffset.Y;
+        var thumbHeight = ThumbHeight();
+        var trackX = Position.X + Size.X - ScrollbarWidth;
+        var thumbY = maxScroll > 0f
+            ? Position.Y + (Controller.Offset.Y / maxScroll) * (Size.Y - thumbHeight)
+            : Position.Y;
+        return (trackX, thumbY, thumbHeight);
+    }
+
+    private bool HitThumb(Vector2 p)
+    {
+        if (!Controller.CanScrollVertical) return false;
+        var (trackX, thumbY, thumbHeight) = ThumbGeometry();
+        return p.X >= trackX && p.X <= trackX + ScrollbarWidth && p.Y >= thumbY && p.Y <= thumbY + thumbHeight;
+    }
+
+    private bool HitTrack(Vector2 p)
+    {
+        if (!Controller.CanScrollVertical) return false;
+        var trackX = Position.X + Size.X - ScrollbarWidth;
+        var onTrack = p.X >= trackX && p.X <= trackX + ScrollbarWidth && p.Y >= Position.Y && p.Y <= Position.Y + Size.Y;
+        return onTrack && !HitThumb(p);
+    }
+
+    private void UpdateIndicatorFade(double dt)
+    {
+        var active = _mouseOver || _detector.Owner != null || Controller.IsAnimating;
+        _idleTime = active ? 0f : _idleTime + (float)dt;
+    }
+
+    private float IndicatorAlpha()
+    {
+        if (Controller.Behaviour.Indicators == IndicatorVisibility.Always) return 1f;
+        var fade = MathF.Max(0.0001f, Controller.Behaviour.IndicatorFlashDuration);
+        return Math.Clamp(1f - _idleTime / fade, 0f, 1f);
+    }
+
     private void DrawScrollbar(Renderer2D renderer)
     {
         if (Controller.Behaviour.Indicators == IndicatorVisibility.None) return;
         if (!Controller.CanScrollVertical) return;
 
-        var maxScroll = Controller.MaxOffset.Y;
-        var content = Controller.ContentSize.Y;
-        if (maxScroll <= 0f || content <= 0f) return;
+        var alpha = IndicatorAlpha();
+        if (alpha <= 0.001f) return;
 
-        var trackPos = new Vector2(Position.X + Size.X - ScrollbarWidth, Position.Y);
-        var trackSize = new Vector2(ScrollbarWidth, Size.Y);
-        renderer.DrawFilledRect(trackPos, trackSize, UIColors.BackgroundLight);
-
-        var thumbHeight = MathF.Max(20f, Size.Y * (Size.Y / content));
-        var thumbY = trackPos.Y + (Controller.Offset.Y / maxScroll) * (Size.Y - thumbHeight);
+        var (trackX, thumbY, thumbHeight) = ThumbGeometry();
         renderer.DrawFilledRect(
-            new Vector2(trackPos.X, thumbY),
+            new Vector2(trackX, Position.Y),
+            new Vector2(ScrollbarWidth, Size.Y),
+            UIColors.BackgroundLight * new Vector4(1, 1, 1, alpha));
+        renderer.DrawFilledRect(
+            new Vector2(trackX, thumbY),
             new Vector2(ScrollbarWidth, thumbHeight),
-            UIColors.Border);
+            UIColors.Border * new Vector4(1, 1, 1, alpha));
     }
 }
