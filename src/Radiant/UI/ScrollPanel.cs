@@ -20,6 +20,7 @@ public class ScrollPanel : UIElement, IUiContainer, ILayoutBoundary
     private readonly List<UIElement> _children = [];
     private float _scrollOffset;
     private float _appliedOffset;
+    private bool _mouseOver;
 
     public Vector4 BackgroundColor { get; set; } = UIColors.Background;
     public bool DrawBackground { get; set; } = true;
@@ -39,6 +40,9 @@ public class ScrollPanel : UIElement, IUiContainer, ILayoutBoundary
     {
         get
         {
+            // Hovering a scrollable viewport consumes the wheel, so report capture to stop the
+            // event falling through to whatever is underneath (e.g. a 3D camera that zooms on scroll).
+            if (_mouseOver && MaxScrollOffset > 0f) return true;
             foreach (var c in _children)
                 if (c.IsCapturingInput) return true;
             return false;
@@ -64,6 +68,8 @@ public class ScrollPanel : UIElement, IUiContainer, ILayoutBoundary
     public override void Update(InputState input, double deltaTime)
     {
         if (!Visible || !Enabled) return;
+
+        _mouseOver = ContainsPoint(input.MousePosition);
 
         var delta = _scrollOffset - _appliedOffset;
         if (MathF.Abs(delta) > 0.001f)

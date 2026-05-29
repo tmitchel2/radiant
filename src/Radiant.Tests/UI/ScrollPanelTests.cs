@@ -67,6 +67,57 @@ public class ScrollPanelTests
     }
 
     [TestMethod]
+    public void IsCapturingInputWhenMouseOverScrollableContent()
+    {
+        var panel = new ScrollPanel
+        {
+            Position = new Vector2(0, 0),
+            Size = new Vector2(200, 100),
+        };
+        panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
+        panel.ContentHeight = 400f; // exceeds Size.Y => scrollable
+
+        var input = new InputState { MousePosition = new Vector2(10, 50) };
+        panel.Update(input, 0.016);
+
+        Assert.IsTrue(panel.IsCapturingInput);
+    }
+
+    [TestMethod]
+    public void NotCapturingInputWhenMouseOutside()
+    {
+        var panel = new ScrollPanel
+        {
+            Position = new Vector2(0, 0),
+            Size = new Vector2(200, 100),
+        };
+        panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
+        panel.ContentHeight = 400f;
+
+        var input = new InputState { MousePosition = new Vector2(500, 500) };
+        panel.Update(input, 0.016);
+
+        Assert.IsFalse(panel.IsCapturingInput);
+    }
+
+    [TestMethod]
+    public void NotCapturingInputWhenContentFits()
+    {
+        var panel = new ScrollPanel
+        {
+            Position = new Vector2(0, 0),
+            Size = new Vector2(200, 100),
+        };
+        panel.Add(new Label(TestFonts.Default, "row", new Vector2(5, 50)));
+        panel.ContentHeight = 80f; // fits within Size.Y => nothing to scroll
+
+        var input = new InputState { MousePosition = new Vector2(10, 50) };
+        panel.Update(input, 0.016);
+
+        Assert.IsFalse(panel.IsCapturingInput);
+    }
+
+    [TestMethod]
     public void WheelWhenMouseOutsideDoesNotScroll()
     {
         var panel = new ScrollPanel
