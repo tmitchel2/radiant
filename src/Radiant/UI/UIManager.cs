@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Radiant.Animation;
 using Radiant.Graphics2D;
 using Radiant.Input;
 using Radiant.Layout;
@@ -26,6 +27,21 @@ public class UIManager
 
     /// <summary>Whether any UI element is capturing input.</summary>
     public bool IsCapturingInput => _elements.Any(e => e.Visible && e.IsCapturingInput);
+
+    /// <summary>
+    /// Whether any element in the tree has time-driven motion in progress (scroll momentum,
+    /// spring settle, animated scroll). The host should keep rendering frames while true,
+    /// the same way it honours the camera's not-at-rest state, so animation doesn't stall
+    /// under idle frame-throttling.
+    /// </summary>
+    public bool NeedsContinuousFrame => _elements.Any(NeedsFrame);
+
+    private static bool NeedsFrame(UIElement e)
+    {
+        if (!e.Visible) return false;
+        if (e is IAnimating { IsAnimating: true }) return true;
+        return e is IUiContainer c && c.Children.Any(NeedsFrame);
+    }
 
     /// <summary>Adds an element to the manager.</summary>
     public T Add<T>(T element) where T : UIElement
