@@ -95,24 +95,31 @@ current); widgets read `ResolvedStyle` and fall back to their built-in `UIColors
 widgets override (e.g. `Button` adds `Hover`/`Active`). `UIElement.Classes` is a mutable string set
 (`element.Classes.Add("primary")`), distinct from the single-token `Tag`.
 
-## Rounded-rect rendering
+## SDF-shape rendering
 
-`Renderer2D` gains an SDF rounded-rectangle pipeline (mirrors the MSDF pipeline: separate vertex list,
-per-range scissor, emitted before MSDF text so backgrounds sit under text):
+`Renderer2D` gains one **batched SDF-shape pipeline** that draws every analytic 2D shape — rounded
+rectangle (per-corner radii), disc, and ring — from a single shader that dispatches per fragment on a
+shape kind. It mirrors the MSDF pipeline (separate vertex list, per-range scissor, emitted before MSDF
+text so backgrounds sit under text):
 
 ```csharp
 renderer.DrawRoundedRectFilled(x, y, w, h, radius, fill);
-renderer.DrawRoundedRect(x, y, w, h, radius, borderWidth, fill, border); // fill + border in one quad
+renderer.DrawRoundedRect(x, y, w, h, radius, borderWidth, fill, border);   // fill + border in one quad
+renderer.DrawRoundedRectFilled(x, y, w, h, CornerRadii.Top(8f), fill);     // per-corner (tabs/cards)
+renderer.DrawDisc(center, radius, fill);                                   // crisp AA circle
+renderer.DrawDisc(center, radius, borderWidth, fill, border);
+renderer.DrawRing(center, outerRadius, innerRadius, fill);                 // progress rings, radio outlines
 ```
 
-The fragment shader evaluates a rounded-box signed-distance function and derives 1px analytic
-anti-aliasing from `fwidth`, so corners stay crisp at any scale. `radius` is clamped to half the
-shorter side; `radius 0` gives sharp corners; a transparent `fill` yields a border-only stroke. The
-WGSL lives in `ShaderLibrary.RoundedRectShader` and is validated by naga at pipeline creation.
+Each fragment evaluates the matching signed-distance function (`sd_round_box` with per-corner radii,
+`sd_annulus` for disc/ring) and derives 1px analytic anti-aliasing from `fwidth` — the unit-gradient
+property of a true SDF is what keeps the AA exactly one pixel wide at any scale. Radii are clamped to
+half the shorter side; `radius 0` gives sharp corners; a transparent `fill` yields a border-only
+stroke. Adding a new shape is a new `case` in `ShaderLibrary.SdfShapeShader` + a thin `Draw*` method —
+no new pipeline or vertex type. The WGSL is validated by naga at pipeline creation.
 
 `Panel` and `Button` consult `ResolvedStyle.BackgroundColor`/`BorderColor`/`TextColor` (falling back to
-their existing colours); wider adoption of `DrawRoundedRect` for the box model can follow as widgets
-opt in.
+their existing colours); wider adoption of the SDF shapes for the box model can follow as widgets opt in.
 
 ## Vendored engine
 
@@ -144,8 +151,14 @@ and the content host should still scroll.
 | Real CSS-text parsing (e.g. ExCSS) | Consumers are C#; a fluent/predicate API is AOT-clean and refactor-safe | Non-C# authors need to edit styles without recompiling |
 | Stylesheet-driven layout (`Style` carrying `LayoutStyle`) | Keeps the style pass and layout pass decoupled (style would have to run before layout) | A real need to set padding/flex from a stylesheet rule |
 | `:focus` pseudo-state + focus management | No focus model exists in the widget tree yet | Keyboard navigation / focusable widgets land |
-| `box-shadow`, gradients | Need a blurred-SDF / extra pass or gradient param block | A design spec calls for elevation or gradients |
+| `box-shadow` / drop shadows | Needs a softened/offset SDF evaluation (the SDF-shape pipeline makes this cheap to add) | A design calls for elevation / focus rings |
+| Gradient fills (linear/radial) | Needs a fill-mode + colour-stop params on the shape vertex | A design calls for gradient backgrounds/buttons |
+| Thick AA line/segment + arc/pie shapes | The `DrawLine` 1px primitive covers current needs; new shapes are now just a shader `case` + `Draw*` | Dividers/connectors/circular sliders need crisp strokes |
+| True (non-circular) ellipse SDF | Exact elliptical distance is iterative; circles/rings cover UI; legacy tessellated `DrawEllipse*` remains | A UI genuinely needs an anti-aliased ellipse |
+| Rounded / SDF clipping (vs rectangular scissor) | `PushClip` is a rectangular scissor; rounded panels clip content squarely at the corners | Content visibly overflowing a rounded container's corners |
 | `ScrollPanel` as a *full* layout boundary (laying out its children in content space) | First cut treats it as a leaf (children stay manually positioned); sufficient for `SettingsShell` | Nested flex content inside a scroll region is needed |
 | Yoga-tree caching / incremental layout | Rebuilding per frame is fine at panel scale | Measured frame cost, or trees beyond ~500 nodes |
 | Style inheritance / `!important` | Flat cascade covers current needs (descendant/ancestor matching is already expressible as a predicate that walks parents) | Cascade expressiveness demand |
-| `Renderer2D` no-clip fast path skips rounded + MSDF draws | Matches existing MSDF behaviour; the app always uses the clip-aware `BeginFrame` | A consumer needs the no-clip path to draw text/rounded rects |
+| `Renderer2D` no-clip fast path skips SDF-shape + MSDF draws | Matches existing MSDF behaviour; the app always uses the clip-aware `BeginFrame` | A consumer needs the no-clip path to draw text/shapes |
+
+(Done in this work: per-corner `border-radius`, disc, and ring — via the batched SDF-shape pipeline.)
