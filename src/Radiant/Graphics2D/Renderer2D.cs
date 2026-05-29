@@ -55,6 +55,15 @@ namespace Radiant.Graphics2D
         // Clip/scissor state
         private readonly Stack<ClipRect> _clipStack = new();
         private readonly List<DrawRange> _ranges = [];
+
+        // Scroll-offset state: a translate applied to emitted geometry (not the clip).
+        // Markers record the vertex counts at push time; PopScrollOffset shifts everything
+        // appended since by the delta, so nested pushes compose cumulatively while the clip
+        // viewport stays fixed in window space.
+        private readonly Stack<ScrollOffsetMarker> _scrollOffsetStack = new();
+
+        private readonly record struct ScrollOffsetMarker(
+            Vector2 Delta, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart);
         private DrawRange _currentRange;
         private bool _clipEnabled;
         private uint _attachmentWidth;
@@ -569,6 +578,7 @@ namespace Radiant.Graphics2D
             _sdfShapeVertices.Clear();
             _sdfShapeRanges.Clear();
             _clipStack.Clear();
+            _scrollOffsetStack.Clear();
             _ranges.Clear();
             _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
             _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
@@ -606,6 +616,53 @@ namespace Radiant.Graphics2D
             if (_clipStack.Count == 0) return;
             CloseCurrentRange();
             _clipStack.Pop();
+        }
+
+        /// <summary>
+        /// Pushes a scroll translate. Geometry emitted until the matching
+        /// <see cref="PopScrollOffset"/> is shifted by <paramref name="delta"/>, while the
+        /// clip stack stays in window space (the viewport does not move). Nested pushes
+        /// compose cumulatively. Typical use: <c>PushScrollOffset(-controller.Offset)</c>.
+        /// </summary>
+        public void PushScrollOffset(Vector2 delta) =>
+            _scrollOffsetStack.Push(new ScrollOffsetMarker(
+                delta,
+                _filledVertices.Count,
+                _lineVertices.Count,
+                _msdfVertices.Count,
+                _sdfShapeVertices.Count));
+
+        /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
+        public void PopScrollOffset()
+        {
+            if (_scrollOffsetStack.Count == 0) return;
+            var m = _scrollOffsetStack.Pop();
+            if (m.Delta == Vector2.Zero) return;
+
+            for (var i = m.FilledStart; i < _filledVertices.Count; i++)
+            {
+                var v = _filledVertices[i];
+                v.Position += m.Delta;
+                _filledVertices[i] = v;
+            }
+            for (var i = m.LineStart; i < _lineVertices.Count; i++)
+            {
+                var v = _lineVertices[i];
+                v.Position += m.Delta;
+                _lineVertices[i] = v;
+            }
+            for (var i = m.MsdfStart; i < _msdfVertices.Count; i++)
+            {
+                var v = _msdfVertices[i];
+                v.Position += m.Delta;
+                _msdfVertices[i] = v;
+            }
+            for (var i = m.SdfShapeStart; i < _sdfShapeVertices.Count; i++)
+            {
+                var v = _sdfShapeVertices[i];
+                v.Position += m.Delta;
+                _sdfShapeVertices[i] = v;
+            }
         }
 
         private void CloseCurrentRange()
