@@ -18,16 +18,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Vendored flexbox/grid layout engine. See ..\Yoga.Net\VENDOR.md -->
-    <ProjectReference Include="..\Yoga.Net\Yoga.Net.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.png" />
     <EmbeddedResource Include="Assets\Fonts\*.json" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Meta's Yoga flexbox/grid layout engine (pure-C# port, AOT/trim-safe). -->
+    <PackageReference Include="Yoga.Net" Version="3.2.3" />
     <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Input.Glfw" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Input.Sdl" Version="2.22.0" />
