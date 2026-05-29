@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Input;
+using Radiant.Layout;
 
 namespace Radiant.UI;
 
@@ -14,7 +15,7 @@ namespace Radiant.UI;
 /// The scrollable viewport is scissor-clipped via
 /// <see cref="Renderer2D.PushClip"/>.
 /// </summary>
-public class ScrollPanel : UIElement
+public class ScrollPanel : UIElement, IUiContainer, ILayoutBoundary
 {
     private readonly List<UIElement> _children = [];
     private float _scrollOffset;

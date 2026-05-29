@@ -1,0 +1,7 @@
+<Project>
+  <!--
+    Shield for VENDORED third-party tests (Yoga.Net.Tests, the upstream 833-test gtest-equivalent
+    suite). Stops inheritance of Radiant's strict src/Directory.Build.props for the same reason as
+    the engine project — see ../Yoga.Net/Directory.Build.props. Do not import the parent.
+  -->
+</Project>

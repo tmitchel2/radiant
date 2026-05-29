@@ -6,6 +6,8 @@
   </Configurations>
   <Project Path="Radiant/Radiant.csproj" />
   <Project Path="Radiant.Tests/Radiant.Tests.csproj" />
+  <Project Path="Yoga.Net/Yoga.Net.csproj" />
+  <Project Path="Yoga.Net.Tests/Yoga.Net.Tests.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>

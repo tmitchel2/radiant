@@ -1,6 +1,10 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Collections.Generic;
+using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Input;
+using Radiant.Layout;
+using Radiant.Styling;
 
 namespace Radiant.UI;
 
@@ -15,6 +19,19 @@ public abstract class UIElement
     /// <summary>Size of the element.</summary>
     public Vector2 Size { get; set; }
 
+    /// <summary>
+    /// Flexbox/box-model layout inputs. Applied by <see cref="YogaLayoutEngine"/> when a layout
+    /// root opts in via <see cref="ParticipatesInLayout"/>. Unset properties keep Yoga's defaults.
+    /// </summary>
+    public LayoutStyle Layout { get; set; }
+
+    /// <summary>
+    /// When <c>true</c> on a top-level element, the layout engine computes this element's entire
+    /// subtree's <see cref="Position"/>/<see cref="Size"/> from <see cref="Layout"/> each pass.
+    /// Opt-in (default <c>false</c>): unset elements keep their manually assigned positions.
+    /// </summary>
+    public bool ParticipatesInLayout { get; set; }
+
     /// <summary>Whether the element is visible.</summary>
     public bool Visible { get; set; } = true;
 
@@ -23,6 +40,32 @@ public abstract class UIElement
 
     /// <summary>Optional tag for identification.</summary>
     public object? Tag { get; set; }
+
+    /// <summary>
+    /// Style classes used by selectors (CSS class-style matching). Mutable: <c>element.Classes.Add("primary")</c>.
+    /// Distinct from <see cref="Tag"/>, which stays a single opaque identity token.
+    /// </summary>
+    public ICollection<string> Classes { get; } = new HashSet<string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Inline paint overrides for this element, applied on top of any matching stylesheet rules
+    /// (inline always wins). Leave properties unset to defer to the stylesheet / built-in defaults.
+    /// </summary>
+    public Style Style { get; set; }
+
+    /// <summary>
+    /// The effective style computed by <see cref="StyleResolver"/> during the style pass (stylesheet
+    /// rules folded in cascade order, then inline <see cref="Style"/>). Widgets read this in
+    /// <see cref="Draw"/>, falling back to their built-in colours for any unset property.
+    /// </summary>
+    public Style ResolvedStyle { get; set; }
+
+    /// <summary>
+    /// The element's current interaction states for pseudo-class selectors. The base implementation
+    /// reports only <see cref="PseudoState.Disabled"/>; interactive widgets override to add
+    /// hover/active/focus.
+    /// </summary>
+    public virtual PseudoState CurrentPseudoState => Enabled ? PseudoState.None : PseudoState.Disabled;
 
     /// <summary>Whether this element is currently capturing mouse input.</summary>
     public virtual bool IsCapturingInput => false;

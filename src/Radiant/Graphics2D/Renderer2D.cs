@@ -38,9 +38,17 @@ namespace Radiant.Graphics2D
         private readonly List<MsdfDrawRange> _msdfRanges = [];
         private readonly List<MsdfFont> _ownedFonts = [];
 
+        // Batched SDF-shape pipeline (rounded rect / disc / ring). Reuses the group-0 uniform layout,
+        // no texture. One pipeline draws all analytic shapes, dispatched per-fragment on shape kind.
+        private RenderPipeline* _sdfShapePipeline;
+        private ShaderModule* _sdfShapeShader;
+        private readonly List<SdfShapeVertex2D> _sdfShapeVertices = [];
+        private readonly List<SdfShapeDrawRange> _sdfShapeRanges = [];
+
         internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
         internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
         internal IReadOnlyList<MsdfVertex2D> MsdfVertices => _msdfVertices;
+        internal IReadOnlyList<SdfShapeVertex2D> SdfShapeVertices => _sdfShapeVertices;
         private TextureFormat _surfaceFormat;
         private readonly List<IntPtr> _frameBuffers = [];
 
@@ -87,6 +95,13 @@ namespace Radiant.Graphics2D
             public int VertexCount;
         }
 
+        private struct SdfShapeDrawRange
+        {
+            public ClipRect? Clip;
+            public int VertexStart;
+            public int VertexCount;
+        }
+
         public void Initialize(Engine2State engineState, Camera2D camera)
         {
             _wgpu = engineState._wgpu;
@@ -102,6 +117,7 @@ namespace Radiant.Graphics2D
             CreatePipelines();
             CreateBindGroup();
             CreateMsdfPipeline();
+            CreateSdfShapePipeline();
         }
 
         private void CreateUniformBuffer()
@@ -401,6 +417,91 @@ namespace Radiant.Graphics2D
             _msdfPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
         }
 
+        private void CreateSdfShapePipeline()
+        {
+            _sdfShapeShader = CreateShaderModule(ShaderLibrary.SdfShapeShader);
+
+            // Layout matches SdfShapeVertex2D: position, localPos, color, borderColor, misc, params.
+            var vertexAttributes = stackalloc VertexAttribute[6];
+            vertexAttributes[0] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 0, ShaderLocation = 0 };
+            vertexAttributes[1] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 8, ShaderLocation = 1 };
+            vertexAttributes[2] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 16, ShaderLocation = 2 };
+            vertexAttributes[3] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 32, ShaderLocation = 3 };
+            vertexAttributes[4] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 48, ShaderLocation = 4 };
+            vertexAttributes[5] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 64, ShaderLocation = 5 };
+
+            var vertexBufferLayout = new VertexBufferLayout
+            {
+                ArrayStride = (ulong)sizeof(SdfShapeVertex2D),
+                StepMode = VertexStepMode.Vertex,
+                AttributeCount = 6,
+                Attributes = vertexAttributes,
+            };
+
+            var blendState = new BlendState
+            {
+                Color = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.SrcAlpha,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+                Alpha = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.One,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+            };
+
+            var colorTargetState = new ColorTargetState
+            {
+                Format = _surfaceFormat,
+                Blend = &blendState,
+                WriteMask = ColorWriteMask.All,
+            };
+
+            var fragmentState = new FragmentState
+            {
+                Module = _sdfShapeShader,
+                TargetCount = 1,
+                Targets = &colorTargetState,
+                EntryPoint = (byte*)SilkMarshal.StringToPtr("fs_main"),
+            };
+
+            // Reuses the base pipeline layout (group 0 = view-projection uniform); no texture bind group.
+            var pipelineDesc = new RenderPipelineDescriptor
+            {
+                Layout = _pipelineLayout,
+                Vertex = new VertexState
+                {
+                    Module = _sdfShapeShader,
+                    EntryPoint = (byte*)SilkMarshal.StringToPtr("vs_main"),
+                    BufferCount = 1,
+                    Buffers = &vertexBufferLayout,
+                },
+                Primitive = new PrimitiveState
+                {
+                    Topology = PrimitiveTopology.TriangleList,
+                    StripIndexFormat = IndexFormat.Undefined,
+                    FrontFace = _camera.Handedness == Handedness.LeftHanded
+                        ? FrontFace.CW
+                        : FrontFace.Ccw,
+                    CullMode = CullMode.None,
+                },
+                Multisample = new MultisampleState
+                {
+                    Count = 1,
+                    Mask = ~0u,
+                    AlphaToCoverageEnabled = false,
+                },
+                Fragment = &fragmentState,
+                DepthStencil = null,
+            };
+
+            _sdfShapePipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+        }
+
         /// <summary>
         /// Register an MSDF font with this renderer. The renderer takes
         /// ownership of the font's GPU resources and disposes them with the
@@ -465,6 +566,8 @@ namespace Radiant.Graphics2D
             _lineVertices.Clear();
             _msdfVertices.Clear();
             _msdfRanges.Clear();
+            _sdfShapeVertices.Clear();
+            _sdfShapeRanges.Clear();
             _clipStack.Clear();
             _ranges.Clear();
             _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
@@ -829,6 +932,119 @@ namespace Radiant.Graphics2D
             DrawRectangleFilled(position.X, position.Y, size.X, size.Y, color);
         }
 
+        /// <summary>
+        /// Draws a filled rounded rectangle via the SDF pipeline (crisp, scale-independent corners
+        /// with 1px analytic anti-aliasing). <paramref name="radius"/> is clamped to half the shorter
+        /// side; radius 0 yields sharp corners.
+        /// </summary>
+        public void DrawRoundedRectFilled(float x, float y, float width, float height, float radius, Vector4 color)
+            => DrawRoundedRectFilled(x, y, width, height, CornerRadii.All(radius), color);
+
+        /// <summary>
+        /// Draws a rounded rectangle with a fill and a border in a single SDF quad. Pass a transparent
+        /// <paramref name="fill"/> for a border-only stroke. <paramref name="borderWidth"/> is the
+        /// inner stroke width in points; <paramref name="radius"/> is clamped to half the shorter side.
+        /// </summary>
+        public void DrawRoundedRect(float x, float y, float width, float height, float radius,
+            float borderWidth, Vector4 fill, Vector4 border)
+            => DrawRoundedRect(x, y, width, height, CornerRadii.All(radius), borderWidth, fill, border);
+
+        /// <summary>Filled rounded rectangle with per-corner radii.</summary>
+        public void DrawRoundedRectFilled(float x, float y, float width, float height, CornerRadii radii, Vector4 color)
+            => EmitRoundedRect(x, y, width, height, radii, 0f, color, color);
+
+        /// <summary>Rounded rectangle with per-corner radii plus a border.</summary>
+        public void DrawRoundedRect(float x, float y, float width, float height, CornerRadii radii,
+            float borderWidth, Vector4 fill, Vector4 border)
+            => EmitRoundedRect(x, y, width, height, radii, borderWidth, fill, border);
+
+        /// <summary>Vector overload of <see cref="DrawRoundedRectFilled(float,float,float,float,float,Vector4)"/>.</summary>
+        public void DrawRoundedRectFilled(Vector2 position, Vector2 size, float radius, Vector4 color)
+            => EmitRoundedRect(position.X, position.Y, size.X, size.Y, CornerRadii.All(radius), 0f, color, color);
+
+        /// <summary>Vector overload of <see cref="DrawRoundedRect(float,float,float,float,float,float,Vector4,Vector4)"/>.</summary>
+        public void DrawRoundedRect(Vector2 position, Vector2 size, float radius,
+            float borderWidth, Vector4 fill, Vector4 border)
+            => EmitRoundedRect(position.X, position.Y, size.X, size.Y, CornerRadii.All(radius), borderWidth, fill, border);
+
+        /// <summary>Draws a filled, anti-aliased disc (SDF circle).</summary>
+        public void DrawDisc(Vector2 center, float radius, Vector4 color)
+            => EmitCircle(center, radius, 0f, 0f, color, color);
+
+        /// <summary>Draws a disc with a fill and an inner border ring.</summary>
+        public void DrawDisc(Vector2 center, float radius, float borderWidth, Vector4 fill, Vector4 border)
+            => EmitCircle(center, radius, 0f, borderWidth, fill, border);
+
+        /// <summary>
+        /// Draws a filled ring/annulus (a crisp circular stroke): the band between
+        /// <paramref name="innerRadius"/> and <paramref name="outerRadius"/>. Use for progress rings,
+        /// radio outlines, spinners.
+        /// </summary>
+        public void DrawRing(Vector2 center, float outerRadius, float innerRadius, Vector4 color)
+            => EmitCircle(center, outerRadius, MathF.Max(0f, innerRadius), 0f, color, color);
+
+        private void EmitRoundedRect(float x, float y, float width, float height, CornerRadii radii,
+            float borderWidth, Vector4 fill, Vector4 border)
+        {
+            if (width <= 0f || height <= 0f) return;
+
+            var halfW = width * 0.5f;
+            var halfH = height * 0.5f;
+            var maxR = MathF.Min(halfW, halfH);
+            var clamped = new Vector4(
+                Math.Clamp(radii.TopLeft, 0f, maxR),
+                Math.Clamp(radii.TopRight, 0f, maxR),
+                Math.Clamp(radii.BottomRight, 0f, maxR),
+                Math.Clamp(radii.BottomLeft, 0f, maxR));
+            var center = new Vector2(x + halfW, y + halfH);
+            EmitShape(center, new Vector2(halfW, halfH), borderWidth, SdfShapeKind.RoundedRect, clamped, fill, border);
+        }
+
+        private void EmitCircle(Vector2 center, float outerRadius, float innerRadius,
+            float borderWidth, Vector4 fill, Vector4 border)
+        {
+            if (outerRadius <= 0f) return;
+            var half = new Vector2(outerRadius, outerRadius);
+            var prms = new Vector4(outerRadius, MathF.Min(innerRadius, outerRadius), 0f, 0f);
+            EmitShape(center, half, borderWidth, SdfShapeKind.Circle, prms, fill, border);
+        }
+
+        private void EmitShape(Vector2 center, Vector2 halfSize, float borderWidth,
+            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border)
+        {
+            // Expand the quad by an AA pad so the outer edge fade isn't clipped by the geometry.
+            const float aaPad = 1.5f;
+            var ext = new Vector2(halfSize.X + aaPad, halfSize.Y + aaPad);
+            var misc = new Vector4(halfSize.X, halfSize.Y, borderWidth, (float)(int)kind);
+
+            SdfShapeVertex2D Corner(float sx, float sy)
+            {
+                var local = new Vector2(sx * ext.X, sy * ext.Y);
+                return new SdfShapeVertex2D(center + local, local, fill, border, misc, prms);
+            }
+
+            var tl = Corner(-1f, -1f);
+            var tr = Corner(1f, -1f);
+            var bl = Corner(-1f, 1f);
+            var br = Corner(1f, 1f);
+
+            var start = _sdfShapeVertices.Count;
+            // Two triangles: (tl, bl, br) and (tl, br, tr) — matches the MSDF quad winding.
+            _sdfShapeVertices.Add(tl);
+            _sdfShapeVertices.Add(bl);
+            _sdfShapeVertices.Add(br);
+            _sdfShapeVertices.Add(tl);
+            _sdfShapeVertices.Add(br);
+            _sdfShapeVertices.Add(tr);
+
+            _sdfShapeRanges.Add(new SdfShapeDrawRange
+            {
+                Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null,
+                VertexStart = start,
+                VertexCount = 6,
+            });
+        }
+
         /// <summary>Draws a rectangle outline.</summary>
         public void DrawRect(Vector2 position, Vector2 size, Vector4 color)
         {
@@ -918,6 +1134,7 @@ namespace Radiant.Graphics2D
                 }
             }
 
+            EmitSdfShapeDraws(renderPass);
             EmitMsdfDraws(renderPass);
 
             // Restore full-attachment scissor for any subsequent consumer.
@@ -947,6 +1164,46 @@ namespace Radiant.Graphics2D
                 }
                 _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
             }
+        }
+
+        private void EmitSdfShapeDraws(RenderPassEncoder* renderPass)
+        {
+            if (_sdfShapeVertices.Count == 0 || _sdfShapeRanges.Count == 0) return;
+
+            var buffer = CreateAndUploadSdfShapeVertexBuffer(_sdfShapeVertices);
+            _frameBuffers.Add((IntPtr)buffer);
+
+            _wgpu.RenderPassEncoderSetPipeline(renderPass, _sdfShapePipeline);
+            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
+            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, buffer, 0,
+                (ulong)(_sdfShapeVertices.Count * sizeof(SdfShapeVertex2D)));
+
+            foreach (var range in _sdfShapeRanges)
+            {
+                ApplyScissor(renderPass, range.Clip);
+                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+            }
+        }
+
+        private Buffer* CreateAndUploadSdfShapeVertexBuffer(List<SdfShapeVertex2D> vertices)
+        {
+            var bufferDescriptor = new BufferDescriptor
+            {
+                Size = (ulong)(vertices.Count * sizeof(SdfShapeVertex2D)),
+                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
+                MappedAtCreation = false,
+            };
+
+            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
+
+            var array = vertices.ToArray();
+            fixed (SdfShapeVertex2D* dataPtr = array)
+            {
+                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
+                    (nuint)(vertices.Count * sizeof(SdfShapeVertex2D)));
+            }
+
+            return buffer;
         }
 
         private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
@@ -1039,6 +1296,8 @@ namespace Radiant.Graphics2D
             if (_msdfShader != null) _wgpu.ShaderModuleRelease(_msdfShader);
             if (_msdfPipelineLayout != null) _wgpu.PipelineLayoutRelease(_msdfPipelineLayout);
             if (_msdfAtlasBindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_msdfAtlasBindGroupLayout);
+            if (_sdfShapePipeline != null) _wgpu.RenderPipelineRelease(_sdfShapePipeline);
+            if (_sdfShapeShader != null) _wgpu.ShaderModuleRelease(_sdfShapeShader);
 
             GC.SuppressFinalize(this);
         }
