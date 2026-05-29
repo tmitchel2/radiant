@@ -4,6 +4,7 @@ using Radiant.Graphics2D;
 using Radiant.Input;
 using Radiant.Scrolling;
 using Radiant.UI;
+using Silk.NET.Input;
 
 namespace Radiant.Tests.UI;
 
@@ -87,5 +88,34 @@ public class ScrollViewTests
         var input = new InputState { MousePosition = new Vector2(500, 500) };
         sv.Update(input, 1.0 / 60.0);
         Assert.IsFalse(sv.IsCapturingInput);
+    }
+
+    [TestMethod]
+    public void DragToPanScrollsContent()
+    {
+        var sv = MakeScrollable(out _);
+        var input = new InputState();
+        input.SetMouseButton(MouseButton.Left, true);
+        input.MousePosition = new Vector2(50, 50);
+        sv.Update(input, 1.0 / 60.0); // press → pan possible
+
+        input.EndFrame();             // clears pressed + delta; Left stays down
+        input.MousePosition = new Vector2(50, 50);
+        input.MouseDelta = new Vector2(0, -30); // drag up → scroll toward content end
+        sv.Update(input, 1.0 / 60.0);
+
+        Assert.IsTrue(sv.Controller.Offset.Y > 10f, "drag-to-pan should move the offset");
+    }
+
+    [TestMethod]
+    public void PressInsideCapturesInput()
+    {
+        var sv = MakeScrollable(out _);
+        var input = new InputState();
+        input.SetMouseButton(MouseButton.Left, true);
+        input.MousePosition = new Vector2(50, 50);
+        sv.Update(input, 1.0 / 60.0);
+
+        Assert.IsTrue(sv.IsCapturingInput, "a press inside the scroll body claims input");
     }
 }

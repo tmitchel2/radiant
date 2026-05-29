@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Animation;
+using Radiant.Gestures;
 using Radiant.Graphics2D;
 using Radiant.Input;
 using Radiant.Layout;
@@ -23,11 +24,25 @@ namespace Radiant.UI;
 public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
 {
     private readonly List<UIElement> _children = [];
+    private readonly PanGesture _pan;
+    private readonly GestureDetector _detector;
     private bool _mouseOver;
 
     public ScrollView(ScrollBehaviour? behaviour = null)
     {
         Controller = new ScrollController(behaviour ?? new ScrollBehaviour());
+
+        // Drag-to-pan: a press-drag on the body scrolls the content kinetically.
+        _pan = new PanGesture
+        {
+            Axis = Controller.Behaviour.Axes,
+            ActivationThreshold = Controller.Behaviour.ActivationThreshold,
+        };
+        _pan.OnBegin = _ => Controller.BeginDrag();
+        _pan.OnChange = g => Controller.Drag(g.FrameDelta, g.Dt);
+        _pan.OnEnd = _ => Controller.EndDrag();
+        _pan.OnCancel = _ => Controller.EndDrag();
+        _detector = new GestureDetector(_pan);
     }
 
     /// <summary>The scroll physics engine. Subscribe to its events; call its programmatic API.</summary>
@@ -46,6 +61,8 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
     {
         get
         {
+            // A live or claiming gesture (drag-to-pan) captures input.
+            if (_detector.HasActiveOrClaimingOwner) return true;
             // Hovering scrollable content consumes the wheel — report capture so the
             // event can't fall through to whatever is underneath (e.g. a 3D camera).
             if (_mouseOver && (Controller.CanScrollVertical || Controller.CanScrollHorizontal))
@@ -81,7 +98,10 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
         _mouseOver = ContainsPoint(input.MousePosition);
         Controller.SetExtents(Size, MeasureContentSize());
 
-        // Phase 2: poll the wheel directly (the gesture arbiter replaces this in Phase 3).
+        // Drag-to-pan via the gesture arbiter (begins/drags/ends the controller).
+        _detector.Update(PointerFrame.From(input, deltaTime), _mouseOver);
+
+        // Wheel is instantaneous and needs no arbitration; poll it directly.
         if (_mouseOver && MathF.Abs(input.ScrollDelta.Y) > 0.001f && Controller.CanScrollVertical)
             Controller.ApplyWheel(new Vector2(0, input.ScrollDelta.Y));
         if (_mouseOver && MathF.Abs(input.ScrollDelta.X) > 0.001f && Controller.CanScrollHorizontal)
