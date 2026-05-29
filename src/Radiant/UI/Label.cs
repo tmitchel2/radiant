@@ -1,12 +1,13 @@
 ﻿using System.Numerics;
 using Radiant.Graphics2D;
+using Radiant.Layout;
 
 namespace Radiant.UI;
 
 /// <summary>
 /// A text label UI element.
 /// </summary>
-public class Label : UIElement
+public class Label : UIElement, ILayoutMeasurable
 {
     private readonly MsdfFont _font;
 
@@ -34,5 +35,14 @@ public class Label : UIElement
         if (!Visible || string.IsNullOrEmpty(Text)) return;
 
         renderer.DrawText(_font, Text, Position, TextColor, TextScale * 7f);
+    }
+
+    /// <inheritdoc/>
+    public Vector2 MeasureContent(float availableWidth)
+    {
+        // Mirror the pixel height used in Draw (7f = legacy bitmap-to-MSDF scale). Single line: width
+        // is the measured glyph run; height is one line.
+        var pixelHeight = TextScale * 7f;
+        return new Vector2(_font.MeasureTextWidth(Text, pixelHeight), _font.LineHeightEm * pixelHeight);
     }
 }

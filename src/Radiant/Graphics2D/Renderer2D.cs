@@ -38,9 +38,16 @@ namespace Radiant.Graphics2D
         private readonly List<MsdfDrawRange> _msdfRanges = [];
         private readonly List<MsdfFont> _ownedFonts = [];
 
+        // SDF rounded-rect pipeline (additive — reuses the group-0 uniform layout, no texture).
+        private RenderPipeline* _roundedPipeline;
+        private ShaderModule* _roundedShader;
+        private readonly List<RoundedRectVertex2D> _roundedVertices = [];
+        private readonly List<RoundedDrawRange> _roundedRanges = [];
+
         internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
         internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
         internal IReadOnlyList<MsdfVertex2D> MsdfVertices => _msdfVertices;
+        internal IReadOnlyList<RoundedRectVertex2D> RoundedVertices => _roundedVertices;
         private TextureFormat _surfaceFormat;
         private readonly List<IntPtr> _frameBuffers = [];
 
@@ -87,6 +94,13 @@ namespace Radiant.Graphics2D
             public int VertexCount;
         }
 
+        private struct RoundedDrawRange
+        {
+            public ClipRect? Clip;
+            public int VertexStart;
+            public int VertexCount;
+        }
+
         public void Initialize(Engine2State engineState, Camera2D camera)
         {
             _wgpu = engineState._wgpu;
@@ -102,6 +116,7 @@ namespace Radiant.Graphics2D
             CreatePipelines();
             CreateBindGroup();
             CreateMsdfPipeline();
+            CreateRoundedRectPipeline();
         }
 
         private void CreateUniformBuffer()
@@ -401,6 +416,90 @@ namespace Radiant.Graphics2D
             _msdfPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
         }
 
+        private void CreateRoundedRectPipeline()
+        {
+            _roundedShader = CreateShaderModule(ShaderLibrary.RoundedRectShader);
+
+            // Layout matches RoundedRectVertex2D: position, color, borderColor, localPos, params.
+            var vertexAttributes = stackalloc VertexAttribute[5];
+            vertexAttributes[0] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 0, ShaderLocation = 0 };
+            vertexAttributes[1] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 8, ShaderLocation = 1 };
+            vertexAttributes[2] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 24, ShaderLocation = 2 };
+            vertexAttributes[3] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 40, ShaderLocation = 3 };
+            vertexAttributes[4] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 48, ShaderLocation = 4 };
+
+            var vertexBufferLayout = new VertexBufferLayout
+            {
+                ArrayStride = (ulong)sizeof(RoundedRectVertex2D),
+                StepMode = VertexStepMode.Vertex,
+                AttributeCount = 5,
+                Attributes = vertexAttributes,
+            };
+
+            var blendState = new BlendState
+            {
+                Color = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.SrcAlpha,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+                Alpha = new BlendComponent
+                {
+                    SrcFactor = BlendFactor.One,
+                    DstFactor = BlendFactor.OneMinusSrcAlpha,
+                    Operation = BlendOperation.Add,
+                },
+            };
+
+            var colorTargetState = new ColorTargetState
+            {
+                Format = _surfaceFormat,
+                Blend = &blendState,
+                WriteMask = ColorWriteMask.All,
+            };
+
+            var fragmentState = new FragmentState
+            {
+                Module = _roundedShader,
+                TargetCount = 1,
+                Targets = &colorTargetState,
+                EntryPoint = (byte*)SilkMarshal.StringToPtr("fs_main"),
+            };
+
+            // Reuses the base pipeline layout (group 0 = view-projection uniform); no texture bind group.
+            var pipelineDesc = new RenderPipelineDescriptor
+            {
+                Layout = _pipelineLayout,
+                Vertex = new VertexState
+                {
+                    Module = _roundedShader,
+                    EntryPoint = (byte*)SilkMarshal.StringToPtr("vs_main"),
+                    BufferCount = 1,
+                    Buffers = &vertexBufferLayout,
+                },
+                Primitive = new PrimitiveState
+                {
+                    Topology = PrimitiveTopology.TriangleList,
+                    StripIndexFormat = IndexFormat.Undefined,
+                    FrontFace = _camera.Handedness == Handedness.LeftHanded
+                        ? FrontFace.CW
+                        : FrontFace.Ccw,
+                    CullMode = CullMode.None,
+                },
+                Multisample = new MultisampleState
+                {
+                    Count = 1,
+                    Mask = ~0u,
+                    AlphaToCoverageEnabled = false,
+                },
+                Fragment = &fragmentState,
+                DepthStencil = null,
+            };
+
+            _roundedPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+        }
+
         /// <summary>
         /// Register an MSDF font with this renderer. The renderer takes
         /// ownership of the font's GPU resources and disposes them with the
@@ -465,6 +564,8 @@ namespace Radiant.Graphics2D
             _lineVertices.Clear();
             _msdfVertices.Clear();
             _msdfRanges.Clear();
+            _roundedVertices.Clear();
+            _roundedRanges.Clear();
             _clipStack.Clear();
             _ranges.Clear();
             _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
@@ -829,6 +930,83 @@ namespace Radiant.Graphics2D
             DrawRectangleFilled(position.X, position.Y, size.X, size.Y, color);
         }
 
+        /// <summary>
+        /// Draws a filled rounded rectangle via the SDF pipeline (crisp, scale-independent corners
+        /// with 1px analytic anti-aliasing). <paramref name="radius"/> is clamped to half the shorter
+        /// side; radius 0 yields sharp corners.
+        /// </summary>
+        public void DrawRoundedRectFilled(float x, float y, float width, float height, float radius, Vector4 color)
+        {
+            EmitRoundedRect(x, y, width, height, radius, 0f, color, color);
+        }
+
+        /// <summary>
+        /// Draws a rounded rectangle with a fill and a border in a single SDF quad. Pass a transparent
+        /// <paramref name="fill"/> for a border-only stroke. <paramref name="borderWidth"/> is the
+        /// inner stroke width in points; <paramref name="radius"/> is clamped to half the shorter side.
+        /// </summary>
+        public void DrawRoundedRect(float x, float y, float width, float height, float radius,
+            float borderWidth, Vector4 fill, Vector4 border)
+        {
+            EmitRoundedRect(x, y, width, height, radius, borderWidth, fill, border);
+        }
+
+        /// <summary>Vector overload of <see cref="DrawRoundedRectFilled(float,float,float,float,float,Vector4)"/>.</summary>
+        public void DrawRoundedRectFilled(Vector2 position, Vector2 size, float radius, Vector4 color)
+        {
+            EmitRoundedRect(position.X, position.Y, size.X, size.Y, radius, 0f, color, color);
+        }
+
+        /// <summary>Vector overload of <see cref="DrawRoundedRect(float,float,float,float,float,float,Vector4,Vector4)"/>.</summary>
+        public void DrawRoundedRect(Vector2 position, Vector2 size, float radius,
+            float borderWidth, Vector4 fill, Vector4 border)
+        {
+            EmitRoundedRect(position.X, position.Y, size.X, size.Y, radius, borderWidth, fill, border);
+        }
+
+        private void EmitRoundedRect(float x, float y, float width, float height, float radius,
+            float borderWidth, Vector4 fill, Vector4 border)
+        {
+            if (width <= 0f || height <= 0f) return;
+
+            var halfW = width * 0.5f;
+            var halfH = height * 0.5f;
+            var clampedRadius = MathF.Max(0f, MathF.Min(radius, MathF.Min(halfW, halfH)));
+            var center = new Vector2(x + halfW, y + halfH);
+
+            // Expand the quad by an AA pad so the outer edge fade isn't clipped by the geometry.
+            const float aaPad = 1.5f;
+            var ext = new Vector2(halfW + aaPad, halfH + aaPad);
+            var prms = new Vector4(halfW, halfH, clampedRadius, borderWidth);
+
+            RoundedRectVertex2D Corner(float sx, float sy)
+            {
+                var local = new Vector2(sx * ext.X, sy * ext.Y);
+                return new RoundedRectVertex2D(center + local, fill, border, local, prms);
+            }
+
+            var tl = Corner(-1f, -1f);
+            var tr = Corner(1f, -1f);
+            var bl = Corner(-1f, 1f);
+            var br = Corner(1f, 1f);
+
+            var start = _roundedVertices.Count;
+            // Two triangles: (tl, bl, br) and (tl, br, tr) — matches the MSDF quad winding.
+            _roundedVertices.Add(tl);
+            _roundedVertices.Add(bl);
+            _roundedVertices.Add(br);
+            _roundedVertices.Add(tl);
+            _roundedVertices.Add(br);
+            _roundedVertices.Add(tr);
+
+            _roundedRanges.Add(new RoundedDrawRange
+            {
+                Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null,
+                VertexStart = start,
+                VertexCount = 6,
+            });
+        }
+
         /// <summary>Draws a rectangle outline.</summary>
         public void DrawRect(Vector2 position, Vector2 size, Vector4 color)
         {
@@ -918,6 +1096,7 @@ namespace Radiant.Graphics2D
                 }
             }
 
+            EmitRoundedDraws(renderPass);
             EmitMsdfDraws(renderPass);
 
             // Restore full-attachment scissor for any subsequent consumer.
@@ -947,6 +1126,46 @@ namespace Radiant.Graphics2D
                 }
                 _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
             }
+        }
+
+        private void EmitRoundedDraws(RenderPassEncoder* renderPass)
+        {
+            if (_roundedVertices.Count == 0 || _roundedRanges.Count == 0) return;
+
+            var buffer = CreateAndUploadRoundedVertexBuffer(_roundedVertices);
+            _frameBuffers.Add((IntPtr)buffer);
+
+            _wgpu.RenderPassEncoderSetPipeline(renderPass, _roundedPipeline);
+            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
+            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, buffer, 0,
+                (ulong)(_roundedVertices.Count * sizeof(RoundedRectVertex2D)));
+
+            foreach (var range in _roundedRanges)
+            {
+                ApplyScissor(renderPass, range.Clip);
+                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+            }
+        }
+
+        private Buffer* CreateAndUploadRoundedVertexBuffer(List<RoundedRectVertex2D> vertices)
+        {
+            var bufferDescriptor = new BufferDescriptor
+            {
+                Size = (ulong)(vertices.Count * sizeof(RoundedRectVertex2D)),
+                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
+                MappedAtCreation = false,
+            };
+
+            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
+
+            var array = vertices.ToArray();
+            fixed (RoundedRectVertex2D* dataPtr = array)
+            {
+                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
+                    (nuint)(vertices.Count * sizeof(RoundedRectVertex2D)));
+            }
+
+            return buffer;
         }
 
         private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
@@ -1039,6 +1258,8 @@ namespace Radiant.Graphics2D
             if (_msdfShader != null) _wgpu.ShaderModuleRelease(_msdfShader);
             if (_msdfPipelineLayout != null) _wgpu.PipelineLayoutRelease(_msdfPipelineLayout);
             if (_msdfAtlasBindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_msdfAtlasBindGroupLayout);
+            if (_roundedPipeline != null) _wgpu.RenderPipelineRelease(_roundedPipeline);
+            if (_roundedShader != null) _wgpu.ShaderModuleRelease(_roundedShader);
 
             GC.SuppressFinalize(this);
         }

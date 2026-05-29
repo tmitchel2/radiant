@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Vendored flexbox/grid layout engine. See ..\Yoga.Net\VENDOR.md -->
+    <ProjectReference Include="..\Yoga.Net\Yoga.Net.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.png" />
     <EmbeddedResource Include="Assets\Fonts\*.json" />
   </ItemGroup>

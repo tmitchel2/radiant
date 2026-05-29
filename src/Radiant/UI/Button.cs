@@ -2,6 +2,7 @@
 using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Input;
+using Radiant.Styling;
 using Silk.NET.Input;
 
 namespace Radiant.UI;
@@ -44,6 +45,19 @@ public class Button : UIElement
 
     /// <inheritdoc/>
     public override bool IsCapturingInput => _isPressed;
+
+    /// <inheritdoc/>
+    public override PseudoState CurrentPseudoState
+    {
+        get
+        {
+            if (!Enabled) return PseudoState.Disabled;
+            var state = PseudoState.None;
+            if (_isHovered) state |= PseudoState.Hover;
+            if (_isPressed) state |= PseudoState.Active;
+            return state;
+        }
+    }
 
     public Button(MsdfFont font) { _font = font; }
 
@@ -92,18 +106,21 @@ public class Button : UIElement
     {
         if (!Visible) return;
 
-        var bgColor = _isPressed ? PressedColor :
-                      _isHovered ? HoverColor :
-                      BackgroundColor;
+        var stateColor = _isPressed ? PressedColor :
+                         _isHovered ? HoverColor :
+                         BackgroundColor;
 
         if (!Enabled)
-            bgColor = UIColors.BackgroundDark;
+            stateColor = UIColors.BackgroundDark;
+
+        // Resolved style (e.g. a :hover rule) wins over the built-in state colour when set.
+        var bgColor = ResolvedStyle.BackgroundColor ?? stateColor;
 
         // Draw background
         renderer.DrawFilledRect(Position, Size, bgColor);
 
         // Draw border
-        renderer.DrawRect(Position, Size, BorderColor);
+        renderer.DrawRect(Position, Size, ResolvedStyle.BorderColor ?? BorderColor);
 
         // Draw text centered
         var textWidth = Text.Length * 8;
@@ -112,6 +129,7 @@ public class Button : UIElement
             (Size.X - textWidth) / 2,
             (Size.Y - textHeight) / 2);
 
-        renderer.DrawText(_font, Text, textPos, Enabled ? TextColor : UIColors.TextDisabled);
+        var textColor = ResolvedStyle.TextColor ?? (Enabled ? TextColor : UIColors.TextDisabled);
+        renderer.DrawText(_font, Text, textPos, textColor);
     }
 }

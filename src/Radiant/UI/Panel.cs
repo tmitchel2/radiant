@@ -9,7 +9,7 @@ namespace Radiant.UI;
 /// <summary>
 /// A container panel that holds other UI elements.
 /// </summary>
-public class Panel : UIElement
+public class Panel : UIElement, IUiContainer
 {
     private readonly MsdfFont _font;
     private readonly List<UIElement> _children = [];
@@ -85,16 +85,16 @@ public class Panel : UIElement
     {
         if (!Visible) return;
 
-        // Draw background
+        // Draw background (resolved style wins over the instance default when set).
         if (DrawBackground)
         {
-            renderer.DrawFilledRect(Position, Size, BackgroundColor);
+            renderer.DrawFilledRect(Position, Size, ResolvedStyle.BackgroundColor ?? BackgroundColor);
         }
 
         // Draw border
         if (DrawBorder)
         {
-            renderer.DrawRect(Position, Size, BorderColor);
+            renderer.DrawRect(Position, Size, ResolvedStyle.BorderColor ?? BorderColor);
         }
 
         // Draw title

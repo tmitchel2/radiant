@@ -121,6 +121,71 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(input.color.rgb, input.color.a * alpha);
 }";
 
+        public const string RoundedRectShader = @"
+struct VertexInput {
+    @location(0) position: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) borderColor: vec4<f32>,
+    @location(3) localPos: vec2<f32>,
+    @location(4) params: vec4<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) borderColor: vec4<f32>,
+    @location(2) localPos: vec2<f32>,
+    @location(3) params: vec4<f32>,
+}
+
+struct Uniforms {
+    view_projection: mat4x4<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.position = uniforms.view_projection * vec4<f32>(input.position, 0.0, 1.0);
+    output.color = input.color;
+    output.borderColor = input.borderColor;
+    output.localPos = input.localPos;
+    output.params = input.params;
+    return output;
+}
+
+// Signed distance to a rounded box centred at the origin. Negative inside, 0 on the edge.
+fn sd_round_box(p: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f32 {
+    let q = abs(p) - (half_size - vec2<f32>(radius));
+    return min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - radius;
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    let half_size = input.params.xy;
+    let radius = input.params.z;
+    let border_width = input.params.w;
+
+    let dist = sd_round_box(input.localPos, half_size, radius);
+    // fwidth(dist) is the per-screen-pixel change in distance, so the transitions below stay one
+    // pixel wide at any scale (analytic AA).
+    let aa = max(fwidth(dist), 1e-4);
+
+    // Outer coverage: 1 well inside the shape, fading to 0 across the edge at dist = 0.
+    let coverage = clamp(0.5 - dist / aa, 0.0, 1.0);
+
+    // Border band occupies dist in [-border_width, 0]; fill is deeper than -border_width.
+    let border_factor = select(
+        clamp(0.5 + (dist + border_width) / aa, 0.0, 1.0),
+        0.0,
+        border_width <= 0.0);
+
+    let rgba = mix(input.color, input.borderColor, border_factor);
+    return vec4<f32>(rgba.rgb, rgba.a * coverage);
+}";
+
         public const string TexturedShader = @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
