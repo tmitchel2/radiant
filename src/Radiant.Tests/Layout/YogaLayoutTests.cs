@@ -105,16 +105,16 @@ public class YogaLayoutTests
     }
 
     [TestMethod]
-    public void ScrollPanelIsSizedButItsChildrenAreNotLaidOut()
+    public void ScrollViewIsSizedButItsChildrenAreNotLaidOut()
     {
         var root = Root(Vector2.Zero, new Vector2(300, 200),
             new LayoutStyle { FlexDirection = FlexDirection.Row });
-        var scroll = root.Add(new ScrollPanel { Layout = new LayoutStyle { FlexGrow = 1f } });
+        var scroll = root.Add(new ScrollView { Layout = new LayoutStyle { FlexGrow = 1f } });
         var inner = scroll.Add(new Label(TestFonts.Default) { Position = new Vector2(17, 99) });
 
         YogaLayoutEngine.CalculateRoot(root, new Vector2(1280, 720));
 
-        // The ScrollPanel (an ILayoutBoundary) is sized by flex...
+        // The ScrollView (an ILayoutBoundary) is sized by flex...
         Assert.AreEqual(300f, scroll.Size.X, 0.01f);
         Assert.AreEqual(200f, scroll.Size.Y, 0.01f);
         // ...but the walk stops there: its scroll-managed child keeps its manual position.

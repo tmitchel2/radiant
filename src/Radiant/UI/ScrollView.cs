@@ -13,11 +13,10 @@ namespace Radiant.UI;
 
 /// <summary>
 /// Scrollable container backed by the shared <see cref="ScrollController"/> physics
-/// engine. Unlike the legacy <see cref="ScrollPanel"/> (which physically shifts each
-/// child's position), <see cref="ScrollView"/> keeps children at their natural layout
-/// positions and scrolls by a <em>render-time translate</em>
-/// (<see cref="Renderer2D.PushScrollOffset"/>) — O(1) per frame, sub-pixel safe, and
-/// able to express momentum, bounce, snap and animated programmatic scroll.
+/// engine. Keeps children at their natural layout positions and scrolls by a
+/// <em>render-time translate</em> (<see cref="Renderer2D.PushScrollOffset"/>) — O(1) per
+/// frame, sub-pixel safe, and able to express momentum, bounce, snap and animated
+/// programmatic scroll.
 ///
 /// Input sources: mouse wheel, drag-to-pan, a draggable scrollbar thumb (+ track
 /// paging), and the keyboard (PageUp/Down/Home/End/arrows while hovered). Children are
@@ -70,6 +69,24 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
     public bool DrawBackground { get; set; } = true;
     public float ScrollbarWidth { get; set; } = 6f;
 
+    /// <summary>
+    /// Caller-set content extent on the primary scroll axis (the explicit-measurement
+    /// escape hatch). Setting it pins <see cref="ScrollBehaviour.ContentExtentOverride"/>;
+    /// leave it at its default to auto-measure from child bounds.
+    /// </summary>
+    public float ContentHeight
+    {
+        get => Controller.Behaviour.ContentExtentOverride ?? 0f;
+        set => Controller.Behaviour = Controller.Behaviour with { ContentExtentOverride = value };
+    }
+
+    /// <summary>Content units moved per wheel notch.</summary>
+    public float WheelStep
+    {
+        get => Controller.Behaviour.WheelStep;
+        set => Controller.Behaviour = Controller.Behaviour with { WheelStep = value };
+    }
+
     public IReadOnlyList<UIElement> Children => _children;
 
     /// <inheritdoc/>
@@ -97,6 +114,7 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
     public void Clear()
     {
         _children.Clear();
+        ContentHeight = 0f;
         Controller.ScrollTo(Vector2.Zero, animated: false);
     }
 

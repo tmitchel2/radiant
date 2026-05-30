@@ -63,7 +63,7 @@ public sealed record ScrollBehaviour
 
     /// <summary>
     /// Explicit content extent override (caller-managed, the legacy
-    /// <c>ScrollPanel.ContentHeight</c> escape hatch). When null, the content
+    /// <c>ScrollView.ContentHeight</c> escape hatch). When null, the content
     /// extent is measured automatically. Interpreted on the primary scroll axis.
     /// </summary>
     public float? ContentExtentOverride { get; init; }
