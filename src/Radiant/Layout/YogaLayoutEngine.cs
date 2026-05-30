@@ -61,7 +61,7 @@ public static class YogaLayoutEngine
         map[element] = node;
         ApplyStyle(node, element.Layout);
 
-        // ILayoutBoundary containers (e.g. ScrollPanel) are sized as a leaf — their children keep
+        // ILayoutBoundary containers (e.g. ScrollView) are sized as a leaf — their children keep
         // their own positioning scheme, so the walk stops here.
         if (element is IUiContainer container && element is not ILayoutBoundary && container.Children.Count > 0)
         {

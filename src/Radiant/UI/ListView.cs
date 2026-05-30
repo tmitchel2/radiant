@@ -3,22 +3,30 @@ using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Input;
+using Radiant.Scrolling;
 using Silk.NET.Input;
 
 namespace Radiant.UI;
 
 /// <summary>
 /// Vertical list of selectable text rows with mouse-wheel scrolling. Rows are
-/// scissored to the list bounds via <see cref="Renderer2D.PushClip"/>.
+/// scissored to the list bounds via <see cref="Renderer2D.PushClip"/>. Scroll state
+/// is delegated to the shared <see cref="ScrollController"/> (clamped, wheel-step =
+/// <see cref="RowHeight"/>) so the offset/clamp/scrollbar logic isn't reimplemented here.
 /// </summary>
 public class ListView : UIElement
 {
     private readonly MsdfFont _font;
+    private readonly ScrollController _scroll =
+        new(new ScrollBehaviour { Overscroll = OverscrollMode.Clamp, Indicators = IndicatorVisibility.None });
     private int _hoveredIndex = -1;
     private int _selectedIndex;
-    private float _scrollOffset;
+    private bool _mouseOver;
 
     public ListView(MsdfFont font) { _font = font; }
+
+    /// <summary>Current vertical scroll offset (content units). Exposed for tests.</summary>
+    internal float ScrollOffset => _scroll.Offset.Y;
 
     public IReadOnlyList<string> Items { get; set; } = Array.Empty<string>();
 
@@ -39,6 +47,8 @@ public class ListView : UIElement
 
     public event Action<int>? SelectionChanged;
 
+    public override bool IsCapturingInput => _mouseOver && _scroll.CanScrollVertical;
+
     private float VisibleHeight => Math.Max(0f, Size.Y - Padding * 2);
     private float ContentHeight => Items.Count * RowHeight;
     private float MaxScrollOffset => Math.Max(0f, ContentHeight - VisibleHeight);
@@ -47,18 +57,18 @@ public class ListView : UIElement
     {
         if (!Visible || !Enabled) return;
 
-        var mouseOver = ContainsPoint(input.MousePosition);
+        _mouseOver = ContainsPoint(input.MousePosition);
 
-        if (mouseOver && MathF.Abs(input.ScrollDelta.Y) > 0.001f)
-        {
-            _scrollOffset -= input.ScrollDelta.Y * RowHeight;
-            _scrollOffset = Math.Clamp(_scrollOffset, 0f, MaxScrollOffset);
-        }
+        _scroll.Behaviour = _scroll.Behaviour with { WheelStep = RowHeight };
+        _scroll.SetExtents(new Vector2(0, VisibleHeight), new Vector2(0, ContentHeight));
+        if (_mouseOver && MathF.Abs(input.ScrollDelta.Y) > 0.001f)
+            _scroll.ApplyWheel(new Vector2(0, input.ScrollDelta.Y));
+        _scroll.Update(deltaTime);
 
         _hoveredIndex = -1;
-        if (mouseOver)
+        if (_mouseOver)
         {
-            var relY = input.MousePosition.Y - (Position.Y + Padding) + _scrollOffset;
+            var relY = input.MousePosition.Y - (Position.Y + Padding) + _scroll.Offset.Y;
             var idx = (int)(relY / RowHeight);
             if (idx >= 0 && idx < Items.Count) _hoveredIndex = idx;
 
@@ -86,7 +96,7 @@ public class ListView : UIElement
         renderer.PushClip(contentLeft, contentTop, rowWidth, VisibleHeight);
         for (var i = 0; i < Items.Count; i++)
         {
-            var y = contentTop + i * RowHeight - _scrollOffset;
+            var y = contentTop + i * RowHeight - _scroll.Offset.Y;
             // Skip rows clearly outside the clipped band to save vertex work.
             if (y + RowHeight < contentTop - RowHeight) continue;
             if (y > contentTop + VisibleHeight + RowHeight) continue;
@@ -113,7 +123,7 @@ public class ListView : UIElement
             renderer.DrawFilledRect(trackPos, trackSize, UIColors.BackgroundLight);
 
             var thumbHeight = Math.Max(20f, VisibleHeight * (VisibleHeight / ContentHeight));
-            var thumbY = trackPos.Y + (_scrollOffset / maxScroll) * (VisibleHeight - thumbHeight);
+            var thumbY = trackPos.Y + (_scroll.Offset.Y / maxScroll) * (VisibleHeight - thumbHeight);
             renderer.DrawFilledRect(new Vector2(trackPos.X, thumbY), new Vector2(ScrollbarWidth, thumbHeight), UIColors.Border);
         }
     }
