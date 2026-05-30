@@ -11,7 +11,7 @@ using Buffer = Silk.NET.WebGPU.Buffer;
 
 namespace Radiant.Graphics2D
 {
-    public unsafe class Renderer2D : IDisposable
+    public unsafe partial class Renderer2D : IDisposable
     {
         private WebGPU _wgpu = null!;
         private Device* _device;
@@ -127,6 +127,7 @@ namespace Radiant.Graphics2D
             CreateBindGroup();
             CreateMsdfPipeline();
             CreateSdfShapePipeline();
+            CreateImagePipeline();
         }
 
         private void CreateUniformBuffer()
@@ -577,6 +578,8 @@ namespace Radiant.Graphics2D
             _msdfRanges.Clear();
             _sdfShapeVertices.Clear();
             _sdfShapeRanges.Clear();
+            _imageVertices.Clear();
+            _imageRanges.Clear();
             _clipStack.Clear();
             _scrollOffsetStack.Clear();
             _ranges.Clear();
@@ -1192,6 +1195,7 @@ namespace Radiant.Graphics2D
             }
 
             EmitSdfShapeDraws(renderPass);
+            EmitImageDraws(renderPass);
             EmitMsdfDraws(renderPass);
 
             // Restore full-attachment scissor for any subsequent consumer.
@@ -1355,6 +1359,8 @@ namespace Radiant.Graphics2D
             if (_msdfAtlasBindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_msdfAtlasBindGroupLayout);
             if (_sdfShapePipeline != null) _wgpu.RenderPipelineRelease(_sdfShapePipeline);
             if (_sdfShapeShader != null) _wgpu.ShaderModuleRelease(_sdfShapeShader);
+
+            DisposeImageResources();
 
             GC.SuppressFinalize(this);
         }
