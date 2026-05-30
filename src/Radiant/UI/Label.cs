@@ -34,15 +34,15 @@ public class Label : UIElement, ILayoutMeasurable
     {
         if (!Visible || string.IsNullOrEmpty(Text)) return;
 
-        renderer.DrawText(_font, Text, Position, TextColor, TextScale * 7f);
+        renderer.DrawText(_font, Text, Position, TextColor, TextScale * Renderer2D.DefaultTextHeightPx);
     }
 
     /// <inheritdoc/>
     public Vector2 MeasureContent(float availableWidth)
     {
-        // Mirror the pixel height used in Draw (7f = legacy bitmap-to-MSDF scale). Single line: width
+        // Mirror the pixel height used in Draw. Single line: width
         // is the measured glyph run; height is one line.
-        var pixelHeight = TextScale * 7f;
+        var pixelHeight = TextScale * Renderer2D.DefaultTextHeightPx;
         return new Vector2(_font.MeasureTextWidth(Text, pixelHeight), _font.LineHeightEm * pixelHeight);
     }
 }

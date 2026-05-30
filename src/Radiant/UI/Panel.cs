@@ -101,7 +101,7 @@ public class Panel : UIElement, IUiContainer
         if (!string.IsNullOrEmpty(Title))
         {
             var titlePos = Position + new Vector2(Padding, Padding);
-            renderer.DrawText(_font, Title, titlePos, UIColors.Text, 1.2f * 7f);
+            renderer.DrawText(_font, Title, titlePos, UIColors.Text, 1.2f * Renderer2D.DefaultTextHeightPx);
         }
 
         // Draw children
