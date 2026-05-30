@@ -49,10 +49,10 @@ Yoga rounds results to the pixel grid (default point scale 1.0), so expect ≤1p
 raw `MeasureTextWidth`.
 
 ### Scroll regions — `ILayoutBoundary`
-A container that implements `ILayoutBoundary` (e.g. `ScrollPanel`) is **sized and positioned** by flex
+A container that implements `ILayoutBoundary` (e.g. `ScrollView`) is **sized and positioned** by flex
 like any item, but the walk **stops at it** — its children keep their own positioning scheme. This is
-what lets a scroll region participate in a flex layout without the engine fighting its manual,
-scroll-shifted child positions.
+what lets a scroll region participate in a flex layout without the engine fighting its scroll offset.
+See [scrolling-and-gestures.md](scrolling-and-gestures.md) for the scroll/gesture system.
 
 ## Styling
 
@@ -156,7 +156,7 @@ and the content host should still scroll.
 | Thick AA line/segment + arc/pie shapes | The `DrawLine` 1px primitive covers current needs; new shapes are now just a shader `case` + `Draw*` | Dividers/connectors/circular sliders need crisp strokes |
 | True (non-circular) ellipse SDF | Exact elliptical distance is iterative; circles/rings cover UI; legacy tessellated `DrawEllipse*` remains | A UI genuinely needs an anti-aliased ellipse |
 | Rounded / SDF clipping (vs rectangular scissor) | `PushClip` is a rectangular scissor; rounded panels clip content squarely at the corners | Content visibly overflowing a rounded container's corners |
-| `ScrollPanel` as a *full* layout boundary (laying out its children in content space) | First cut treats it as a leaf (children stay manually positioned); sufficient for `SettingsShell` | Nested flex content inside a scroll region is needed |
+| `ScrollView` as a *full* layout boundary (laying out its children in content space via a nested Yoga pass) | First cut treats it as a leaf (children stay manually positioned / `ContentHeight`-measured); sufficient for `SettingsShell` | Nested flex content inside a scroll region is needed |
 | Yoga-tree caching / incremental layout | Rebuilding per frame is fine at panel scale | Measured frame cost, or trees beyond ~500 nodes |
 | Style inheritance / `!important` | Flat cascade covers current needs (descendant/ancestor matching is already expressible as a predicate that walks parents) | Cascade expressiveness demand |
 | `Renderer2D` no-clip fast path skips SDF-shape + MSDF draws | Matches existing MSDF behaviour; the app always uses the clip-aware `BeginFrame` | A consumer needs the no-clip path to draw text/shapes |
