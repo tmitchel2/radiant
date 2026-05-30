@@ -23,7 +23,7 @@ namespace Radiant.UI;
 /// hit-tested in content space (the pointer is shifted by the offset while updating
 /// them) and a hovered, scrollable child takes priority (nested-scroll yield).
 /// </summary>
-public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
+public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IScrollContentHost, IAnimating
 {
     private readonly List<UIElement> _children = [];
     private readonly PanGesture _pan;
@@ -68,6 +68,25 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
     public Vector4 BackgroundColor { get; set; } = UIColors.Background;
     public bool DrawBackground { get; set; } = true;
     public float ScrollbarWidth { get; set; } = 6f;
+
+    /// <summary>
+    /// When true, <see cref="YogaLayoutEngine"/> lays this view's children out as a flex column in
+    /// content space (using <see cref="ContentLayout"/>) instead of leaving them at manual positions.
+    /// Scroll, hit-testing and content-extent measurement already work the same way in both modes.
+    /// </summary>
+    public bool LayoutChildren { get; set; }
+
+    /// <summary>
+    /// Flex style applied to the synthetic content root when <see cref="LayoutChildren"/> is true.
+    /// Defaults to a padded vertical column whose children stretch to the content width.
+    /// </summary>
+    public LayoutStyle ContentLayout { get; set; } = new LayoutStyle
+    {
+        FlexDirection = FlexDirection.Column,
+        Padding = Edges.All(10f),
+        RowGap = 6f,
+        AlignItems = Align.Stretch,
+    };
 
     /// <summary>
     /// Caller-set content extent on the primary scroll axis (the explicit-measurement
@@ -262,7 +281,9 @@ public class ScrollView : UIElement, IUiContainer, ILayoutBoundary, IAnimating
 
     private Vector2 MeasureContentSize()
     {
-        var overrideExtent = Controller.Behaviour.ContentExtentOverride;
+        // When the engine lays out our children it also owns the content extent — auto-measure from
+        // the laid-out child bounds and ignore any (possibly stale) caller-set override.
+        var overrideExtent = LayoutChildren ? null : Controller.Behaviour.ContentExtentOverride;
         var width = Size.X;
         var height = Size.Y;
 

@@ -87,6 +87,16 @@ public static class YogaLayoutEngine
 
     private static void WriteBackChildren(UIElement element, Vector2 origin, Dictionary<UIElement, Node> map)
     {
+        // A scroll container can opt into laying its children out as an independent flex subtree in
+        // content space (full content width, unbounded height). It still stops the parent walk (it is
+        // an ILayoutBoundary), so we run a second, self-contained pass rooted at it once its own Size
+        // has been written back by the parent above.
+        if (element is IScrollContentHost { LayoutChildren: true } host && element is IUiContainer)
+        {
+            CalculateScrollContent(element, host);
+            return;
+        }
+
         if (element is not IUiContainer container || element is ILayoutBoundary) return;
 
         foreach (var child in container.Children)
@@ -97,6 +107,45 @@ public static class YogaLayoutEngine
             child.Size = new Vector2(YGNodeLayoutGetWidth(node), YGNodeLayoutGetHeight(node));
             WriteBackChildren(child, childPosition, map);
         }
+    }
+
+    /// <summary>
+    /// Lays a scroll container's children out as an independent flex subtree in content space:
+    /// available width is the container's content width (<c>Size.X</c> minus the scrollbar gutter),
+    /// available height is unbounded (Yoga's <see cref="float.NaN"/> sentinel) so the column is
+    /// content-sized. Children are written at positions relative to the container's
+    /// <see cref="UIElement.Position"/> (unscrolled); the container applies the scroll offset when it
+    /// draws, and auto-measures its content extent from these laid-out child bounds. Must run only
+    /// after the container's own <see cref="UIElement.Size"/> has been written back.
+    /// </summary>
+    private static void CalculateScrollContent(UIElement container, IScrollContentHost host)
+    {
+        if (container is not IUiContainer c || c.Children.Count == 0) return;
+
+        var map = new Dictionary<UIElement, Node>();
+        var rootNode = YGNodeNew();
+        ApplyStyle(rootNode, host.ContentLayout);
+
+        var index = 0;
+        foreach (var child in c.Children)
+        {
+            YGNodeInsertChild(rootNode, Build(child, map), (nuint)index);
+            index++;
+        }
+
+        var contentWidth = MathF.Max(0f, container.Size.X - host.ScrollbarWidth);
+        YGNodeCalculateLayout(rootNode, contentWidth, float.NaN, YGDirection.LTR);
+
+        foreach (var child in c.Children)
+        {
+            var node = map[child];
+            var childPosition = container.Position + new Vector2(YGNodeLayoutGetLeft(node), YGNodeLayoutGetTop(node));
+            child.Position = childPosition;
+            child.Size = new Vector2(YGNodeLayoutGetWidth(node), YGNodeLayoutGetHeight(node));
+            WriteBackChildren(child, childPosition, map);
+        }
+
+        YGNodeFreeRecursive(rootNode);
     }
 
     private static void ApplyStyle(Node node, LayoutStyle s)
