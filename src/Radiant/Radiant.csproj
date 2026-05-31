@@ -25,6 +25,7 @@
   <ItemGroup>
     <!-- Meta's Yoga flexbox/grid layout engine (pure-C# port, AOT/trim-safe). -->
     <PackageReference Include="Yoga.Net" Version="3.2.3" />
+    <PackageReference Include="Silk.NET.GLFW" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Input.Glfw" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Input.Sdl" Version="2.22.0" />
