@@ -36,6 +36,9 @@ namespace Radiant
         /// <summary>Gets the window height in pixels.</summary>
         public int WindowHeight => _window?.Size.Y ?? 0;
 
+        /// <summary>Requests the window to close, ending the run loop after the current frame.</summary>
+        public void Close() => _window?.Close();
+
         public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
             Run(title, width, height, handedness, renderCallback, null, backgroundColor);
