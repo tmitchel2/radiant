@@ -22,6 +22,7 @@ namespace Radiant
         private bool _disposed;
         private Handedness _handedness;
         private Vector4 _backgroundColor;
+        private RadiantWindowStyle _style = RadiantWindowStyle.Default;
 
         // Input state
         private IInputContext? _inputContext;
@@ -42,12 +43,43 @@ namespace Radiant
         /// <summary>Gets the framebuffer height in physical pixels (≥ window height on high-DPI displays).</summary>
         public int FramebufferHeight => _window?.FramebufferSize.Y ?? 0;
 
+        /// <summary>Gets the window's top-left x in screen coordinates (logical screen pixels).</summary>
+        public int WindowX => _window?.Position.X ?? 0;
+
+        /// <summary>Gets the window's top-left y in screen coordinates (logical screen pixels).</summary>
+        public int WindowY => _window?.Position.Y ?? 0;
+
+        /// <summary>
+        /// Gets the cursor position in screen coordinates: the window's screen position plus the
+        /// window-relative mouse position. Used to hit-test the cursor against other windows' rects
+        /// during a cross-window drag. (Logical units; multi-monitor + high-DPI mixing is a known gap.)
+        /// </summary>
+        public Vector2 GlobalCursor => new(WindowX + _inputState.MousePosition.X, WindowY + _inputState.MousePosition.Y);
+
         /// <summary>Requests the window to close, ending the run loop after the current frame.</summary>
         public void Close() => _window?.Close();
+
+        /// <summary>Move the window's top-left to a screen position (used by the drag overlay to follow the cursor).</summary>
+        public void MoveWindow(int x, int y)
+        {
+            if (_window != null) _window.Position = new Vector2D<int>(x, y);
+        }
+
+        /// <summary>Show or hide the window at runtime (the drag overlay hides itself when no drag is active).</summary>
+        public void SetVisible(bool visible)
+        {
+            if (_window != null) _window.IsVisible = visible;
+        }
 
         public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
             Run(title, width, height, handedness, renderCallback, null, backgroundColor);
+        }
+
+        public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Action<double>? updateCallback, Vector4? backgroundColor, RadiantWindowStyle style)
+        {
+            _style = style ?? RadiantWindowStyle.Default;
+            Run(title, width, height, handedness, renderCallback, updateCallback, backgroundColor);
         }
 
         public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Action<double>? updateCallback, Vector4? backgroundColor = null)
@@ -61,7 +93,10 @@ namespace Radiant
             options.API = GraphicsAPI.None;
             options.Size = new Vector2D<int>(width, height);
             options.Title = title;
-            options.IsVisible = true;
+            options.IsVisible = _style.Visible;
+            options.TopMost = _style.TopMost;
+            options.TransparentFramebuffer = _style.Transparent;
+            options.WindowBorder = _style.Decorated ? WindowBorder.Resizable : WindowBorder.Hidden;
             options.ShouldSwapAutomatically = false;
 
             _window = Window.Create(options);
@@ -87,6 +122,34 @@ namespace Radiant
             // Initialize input
             _inputContext = _window.CreateInput();
             InitializeInput();
+
+            if (_style.MousePassthrough)
+            {
+                TrySetMousePassthrough();
+            }
+        }
+
+        // GLFW_MOUSE_PASSTHROUGH lets clicks fall through a transparent overlay to the window beneath.
+        // Silk.NET 2.22's WindowAttributeSetter enum predates this GLFW 3.4 attribute, so we pass the raw
+        // constant. Best-effort: the source window keeps OS pointer capture for a held drag, so a drop
+        // still resolves even where passthrough isn't honoured.
+        private void TrySetMousePassthrough()
+        {
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null) return;
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                const int GLFW_MOUSE_PASSTHROUGH = 0x0002000D;
+                glfw.SetWindowAttrib(
+                    (Silk.NET.GLFW.WindowHandle*)handle.Value,
+                    (Silk.NET.GLFW.WindowAttributeSetter)GLFW_MOUSE_PASSTHROUGH,
+                    true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Mouse passthrough unavailable: {ex.Message}");
+            }
         }
 
         private void InitializeInput()
