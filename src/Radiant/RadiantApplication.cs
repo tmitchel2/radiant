@@ -30,11 +30,17 @@ namespace Radiant
         /// <summary>Gets the current input state.</summary>
         public InputState Input => _inputState;
 
-        /// <summary>Gets the window width in pixels.</summary>
+        /// <summary>Gets the window width in logical pixels.</summary>
         public int WindowWidth => _window?.Size.X ?? 0;
 
-        /// <summary>Gets the window height in pixels.</summary>
+        /// <summary>Gets the window height in logical pixels.</summary>
         public int WindowHeight => _window?.Size.Y ?? 0;
+
+        /// <summary>Gets the framebuffer width in physical pixels (≥ window width on high-DPI displays).</summary>
+        public int FramebufferWidth => _window?.FramebufferSize.X ?? 0;
+
+        /// <summary>Gets the framebuffer height in physical pixels (≥ window height on high-DPI displays).</summary>
+        public int FramebufferHeight => _window?.FramebufferSize.Y ?? 0;
 
         /// <summary>Requests the window to close, ending the run loop after the current frame.</summary>
         public void Close() => _window?.Close();
@@ -202,7 +208,17 @@ namespace Radiant
 
             var renderPass = _engineState._wgpu.CommandEncoderBeginRenderPass(encoder, in renderPassDescriptor);
 
-            _renderer.BeginFrame();
+            // Start the frame with the real attachment size (physical framebuffer pixels) and the
+            // logical→physical pixel scale. The swapchain is sized to FramebufferSize, while the camera
+            // is in logical units, so pixelScale = framebuffer / window. This enables clipping AND gives
+            // ApplyScissor a valid full-attachment rect — without it, attachmentWidth/Height default to
+            // 0, so the null-clip scissor collapses to (0,0,0,0) and every image / MSDF-text / SDF-shape
+            // draw is clipped away (only un-scissored filled rects/lines survived). That left the
+            // compositing host window blank below the tab strip.
+            var fb = _window!.FramebufferSize;
+            var logical = _window.Size;
+            var pixelScale = logical.X > 0 ? (float)fb.X / logical.X : 1f;
+            _renderer.BeginFrame((uint)fb.X, (uint)fb.Y, pixelScale);
 
             // User rendering code
             _renderCallback?.Invoke(_renderer);
