@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Numerics;
 using Radiant.Graphics;
 using Radiant.Graphics2D;
@@ -23,6 +24,7 @@ namespace Radiant
         private Handedness _handedness;
         private Vector4 _backgroundColor;
         private RadiantWindowStyle _style = RadiantWindowStyle.Default;
+        private readonly Stopwatch _presentStopwatch = new();
 
         // Input state
         private IInputContext? _inputContext;
@@ -55,6 +57,13 @@ namespace Radiant
         /// during a cross-window drag. (Logical units; multi-monitor + high-DPI mixing is a known gap.)
         /// </summary>
         public Vector2 GlobalCursor => new(WindowX + _inputState.MousePosition.X, WindowY + _inputState.MousePosition.Y);
+
+        /// <summary>
+        /// Wall-clock time of the most recent <c>SurfacePresent</c> call, in milliseconds (typically the
+        /// vsync wait). Lets a host thread the real window-present cost back to an offscreen renderer tab
+        /// whose own "present" is only an offscreen copy/publish. 0 until the first frame is presented.
+        /// </summary>
+        public double LastPresentMs { get; private set; }
 
         /// <summary>Requests the window to close, ending the run loop after the current frame.</summary>
         public void Close() => _window?.Close();
@@ -295,7 +304,10 @@ namespace Radiant
             var commandBuffer = _engineState._wgpu.CommandEncoderFinish(encoder, in commandBufferDescriptor);
 
             _engineState._wgpu.QueueSubmit(queue, 1, &commandBuffer);
+            _presentStopwatch.Restart();
             _engineState._wgpu.SurfacePresent(_engineState._surface);
+            _presentStopwatch.Stop();
+            LastPresentMs = _presentStopwatch.Elapsed.TotalMilliseconds;
 
             _engineState._wgpu.CommandBufferRelease(commandBuffer);
             _engineState._wgpu.RenderPassEncoderRelease(renderPass);
