@@ -233,10 +233,16 @@ namespace Radiant
 
         private void OnFramebufferResize(Vector2D<int> size)
         {
-            if (_disposed || _engineState == null || _camera == null) return;
+            if (_disposed || _engineState == null || _camera == null || _window == null) return;
 
+            // The event delivers the PHYSICAL framebuffer size (used to resize the swapchain). The 2D
+            // camera, however, is in LOGICAL units — it's created from _window.Size at load, and OnRender
+            // applies pixelScale = framebuffer / logical separately. Setting the camera viewport to the
+            // physical size here would double its extent on a high-DPI (e.g. 2× Retina) display, mapping
+            // logical-coordinate draws to a quarter of the window (half width × half height). Keep the
+            // camera logical so it stays consistent with load-time + per-frame scaling.
             CreateSwapchain(_engineState);
-            _camera.SetViewportSize(size.X, size.Y);
+            _camera.SetViewportSize(_window.Size.X, _window.Size.Y);
         }
 
         private void OnRender(double delta)
