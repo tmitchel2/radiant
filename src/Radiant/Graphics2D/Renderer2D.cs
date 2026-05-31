@@ -13,6 +13,14 @@ namespace Radiant.Graphics2D
 {
     public unsafe class Renderer2D : IDisposable
     {
+        /// <summary>
+        /// Default em-square height in logical pixels for UI text (the font's
+        /// nominal "1.0" height). All widgets and labels that don't pass an
+        /// explicit size scale a multiple of this base, so it is the single
+        /// knob for the overall UI text size.
+        /// </summary>
+        public const float DefaultTextHeightPx = 10f;
+
         private WebGPU _wgpu = null!;
         private Device* _device;
         private Queue* _queue;
@@ -978,7 +986,7 @@ namespace Radiant.Graphics2D
         /// bitmap-font character height so callers ported from the bitmap path
         /// keep their existing layout pitch.
         /// </summary>
-        public void DrawText(MsdfFont font, string text, Vector2 position, Vector4 color, float pixelHeight = 7f)
+        public void DrawText(MsdfFont font, string text, Vector2 position, Vector4 color, float pixelHeight = DefaultTextHeightPx)
         {
             DrawText(font, text, position.X, position.Y, pixelHeight, color);
         }
