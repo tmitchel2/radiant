@@ -59,6 +59,31 @@ namespace Radiant
         public Vector2 GlobalCursor => new(WindowX + _inputState.MousePosition.X, WindowY + _inputState.MousePosition.Y);
 
         /// <summary>
+        /// The OS-polled cursor position (window-relative, logical px) read directly via
+        /// <c>glfwGetCursorPos</c> each call — independent of the <see cref="OnMouseMove"/> event. Used to
+        /// diagnose / work around macOS GLFW not firing the cursor-pos callback during a button-held drag.
+        /// Falls back to the event-fed <see cref="InputState.MousePosition"/> when no GLFW handle exists.
+        /// </summary>
+        public Vector2 PolledCursorPosition
+        {
+            get
+            {
+                try
+                {
+                    var handle = _window?.Native?.Glfw;
+                    if (handle is null) return _inputState.MousePosition;
+                    var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                    glfw.GetCursorPos((Silk.NET.GLFW.WindowHandle*)handle.Value, out var x, out var y);
+                    return new Vector2((float)x, (float)y);
+                }
+                catch
+                {
+                    return _inputState.MousePosition;
+                }
+            }
+        }
+
+        /// <summary>
         /// Wall-clock time of the most recent <c>SurfacePresent</c> call, in milliseconds (typically the
         /// vsync wait). Lets a host thread the real window-present cost back to an offscreen renderer tab
         /// whose own "present" is only an offscreen copy/publish. 0 until the first frame is presented.
@@ -136,28 +161,72 @@ namespace Radiant
             {
                 TrySetMousePassthrough();
             }
+
+            if (!_style.FocusOnShow)
+            {
+                TryDisableFocusOnShow();
+            }
         }
 
-        // GLFW_MOUSE_PASSTHROUGH lets clicks fall through a transparent overlay to the window beneath.
-        // Silk.NET 2.22's WindowAttributeSetter enum predates this GLFW 3.4 attribute, so we pass the raw
-        // constant. Best-effort: the source window keeps OS pointer capture for a held drag, so a drop
-        // still resolves even where passthrough isn't honoured.
-        private void TrySetMousePassthrough()
+        // GLFW_FOCUS_ON_SHOW=false makes glfwShowWindow (and Silk.NET's IsVisible=true) reveal the window
+        // WITHOUT making it the key/focused window. Essential for the drag overlay: on macOS, a window
+        // becoming key mid-drag steals focus from the host and delivers the host a spurious mouse-up,
+        // which ends the drag one frame after it starts (diagnosed live: `held` flips false exactly when
+        // the overlay is shown). FocusOnShow is a *supported* WindowAttributeSetter, so no raw constant.
+        private void TryDisableFocusOnShow()
         {
             try
             {
                 var handle = _window?.Native?.Glfw;
-                if (handle is null) return;
+                if (handle is null)
+                {
+                    Console.WriteLine("[focus-on-show] GLFW window handle is null — attribute NOT applied.");
+                    return;
+                }
                 var glfw = Silk.NET.GLFW.Glfw.GetApi();
-                const int GLFW_MOUSE_PASSTHROUGH = 0x0002000D;
                 glfw.SetWindowAttrib(
                     (Silk.NET.GLFW.WindowHandle*)handle.Value,
-                    (Silk.NET.GLFW.WindowAttributeSetter)GLFW_MOUSE_PASSTHROUGH,
-                    true);
+                    Silk.NET.GLFW.WindowAttributeSetter.FocusOnShow,
+                    false);
+                Console.WriteLine("[focus-on-show] disabled (overlay shows without stealing key-window focus).");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Mouse passthrough unavailable: {ex.Message}");
+                Console.WriteLine($"[focus-on-show] unavailable: {ex.Message}");
+            }
+        }
+
+        // GLFW_MOUSE_PASSTHROUGH lets clicks fall through a transparent overlay to the window beneath.
+        // Silk.NET 2.22's WindowAttributeSetter enum lacks this GLFW 3.4 attribute, but SetWindowAttrib is
+        // a thin P/Invoke that forwards whatever int we pass — so casting the raw constant DOES reach
+        // native glfwSetWindowAttrib (the missing enum member is cosmetic, not a functional blocker). The
+        // bundled native is GLFW 3.4 with the Cocoa backend, which implements passthrough via
+        // -[NSWindow setIgnoresMouseEvents:]. So if passthrough isn't taking effect, the cause is the
+        // handle/timing or a Cocoa interaction — NOT the binding. This method instruments both: it reports
+        // whether the GLFW handle was available and reads the attribute back to confirm it was honoured.
+        private void TrySetMousePassthrough()
+        {
+            const int GLFW_MOUSE_PASSTHROUGH = 0x0002000D;
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null)
+                {
+                    Console.WriteLine(
+                        "[passthrough] GLFW window handle is null — attribute NOT applied (window may be SDL-backed or not yet created).");
+                    return;
+                }
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                var window = (Silk.NET.GLFW.WindowHandle*)handle.Value;
+                glfw.SetWindowAttrib(window, (Silk.NET.GLFW.WindowAttributeSetter)GLFW_MOUSE_PASSTHROUGH, true);
+                var readBack = glfw.GetWindowAttrib(window, (Silk.NET.GLFW.WindowAttributeGetter)GLFW_MOUSE_PASSTHROUGH);
+                Console.WriteLine(
+                    $"[passthrough] SetWindowAttrib(MOUSE_PASSTHROUGH=true) called; read-back={readBack} " +
+                    "(1 = honoured, click-through active; 0 = not honoured, overlay will steal the cursor).");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[passthrough] unavailable: {ex.Message}");
             }
         }
 

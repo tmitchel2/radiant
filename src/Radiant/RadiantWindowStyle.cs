@@ -22,6 +22,14 @@ namespace Radiant
         /// <summary>Whether the window is initially visible.</summary>
         public bool Visible { get; init; } = true;
 
+        /// <summary>
+        /// Whether showing the window (incl. a later <c>SetVisible(true)</c>) makes it the focused/key
+        /// window. False = show without taking focus — essential for an overlay revealed mid-drag, since
+        /// on macOS becoming key window steals focus from the dragging window and delivers it a spurious
+        /// mouse-up that terminates the drag. Maps to <c>GLFW_FOCUS_ON_SHOW</c>.
+        /// </summary>
+        public bool FocusOnShow { get; init; } = true;
+
         /// <summary>An ordinary opaque, decorated, focusable window.</summary>
         public static RadiantWindowStyle Default { get; } = new();
     }
