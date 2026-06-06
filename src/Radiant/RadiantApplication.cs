@@ -137,6 +137,56 @@ namespace Radiant
         }
 
         /// <summary>
+        /// Toggle mouse passthrough (GLFW_MOUSE_PASSTHROUGH / -[NSWindow setIgnoresMouseEvents:]) at runtime
+        /// — unlike <see cref="RadiantWindowStyle.MousePassthrough"/>, which only applies at creation. Used so
+        /// a live-tear-off follower can be click-through while it tracks the cursor mid-drag (so showing/hiding
+        /// it under the cursor can't churn the source window's pointer state and end the drag), then take
+        /// normal mouse input once it settles into a standalone window. Best-effort + no-op if the GLFW handle
+        /// is unavailable. See <see cref="TrySetMousePassthrough"/> for why the raw constant is used.
+        /// </summary>
+        public void SetMousePassthrough(bool passthrough)
+        {
+            const int GLFW_MOUSE_PASSTHROUGH = 0x0002000D;
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null) return;
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                glfw.SetWindowAttrib(
+                    (Silk.NET.GLFW.WindowHandle*)handle.Value,
+                    (Silk.NET.GLFW.WindowAttributeSetter)GLFW_MOUSE_PASSTHROUGH,
+                    passthrough);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[passthrough] runtime toggle unavailable: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Set the whole-window opacity (glfwSetWindowOpacity / NSWindow.alphaValue), 0 = fully transparent,
+        /// 1 = opaque. Used to make a sole-tab window-drag "dock" into a target strip mid-drag: the dragged
+        /// window goes transparent so the target's in-strip placeholder shows through, while the window stays
+        /// on-screen and ordered-in — so it keeps the OS pointer capture that delivers the release (unlike a
+        /// hide / off-screen move, which on macOS would drop capture or be clamped back on-screen). Restored to
+        /// 1 when the drag leaves the strip or settles. Best-effort + no-op if the GLFW handle is unavailable.
+        /// </summary>
+        public void SetOpacity(float opacity)
+        {
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null) return;
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                glfw.SetWindowOpacity((Silk.NET.GLFW.WindowHandle*)handle.Value, opacity);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[opacity] unavailable: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Bring the window to the front and give it input focus (glfwFocusWindow). Used to activate a
         /// torn-off window once a drag settles. Do NOT call mid-drag: focusing steals the key window from the
         /// dragging window and ends the drag (the focus-on-show pitfall). Best-effort + no-op if unavailable.
