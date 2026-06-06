@@ -105,6 +105,55 @@ namespace Radiant
             if (_window != null) _window.IsVisible = visible;
         }
 
+        /// <summary>
+        /// Toggle always-on-top (GLFW_FLOATING) at runtime — unlike <see cref="RadiantWindowStyle.TopMost"/>,
+        /// which only applies at creation. Used so a torn-off tab window can float in front of its source
+        /// while being dragged, then drop back to a normal level once it settles. Best-effort + no-op if the
+        /// GLFW handle is unavailable. Topmost (unlike focus-on-show) does not steal key-window focus, so it
+        /// is safe to enable during a held drag.
+        /// </summary>
+        public void SetTopMost(bool topMost)
+        {
+            // Silk.NET 2.22's WindowAttributeSetter enum lacks GLFW_FLOATING (a GLFW 3.4 attribute), but
+            // SetWindowAttrib forwards the raw int to native glfwSetWindowAttrib — same approach as
+            // GLFW_MOUSE_PASSTHROUGH below.
+            const int GLFW_FLOATING = 0x00020007;
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null) return;
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                glfw.SetWindowAttrib(
+                    (Silk.NET.GLFW.WindowHandle*)handle.Value,
+                    (Silk.NET.GLFW.WindowAttributeSetter)GLFW_FLOATING,
+                    topMost);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[topmost] unavailable: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Bring the window to the front and give it input focus (glfwFocusWindow). Used to activate a
+        /// torn-off window once a drag settles. Do NOT call mid-drag: focusing steals the key window from the
+        /// dragging window and ends the drag (the focus-on-show pitfall). Best-effort + no-op if unavailable.
+        /// </summary>
+        public void Focus()
+        {
+            try
+            {
+                var handle = _window?.Native?.Glfw;
+                if (handle is null) return;
+                var glfw = Silk.NET.GLFW.Glfw.GetApi();
+                glfw.FocusWindow((Silk.NET.GLFW.WindowHandle*)handle.Value);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[focus] unavailable: {ex.Message}");
+            }
+        }
+
         public void Run(string title, int width, int height, Handedness handedness, Action<Renderer2D> renderCallback, Vector4? backgroundColor = null)
         {
             Run(title, width, height, handedness, renderCallback, null, backgroundColor);
