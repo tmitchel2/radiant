@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Radiant.Graphics;
 using Radiant.Graphics2D;
 using Radiant.Input;
@@ -21,6 +22,7 @@ namespace Radiant
         private Action<Renderer2D>? _renderCallback;
         private Action<double>? _updateCallback;
         private bool _disposed;
+        private bool _resizing; // re-entrancy guard for the live-resize render driven from OnFramebufferResize
         private Handedness _handedness;
         private Vector4 _backgroundColor;
         private RadiantWindowStyle _style = RadiantWindowStyle.Default;
@@ -215,7 +217,86 @@ namespace Radiant
             {
                 TryDisableFocusOnShow();
             }
+
+            TryPinLayerTopLeft();
         }
+
+        // The CAMetalLayer's default contentsGravity (`resize`) SCALES the rendered drawable to fill the
+        // layer's bounds. During a live macOS resize the drawable (sized for the resize-event) and the
+        // layer's in-flight bounds differ by up to one step, so the whole frame — including the host-drawn
+        // 2D tab strip — is scaled each tick; on a 2× Retina backing that 1-logical-px lag becomes a
+        // 2-physical-px shimmer (1× has nothing to scale, so it's stable there). Pinning the layer top-left
+        // makes a size mismatch reveal/clip at the bottom-right instead of scaling, so fixed content stays
+        // pixel-stable while resizing. macOS-only, best-effort; the render pipeline itself is already exact.
+        private void TryPinLayerTopLeft()
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return;
+            try
+            {
+                var nsWindow = (IntPtr)(_window?.Native?.Cocoa ?? 0);
+                if (nsWindow == IntPtr.Zero) return;
+                var contentView = objc_msgSend(nsWindow, Sel("contentView"));
+                if (contentView == IntPtr.Zero) return;
+                var layer = objc_msgSend(contentView, Sel("layer"));
+                if (layer == IntPtr.Zero) return;
+
+                // contentsGravity=topLeft stops the layer SCALING the drawable to fill its bounds (that scale
+                // is the resize shimmer). But the default `resize` gravity was also what mapped the 2× (Retina)
+                // drawable down into the point-sized bounds; without it the drawable draws at full pixel size
+                // (2× too big). Set contentsScale to the window's backing factor so the drawable's natural
+                // size (drawablePixels / contentsScale) equals the bounds — 1:1, correct size, and no scaling.
+                var backing = objc_msgSend_double(nsWindow, Sel("backingScaleFactor"));
+                var prevScale = objc_msgSend_double(layer, Sel("contentsScale"));
+                if (backing > 0)
+                {
+                    objc_msgSend_void_double(layer, Sel("setContentsScale:"), backing);
+                }
+                // kCAGravityTopLeft is the NSString constant whose value is literally "topLeft".
+                IntPtr gravity;
+                var utf8 = System.Text.Encoding.UTF8.GetBytes("topLeft\0");
+                fixed (byte* p = utf8)
+                {
+                    gravity = objc_msgSend_ptr(ObjcClass("NSString"), Sel("stringWithUTF8String:"), (IntPtr)p);
+                }
+                objc_msgSend_ptr(layer, Sel("setContentsGravity:"), gravity);
+                Console.WriteLine($"[resize] CAMetalLayer contentsGravity=topLeft, contentsScale {prevScale:F2}→{backing:F2} (no drawable scaling during live resize).");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[resize] could not pin layer gravity: {ex.Message}");
+            }
+        }
+
+        // ObjC interop via UTF8 byte* (no string marshalling, to satisfy CA2101). macOS-only.
+        private static IntPtr Sel(string name)
+        {
+            var utf8 = System.Text.Encoding.UTF8.GetBytes(name + "\0");
+            fixed (byte* p = utf8) return sel_registerName((IntPtr)p);
+        }
+
+        private static IntPtr ObjcClass(string name)
+        {
+            var utf8 = System.Text.Encoding.UTF8.GetBytes(name + "\0");
+            fixed (byte* p = utf8) return objc_getClass((IntPtr)p);
+        }
+
+        [DllImport("/usr/lib/libobjc.A.dylib")]
+        private static extern IntPtr objc_getClass(IntPtr name);
+
+        [DllImport("/usr/lib/libobjc.A.dylib")]
+        private static extern IntPtr sel_registerName(IntPtr name);
+
+        [DllImport("/usr/lib/libobjc.A.dylib")]
+        private static extern IntPtr objc_msgSend(IntPtr receiver, IntPtr selector);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+        private static extern IntPtr objc_msgSend_ptr(IntPtr receiver, IntPtr selector, IntPtr arg);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+        private static extern double objc_msgSend_double(IntPtr receiver, IntPtr selector);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+        private static extern void objc_msgSend_void_double(IntPtr receiver, IntPtr selector, double arg);
 
         // GLFW_FOCUS_ON_SHOW=false makes glfwShowWindow (and Silk.NET's IsVisible=true) reveal the window
         // WITHOUT making it the key/focused window. Essential for the drag overlay: on macOS, a window
@@ -353,14 +434,32 @@ namespace Radiant
         {
             if (_disposed || _engineState == null || _camera == null || _window == null) return;
 
-            // The event delivers the PHYSICAL framebuffer size (used to resize the swapchain). The 2D
-            // camera, however, is in LOGICAL units — it's created from _window.Size at load, and OnRender
-            // applies pixelScale = framebuffer / logical separately. Setting the camera viewport to the
-            // physical size here would double its extent on a high-DPI (e.g. 2× Retina) display, mapping
-            // logical-coordinate draws to a quarter of the window (half width × half height). Keep the
-            // camera logical so it stays consistent with load-time + per-frame scaling.
+            // The event delivers the PHYSICAL framebuffer size (used to resize the swapchain). The 2D camera
+            // is in LOGICAL units (created from _window.Size at load; OnRender applies pixelScale =
+            // framebuffer / logical separately), so keep the camera viewport logical here.
             CreateSwapchain(_engineState);
             _camera.SetViewportSize(_window.Size.X, _window.Size.Y);
+
+            // Render live during the resize. On macOS, Cocoa runs a modal event-tracking loop while a window
+            // edge is actively dragged, which blocks Silk's run loop — so OnUpdate/OnRender don't fire and the
+            // OS scales the last presented frame to the new proportions (squashing the content). GLFW still
+            // delivers this framebuffer-resize callback during the live resize, so drive an update + render
+            // here to redraw at the new size each step. The update lets app code react to the new size (e.g.
+            // the tab host re-sizing its renderer tabs); a redundant extra frame on a normal resize is
+            // harmless. Guarded against re-entrancy so a resize raised from within update/render can't recurse.
+            if (!_resizing)
+            {
+                _resizing = true;
+                try
+                {
+                    OnUpdate(0);
+                    OnRender(0);
+                }
+                finally
+                {
+                    _resizing = false;
+                }
+            }
         }
 
         private void OnRender(double delta)
