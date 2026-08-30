@@ -4,8 +4,8 @@ using System.Numerics;
 using Facebook.Yoga;
 using Radiant.UI;
 using static Facebook.Yoga.YGNodeAPI;
-using static Facebook.Yoga.YGNodeStyleAPI;
 using static Facebook.Yoga.YGNodeLayoutAPI;
+using static Facebook.Yoga.YGNodeStyleAPI;
 
 namespace Radiant.Layout;
 
