@@ -727,6 +727,48 @@ namespace Radiant.Graphics2D
             _filledVertices.Add(v3);
         }
 
+        // A line with a width, as two triangles. WebGPU has no lineWidth -- LineList is always one
+        // physical pixel -- so anything wider than a hairline has to be geometry. Uses the plain
+        // filled pipeline rather than the SDF one because EmitShape only emits an axis-aligned quad
+        // around a centre, and a segment at an arbitrary angle is not that.
+        //
+        // Butt caps: the quad ends exactly at p1 and p2. A chain of these therefore leaves a notch
+        // on the outside of a corner, which is what a caller joining segments should expect and
+        // handle (a disc at each joint is the usual answer).
+        public void DrawThickLine(Vector2 p1, Vector2 p2, float width, Vector4 color)
+        {
+            var along = p2 - p1;
+            var length = along.Length();
+
+            if (length <= float.Epsilon || width <= 0f)
+            {
+                // A zero-length segment has no direction to be perpendicular to. Degenerate rather
+                // than an error: callers draw what their data says, and a board with two pads at
+                // one point is a board, not a crash.
+                return;
+            }
+
+            var across = new Vector2(-along.Y, along.X) / length * (width * 0.5f);
+
+            DrawQuad(p1 + across, p2 + across, p2 - across, p1 - across, color);
+        }
+
+        // An arbitrary quad, wound a-b-c-d. Convex is assumed: a self-intersecting or reflex quad
+        // renders as its two triangles, which is the standard fan artefact rather than a fix
+        // anything here could apply. CullMode is None, so the winding direction does not matter.
+        public void DrawQuad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Vector4 color)
+        {
+            DrawTriangle(a, b, c, color);
+            DrawTriangle(a, c, d, color);
+        }
+
+        public void DrawTriangle(Vector2 a, Vector2 b, Vector2 c, Vector4 color)
+        {
+            _filledVertices.Add(new Vertex2D(a, color));
+            _filledVertices.Add(new Vertex2D(b, color));
+            _filledVertices.Add(new Vertex2D(c, color));
+        }
+
         public void DrawRectangleOutline(float x, float y, float width, float height, Vector4 color)
         {
             // Four lines forming a rectangle
