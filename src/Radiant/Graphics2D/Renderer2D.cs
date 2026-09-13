@@ -753,6 +753,253 @@ namespace Radiant.Graphics2D
             DrawQuad(p1 + across, p2 + across, p2 - across, p1 - across, color);
         }
 
+        /// <summary>A width-carrying polyline, with the caps and joins a chain of quads has not got.</summary>
+        /// <param name="points">The path, in order. Consecutive duplicates are ignored.</param>
+        /// <param name="width">How wide the stroke is.</param>
+        /// <param name="color">What colour.</param>
+        /// <param name="cap">How the two free ends are finished.</param>
+        /// <param name="join">How the outside of each corner is filled.</param>
+        /// <param name="miterLimit">
+        /// How many half-widths a miter spike may reach before it becomes a bevel. Four is the
+        /// usual default and is what SVG and Canvas use.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// <b>DrawThickLine per segment is not this.</b> Each quad ends square at the shared point,
+        /// so the outside of every bend is left with a wedge missing and the path reads as a chain
+        /// of separate rectangles rather than one stroke. This emits the joins that close it.
+        /// </para>
+        /// <para>
+        /// <b>Everything goes through the same filled pipeline as the segments</b>, deliberately. A
+        /// round join drawn with the anti-aliased SDF disc would be blended against a non-anti-aliased
+        /// quad and show a seam at every joint, which is a worse artefact than the notch it fixed.
+        /// </para>
+        /// </remarks>
+        public void DrawThickPolyline(
+            IReadOnlyList<Vector2> points,
+            float width,
+            Vector4 color,
+            LineCap cap = LineCap.Butt,
+            LineJoin join = LineJoin.Miter,
+            float miterLimit = 4f)
+        {
+            if (points is null || width <= 0f)
+            {
+                return;
+            }
+
+            var path = Distinct(points);
+
+            if (path.Count == 1)
+            {
+                // A zero-length path is still a place, and a round cap on one is a dot. Canvas-style
+                // rasterisers draw it; returning nothing here would lose a track whose two ends are
+                // the same point, which is a real thing on a real board.
+                if (cap == LineCap.Round)
+                {
+                    DrawCircleFilled(path[0].X, path[0].Y, width * 0.5f, color);
+                }
+
+                return;
+            }
+
+            if (path.Count < 2)
+            {
+                return;
+            }
+
+            var half = width * 0.5f;
+
+            for (var at = 0; at + 1 < path.Count; at++)
+            {
+                var along = Vector2.Normalize(path[at + 1] - path[at]);
+                var across = new Vector2(-along.Y, along.X) * half;
+
+                DrawQuad(
+                    path[at] + across,
+                    path[at + 1] + across,
+                    path[at + 1] - across,
+                    path[at] - across,
+                    color);
+            }
+
+            for (var at = 1; at + 1 < path.Count; at++)
+            {
+                EmitJoin(path[at - 1], path[at], path[at + 1], half, color, join, miterLimit);
+            }
+
+            EmitCap(path[0], Vector2.Normalize(path[0] - path[1]), half, color, cap);
+            EmitCap(
+                path[^1],
+                Vector2.Normalize(path[^1] - path[^2]),
+                half,
+                color,
+                cap);
+        }
+
+        // Consecutive duplicates carry no direction, so a join or a cap taken from one would
+        // normalise a zero vector and produce NaN geometry -- which renders as nothing at all, or as
+        // a triangle stretching across the whole viewport.
+        private static List<Vector2> Distinct(IReadOnlyList<Vector2> points)
+        {
+            var path = new List<Vector2>(points.Count);
+
+            foreach (var point in points)
+            {
+                if (path.Count == 0 || path[^1] != point)
+                {
+                    path.Add(point);
+                }
+            }
+
+            return path;
+        }
+
+        // The outside of one corner. `before`, `at` and `after` are consecutive path points.
+        private void EmitJoin(
+            Vector2 before,
+            Vector2 at,
+            Vector2 after,
+            float half,
+            Vector4 color,
+            LineJoin join,
+            float miterLimit)
+        {
+            var into = Vector2.Normalize(at - before);
+            var outOf = Vector2.Normalize(after - at);
+
+            var turn = (into.X * outOf.Y) - (into.Y * outOf.X);
+
+            if (turn == 0f)
+            {
+                // Straight through, or doubled back on itself. Straight needs no join; a reversal has
+                // no outside to fill -- both edges lie on top of the segments already drawn.
+                return;
+            }
+
+            // WHICH SIDE IS THE OUTSIDE. A left turn opens the gap on one side and a right turn on
+            // the other, and filling the wrong one leaves the notch exactly where it was while
+            // painting over copper that was already covered.
+            var side = turn > 0f ? -1f : 1f;
+
+            var first = at + (new Vector2(-into.Y, into.X) * half * side);
+            var second = at + (new Vector2(-outOf.Y, outOf.X) * half * side);
+
+            switch (join)
+            {
+                case LineJoin.Bevel:
+                    DrawTriangle(at, first, second, color);
+
+                    break;
+
+                case LineJoin.Round:
+                    Arc(at, first, second, color);
+
+                    break;
+
+                case LineJoin.Miter:
+                default:
+                    var sum = Vector2.Normalize(first - at) + Vector2.Normalize(second - at);
+                    var length = sum.Length();
+
+                    if (length <= float.Epsilon)
+                    {
+                        DrawTriangle(at, first, second, color);
+
+                        break;
+                    }
+
+                    var direction = sum / length;
+                    var reach = half / Vector2.Dot(direction, Vector2.Normalize(first - at));
+
+                    // PAST THE LIMIT IT BECOMES A BEVEL, which is the standard behaviour and is not
+                    // cosmetic: the spike grows as half/sin(theta/2) and is unbounded as the corner
+                    // sharpens, so a 5-degree turn would throw a needle across the viewport.
+                    if (reach > half * miterLimit)
+                    {
+                        DrawTriangle(at, first, second, color);
+
+                        break;
+                    }
+
+                    DrawQuad(at, first, at + (direction * reach), second, color);
+
+                    break;
+            }
+        }
+
+        private void EmitCap(Vector2 at, Vector2 outward, float half, Vector4 color, LineCap cap)
+        {
+            var across = new Vector2(-outward.Y, outward.X) * half;
+
+            switch (cap)
+            {
+                case LineCap.Square:
+                    DrawQuad(
+                        at + across,
+                        at + across + (outward * half),
+                        at - across + (outward * half),
+                        at - across,
+                        color);
+
+                    break;
+
+                case LineCap.Round:
+                    // TWO QUARTER TURNS THROUGH THE TIP, not one half turn from edge to edge. A cap
+                    // is exactly pi, which is the one sweep where "the short way round" has no
+                    // answer -- and the arbitrary choice went outward at one end of a line and
+                    // inward at the other, so one cap drew over copper already there and the other
+                    // drew the cap. Going via the tip states which half is meant.
+                    var tip = at + (outward * half);
+
+                    Arc(at, at + across, tip, color);
+                    Arc(at, tip, at - across, color);
+
+                    break;
+
+                case LineCap.Butt:
+                default:
+                    break;
+            }
+        }
+
+        // A fan from `centre` sweeping the short way from `from` to `to`, both of which are the same
+        // distance out. Used for a round join and for half of a round cap -- and a cap is the 180
+        // degree case, which is why the sweep is taken as an angle rather than as a turn direction.
+        private void Arc(Vector2 centre, Vector2 from, Vector2 to, Vector4 color)
+        {
+            var start = MathF.Atan2(from.Y - centre.Y, from.X - centre.X);
+            var end = MathF.Atan2(to.Y - centre.Y, to.X - centre.X);
+            var radius = (from - centre).Length();
+
+            var sweep = end - start;
+
+            while (sweep > MathF.PI)
+            {
+                sweep -= MathF.Tau;
+            }
+
+            while (sweep < -MathF.PI)
+            {
+                sweep += MathF.Tau;
+            }
+
+            // Callers must not hand this a half turn: at exactly pi the two ways round are both
+            // "shortest" and they cover different halves. EmitCap therefore goes via the tip.
+            var steps = Math.Max(1, (int)MathF.Ceiling(MathF.Abs(sweep) / (MathF.PI / 8f)));
+            var step = sweep / steps;
+            var previous = from;
+
+            for (var index = 1; index <= steps; index++)
+            {
+                var angle = start + (step * index);
+                var next = centre + (new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius);
+
+                DrawTriangle(centre, previous, next, color);
+                previous = next;
+            }
+        }
+
         // An arbitrary quad, wound a-b-c-d. Convex is assumed: a self-intersecting or reflex quad
         // renders as its two triangles, which is the standard fan artefact rather than a fix
         // anything here could apply. CullMode is None, so the winding direction does not matter.
