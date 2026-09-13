@@ -58,6 +58,11 @@ namespace Radiant.Graphics2D
         internal IReadOnlyList<MsdfVertex2D> MsdfVertices => _msdfVertices;
         internal IReadOnlyList<SdfShapeVertex2D> SdfShapeVertices => _sdfShapeVertices;
         private TextureFormat _surfaceFormat;
+
+        // HOW MANY SAMPLES EVERY PIPELINE IS BUILT FOR. A pipeline's sample count must match the
+        // attachment it draws into, so this is decided once at Initialize and is the same for all
+        // four -- a mismatch is a validation error at draw time rather than a soft failure.
+        private uint _sampleCount = 1;
         private readonly List<IntPtr> _frameBuffers = [];
 
         // Clip/scissor state
@@ -119,8 +124,24 @@ namespace Radiant.Graphics2D
             public int VertexCount;
         }
 
-        public void Initialize(Engine2State engineState, Camera2D camera)
+        /// <summary>Builds the pipelines for a target of a given sample count.</summary>
+        /// <param name="engineState">The device to build on.</param>
+        /// <param name="camera">What the projection comes from.</param>
+        /// <param name="sampleCount">
+        /// Samples per pixel in the attachment this will draw into. One for no multisampling, which
+        /// is the default and what every existing caller gets.
+        /// <para>
+        /// <b>It belongs on the pipeline, not on the draw call.</b> WebGPU validates a pipeline's
+        /// sample count against the attachment's, so the two have to be decided together — and
+        /// nothing here is anti-aliased without it: the filled pipeline rasterises hard edges, so a
+        /// long straight boundary is a staircase and a curve is a staircase that happens to look
+        /// like a curve.
+        /// </para>
+        /// </param>
+        public void Initialize(Engine2State engineState, Camera2D camera, uint sampleCount = 1)
         {
+            _sampleCount = Math.Max(1u, sampleCount);
+
             _wgpu = engineState._wgpu;
             _device = engineState._device;
             _queue = _wgpu.DeviceGetQueue(_device);
@@ -293,7 +314,7 @@ namespace Radiant.Graphics2D
                 },
                 Multisample = new MultisampleState
                 {
-                    Count = 1,
+                    Count = _sampleCount,
                     Mask = ~0u,
                     AlphaToCoverageEnabled = false
                 },
@@ -424,7 +445,7 @@ namespace Radiant.Graphics2D
                 },
                 Multisample = new MultisampleState
                 {
-                    Count = 1,
+                    Count = _sampleCount,
                     Mask = ~0u,
                     AlphaToCoverageEnabled = false,
                 },
@@ -509,7 +530,7 @@ namespace Radiant.Graphics2D
                 },
                 Multisample = new MultisampleState
                 {
-                    Count = 1,
+                    Count = _sampleCount,
                     Mask = ~0u,
                     AlphaToCoverageEnabled = false,
                 },

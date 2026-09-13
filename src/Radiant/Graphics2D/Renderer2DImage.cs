@@ -138,7 +138,7 @@ namespace Radiant.Graphics2D
                     FrontFace = _camera.Handedness == Handedness.LeftHanded ? FrontFace.CW : FrontFace.Ccw,
                     CullMode = CullMode.None,
                 },
-                Multisample = new MultisampleState { Count = 1, Mask = ~0u, AlphaToCoverageEnabled = false },
+                Multisample = new MultisampleState { Count = _sampleCount, Mask = ~0u, AlphaToCoverageEnabled = false },
                 Fragment = &fragmentState,
                 DepthStencil = null,
             };
