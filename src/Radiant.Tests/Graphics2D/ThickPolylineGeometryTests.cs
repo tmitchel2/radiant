@@ -117,8 +117,7 @@ namespace Radiant.Tests.Graphics2D
             using var helper = new VisualTestHelper();
 
             helper.Renderer.DrawThickPolyline(
-                hairpin, 12f, Fill, LineJoin.Miter is var _ ? LineCap.Butt : LineCap.Butt,
-                LineJoin.Miter, miterLimit: 4f);
+                hairpin, 12f, Fill, LineCap.Butt, LineJoin.Miter, miterLimit: 4f);
 
             using var image = helper.Rasterize();
 
@@ -203,6 +202,108 @@ namespace Radiant.Tests.Graphics2D
                 straight.FilledVertices.Count,
                 "a collinear corner was given a join it does not need.");
         }
+
+        [TestMethod]
+        public void ARoundCapReachesPastEveryFreeEndWhicheverWayThePathRuns()
+        {
+            // ONE ORIENTATION IS NOT A TEST OF THIS. A cap is exactly pi, the sweep where "shortest"
+            // has no answer, so the arbitrary choice can be outward at one end of a line and inward
+            // at the other -- which is precisely what it was doing, correct at the end and wrong at
+            // the start of the very same path.
+            foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1) })
+            {
+                var from = new Vector2(64f - (dx * 20f), 64f - (dy * 20f));
+                var to = new Vector2(64f + (dx * 20f), 64f + (dy * 20f));
+
+                using var helper = new VisualTestHelper();
+
+                helper.Renderer.DrawThickPolyline(
+                    [from, to], 12f, Fill, LineCap.Round, LineJoin.Round);
+
+                using var image = helper.Rasterize();
+
+                // Three past each end, well inside a radius of six.
+                var beyond = Vector2.Normalize(from - to) * 3f;
+
+                Assert.IsTrue(
+                    Lit(image, (int)(from.X + beyond.X), (int)(from.Y + beyond.Y)),
+                    $"the start cap is missing when the path runs ({dx},{dy}).");
+
+                Assert.IsTrue(
+                    Lit(image, (int)(to.X - beyond.X), (int)(to.Y - beyond.Y)),
+                    $"the end cap is missing when the path runs ({dx},{dy}).");
+            }
+        }
+
+        [TestMethod]
+        public void AClosedRingIsJoinedAtItsSeamRatherThanCapped()
+        {
+            // The seam is where the caller repeated the first point. Left as two caps it notches
+            // like any other corner, and it is the one corner a reader did not ask for.
+            Vector2[] ring =
+            [
+                new(40f, 40f), new(88f, 40f), new(88f, 88f), new(40f, 88f), new(40f, 40f),
+            ];
+
+            foreach (var join in new[] { LineJoin.Round, LineJoin.Miter, LineJoin.Bevel })
+            {
+                using var helper = new VisualTestHelper();
+
+                helper.Renderer.DrawThickPolyline(ring, 12f, Fill, LineCap.Butt, join);
+
+                using var image = helper.Rasterize();
+
+                // Just outside all four corners, the seam among them.
+                foreach (var (x, y) in new[] { (42, 38), (86, 38), (86, 90), (42, 90) })
+                {
+                    Assert.IsTrue(Lit(image, x, y), $"a {join} ring notches at ({x},{y}).");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void AnUnreasonableMiterLimitStillProducesFiniteGeometry()
+        {
+            // NaN fails every comparison, so an unvalidated limit lets the spike through the test
+            // meant to stop it -- and NaN in a vertex buffer draws a triangle across the viewport or
+            // nothing at all, neither of which looks like a bug in a limit.
+            Vector2[] hairpin = [new(30f, 64f), new(100f, 64f), new(31f, 70f)];
+
+            foreach (var limit in new[] { float.NaN, -1f, 0f, float.PositiveInfinity })
+            {
+                var renderer = new Renderer2D();
+
+                renderer.DrawThickPolyline(hairpin, 12f, Fill, LineCap.Round, LineJoin.Miter, limit);
+
+                foreach (var vertex in renderer.FilledVertices)
+                {
+                    Assert.IsTrue(
+                        float.IsFinite(vertex.Position.X) && float.IsFinite(vertex.Position.Y),
+                        $"a miter limit of {limit} produced non-finite geometry.");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void ADoubledBackPathIsRoundedRatherThanLeftOpen()
+        {
+            // A reversal has no "outside" in the usual sense, but a round stroke still turns around
+            // there, and the board's router does lay them.
+            Vector2[] back = [new(40f, 64f), new(90f, 64f), new(40f, 64f)];
+
+            using var helper = new VisualTestHelper();
+
+            helper.Renderer.DrawThickPolyline(back, 12f, Fill, LineCap.Round, LineJoin.Round);
+
+            using var image = helper.Rasterize();
+
+            Assert.IsTrue(Lit(image, 93, 64), "the turnaround is not rounded.");
+        }
+
+        [TestMethod]
+        public void ANullPathIsRefusedRatherThanIgnored() =>
+            Assert.ThrowsException<System.ArgumentNullException>(
+                () => new Renderer2D().DrawThickPolyline(null!, 12f, Fill));
 
         private static void AssertJoinFillsTheNotch(LineJoin join)
         {

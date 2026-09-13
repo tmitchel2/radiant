@@ -783,7 +783,9 @@ namespace Radiant.Graphics2D
             LineJoin join = LineJoin.Miter,
             float miterLimit = 4f)
         {
-            if (points is null || width <= 0f)
+            ArgumentNullException.ThrowIfNull(points);
+
+            if (width <= 0f)
             {
                 return;
             }
@@ -797,7 +799,10 @@ namespace Radiant.Graphics2D
                 // the same point, which is a real thing on a real board.
                 if (cap == LineCap.Round)
                 {
-                    DrawCircleFilled(path[0].X, path[0].Y, width * 0.5f, color);
+                    // FOUR QUARTER TURNS. Two half turns is the same trap the caps fell into: at
+                    // exactly pi both ways round are "shortest", so both halves can come out the
+                    // same one and the dot is a half-moon with a hole where the rest should be.
+                    Dot(path[0], width * 0.5f, color);
                 }
 
                 return;
@@ -810,31 +815,49 @@ namespace Radiant.Graphics2D
 
             var half = width * 0.5f;
 
-            for (var at = 0; at + 1 < path.Count; at++)
+            // A RING HAS NO ENDS, AND ITS SEAM IS A JOIN RATHER THAN TWO CAPS. Distinct only removes
+            // CONSECUTIVE duplicates, so a caller closing a loop by repeating the first point leaves
+            // it in -- and then the join loop skips that point, two caps are stamped on top of each
+            // other at arbitrary orientations, and the seam notches under every style. The
+            // convention is the one a caller can already see: first point equal to last.
+            var closed = path.Count >= 4 && path[0] == path[^1];
+
+            if (closed)
             {
-                var along = Vector2.Normalize(path[at + 1] - path[at]);
+                path.RemoveAt(path.Count - 1);
+            }
+
+            var last = closed ? path.Count : path.Count - 1;
+
+            for (var at = 0; at < last; at++)
+            {
+                var to = path[(at + 1) % path.Count];
+                var along = Vector2.Normalize(to - path[at]);
                 var across = new Vector2(-along.Y, along.X) * half;
 
                 DrawQuad(
-                    path[at] + across,
-                    path[at + 1] + across,
-                    path[at + 1] - across,
-                    path[at] - across,
-                    color);
+                    path[at] + across, to + across, to - across, path[at] - across, color);
             }
 
-            for (var at = 1; at + 1 < path.Count; at++)
+            for (var at = closed ? 0 : 1; at < (closed ? path.Count : path.Count - 1); at++)
             {
-                EmitJoin(path[at - 1], path[at], path[at + 1], half, color, join, miterLimit);
+                EmitJoin(
+                    path[((at - 1) + path.Count) % path.Count],
+                    path[at],
+                    path[(at + 1) % path.Count],
+                    half,
+                    color,
+                    join,
+                    miterLimit);
+            }
+
+            if (closed)
+            {
+                return;
             }
 
             EmitCap(path[0], Vector2.Normalize(path[0] - path[1]), half, color, cap);
-            EmitCap(
-                path[^1],
-                Vector2.Normalize(path[^1] - path[^2]),
-                half,
-                color,
-                cap);
+            EmitCap(path[^1], Vector2.Normalize(path[^1] - path[^2]), half, color, cap);
         }
 
         // Consecutive duplicates carry no direction, so a join or a cap taken from one would
@@ -872,8 +895,14 @@ namespace Radiant.Graphics2D
 
             if (turn == 0f)
             {
-                // Straight through, or doubled back on itself. Straight needs no join; a reversal has
-                // no outside to fill -- both edges lie on top of the segments already drawn.
+                // Straight through needs no join. Doubled back is different: the stroke's own outline
+                // turns around there, which under a round join is a half-disc on each side -- so a
+                // full one, and it is the case a hairpin actually produces.
+                if (join == LineJoin.Round && Vector2.Dot(into, outOf) < 0f)
+                {
+                    Dot(at, half, color);
+                }
+
                 return;
             }
 
@@ -902,7 +931,11 @@ namespace Radiant.Graphics2D
                     var sum = Vector2.Normalize(first - at) + Vector2.Normalize(second - at);
                     var length = sum.Length();
 
-                    if (length <= float.Epsilon)
+                    // A REAL TOLERANCE, NOT float.Epsilon. That constant is 1.4e-45, so the guard
+                    // read as "exactly zero" and left a band where sum is tiny, Normalize overflows,
+                    // and `reach` comes out NaN -- which fails the limit test below, because every
+                    // comparison against NaN is false, and puts NaN into the vertex buffer.
+                    if (length <= 1e-6f)
                     {
                         DrawTriangle(at, first, second, color);
 
@@ -912,10 +945,15 @@ namespace Radiant.Graphics2D
                     var direction = sum / length;
                     var reach = half / Vector2.Dot(direction, Vector2.Normalize(first - at));
 
-                    // PAST THE LIMIT IT BECOMES A BEVEL, which is the standard behaviour and is not
-                    // cosmetic: the spike grows as half/sin(theta/2) and is unbounded as the corner
-                    // sharpens, so a 5-degree turn would throw a needle across the viewport.
-                    if (reach > half * miterLimit)
+                    // Never shorter than the stroke, so a limit below one is geometrically
+                    // impossible; a non-finite one clamps to always-bevel, which is the safe way.
+                    var limit = float.IsFinite(miterLimit) ? MathF.Max(1f, miterLimit) : 1f;
+
+                    // PAST THE LIMIT IT BECOMES A BEVEL, which is standard and is not cosmetic: the
+                    // spike grows as half/sin(theta/2) and is unbounded as the corner sharpens, so a
+                    // hairpin would throw a needle across the viewport. This is SVG's rule exactly --
+                    // miterLength / strokeWidth > stroke-miterlimit.
+                    if (!float.IsFinite(reach) || reach > half * limit)
                     {
                         DrawTriangle(at, first, second, color);
 
@@ -963,6 +1001,18 @@ namespace Radiant.Graphics2D
             }
         }
 
+        // A whole disc, as four unambiguous quarter turns.
+        private void Dot(Vector2 centre, float radius, Vector4 color)
+        {
+            var right = new Vector2(radius, 0f);
+            var down = new Vector2(0f, radius);
+
+            Arc(centre, centre + right, centre + down, color);
+            Arc(centre, centre + down, centre - right, color);
+            Arc(centre, centre - right, centre - down, color);
+            Arc(centre, centre - down, centre + right, color);
+        }
+
         // A fan from `centre` sweeping the short way from `from` to `to`, both of which are the same
         // distance out. Used for a round join and for half of a round cap -- and a cap is the 180
         // degree case, which is why the sweep is taken as an angle rather than as a turn direction.
@@ -986,7 +1036,17 @@ namespace Radiant.Graphics2D
 
             // Callers must not hand this a half turn: at exactly pi the two ways round are both
             // "shortest" and they cover different halves. EmitCap therefore goes via the tip.
-            var steps = Math.Max(1, (int)MathF.Ceiling(MathF.Abs(sweep) / (MathF.PI / 8f)));
+            // SUBDIVIDED BY HOW FAR THE CHORD SAGS, not by a fixed angle. A fixed step makes a
+            // hairline pay for eight triangles it cannot show and a very wide stroke look polygonal;
+            // this keeps the error under a quarter of a pixel at any radius.
+            const float Flatness = 0.25f;
+
+            var steps = radius <= Flatness
+                ? 1
+                : Math.Clamp(
+                    (int)MathF.Ceiling(MathF.Abs(sweep) / MathF.Acos(1f - (Flatness / radius))),
+                    1,
+                    32);
             var step = sweep / steps;
             var previous = from;
 
