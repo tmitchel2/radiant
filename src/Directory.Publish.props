@@ -1,0 +1,67 @@
+<Project>
+  <!-- Publish settings for a Radiant desktop application. Import from the application's own csproj:
+
+         <Import Project="path/to/radiant/src/Directory.Publish.props" />
+
+       then `dotnet publish -c Release -r osx-arm64 -p:PublishAot=true`, and wrap the output in a macOS
+       .app bundle with tools/bundle-macos-app.sh. Nothing in Radiant imports it itself. -->
+
+  <!-- Native AOT publish path -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <StripSymbols>true</StripSymbols>
+
+    <!-- Suppress expected AOT/trim warnings from third-party libraries:
+         IL2026: RequiresUnreferencedCode (Silk.NET internals)
+         IL2104: Assembly-level trim warnings
+         IL3000: Assembly.Location returns empty in single-file (Silk.NET)
+         IL3002: RequiresAssemblyFiles (Silk.NET DependencyContext)
+         IL3050: RequiresDynamicCode (reflection-based JsonSerializer)
+         IL3053: Assembly produced AOT analysis warnings (Silk.NET.Core) -->
+    <NoWarn>$(NoWarn);IL2026;IL2104;IL3000;IL3002;IL3050;IL3053</NoWarn>
+
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+  </PropertyGroup>
+
+  <!-- Workaround for the new Apple linker (ld-prime / ld-1167+, shipped with
+       recent Xcode & Command Line Tools), which asserts
+       'ld: Assertion failed: (_addend < largeAddends.size()), file Fixup.cpp'
+       when linking large Native AOT binaries on osx-arm64 (the dotnet/runtime#93044
+       family of large-binary linker-overflow bugs). The deprecated classic linker
+       does not have this overflow, so we force it for osx AOT publishes only.
+       Remove once the new linker fixes the overflow (and drop the deprecation
+       warning that -ld_classic emits). -->
+  <ItemGroup Condition="'$(PublishAot)' == 'true' AND $([System.String]::new('$(RuntimeIdentifier)').StartsWith('osx'))">
+    <LinkerArg Include="-ld_classic" />
+  </ItemGroup>
+
+  <!-- JIT publish path (fallback) -->
+  <PropertyGroup Condition="'$(PublishAot)' != 'true' AND '$(Configuration)' == 'Release'">
+    <SelfContained>true</SelfContained>
+
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+    <PublishReadyToRun>true</PublishReadyToRun>
+
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+
+    <NoWarn>$(NoWarn);IL2026;IL2104</NoWarn>
+
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
+
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+  </PropertyGroup>
+</Project>

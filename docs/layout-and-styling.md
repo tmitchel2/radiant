@@ -131,8 +131,9 @@ of Yoga's types publicly; everything goes through `Radiant.Layout`.
 ## Manual visual check
 
 Headless tests cover layout math, style resolution, rounded-rect geometry, and (via naga) shader
-validity. The on-screen result needs a display session — drive the running demo through the agent
-control interface:
+validity. The on-screen result needs a display session and an application that uses the layout — the
+first was Dynamis's `SettingsShell` — driven through its agent control interface (see
+[host.md](host.md)). From the Dynamis repository:
 
 ```bash
 dotnet run --project src/Dynamis -- --name layout-check
@@ -141,8 +142,8 @@ dotnet run --project src/Dynamis.Cli -- instance send layout-check render.screen
     --params '{"path":"settings.png","width":1280,"height":720}'
 ```
 
-The migrated `SettingsShell` should lay out (section list + growing content host), reflow on resize,
-and the content host should still scroll.
+The `SettingsShell` should lay out (section list + growing content host), reflow on resize, and the
+content host should still scroll.
 
 ## Deferred — why deferred + trigger to revisit
 

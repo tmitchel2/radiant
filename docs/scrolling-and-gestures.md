@@ -22,8 +22,8 @@ runs a state machine against that one sample; a per-detector arbiter resolves a 
 ## Animation primitives — `Radiant.Animation`
 
 ```csharp
-// Critically-damped spring (Unity Mathf.SmoothDamp). Single source of truth; the Dynamis camera
-// forwards to it. Drives animated scroll / snap settle / bounce return.
+// Critically-damped spring (Unity Mathf.SmoothDamp). Single source of truth; an application camera
+// can forward to it. Drives animated scroll / snap settle / bounce return.
 offset = SmoothDamp.Step(offset, target, ref velocity, smoothTime, dt);
 
 // Frame-rate-independent exponential momentum decay (per-ms retention: 0.998 normal, 0.99 fast).
