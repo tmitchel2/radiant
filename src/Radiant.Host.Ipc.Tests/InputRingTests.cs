@@ -173,11 +173,18 @@ public sealed class InputRingTests
         var done = false;
         var readerThread = new Thread(() =>
         {
-            while (!Volatile.Read(ref done) || received.Count < total)
+            // Drops mean received may never reach total, so stop once the writer has finished and the
+            // ring is drained. Sample done before dequeuing: a miss after done means nothing is left.
+            while (true)
             {
+                var finished = Volatile.Read(ref done);
                 if (reader.TryDequeue(out var e))
                 {
                     received.Add(e.Code);
+                }
+                else if (finished)
+                {
+                    break;
                 }
             }
         });
@@ -188,7 +195,8 @@ public sealed class InputRingTests
             writer.Push(new InputEvent(InputEventKind.KeyDown, i, 0f, 0f));
         }
         Volatile.Write(ref done, true);
-        readerThread.Join(TimeSpan.FromSeconds(30));
+        // The reader must be gone before the using block disposes the ring under it.
+        Assert.IsTrue(readerThread.Join(TimeSpan.FromSeconds(30)), "reader thread did not finish");
 
         // Codes received must be strictly increasing (FIFO, no reordering). Drops are allowed under
         // contention, but order must hold.
