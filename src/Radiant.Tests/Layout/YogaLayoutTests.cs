@@ -1,5 +1,6 @@
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Graphics2D;
 using Radiant.Input;
 using Radiant.Layout;
 using Radiant.UI;
@@ -96,7 +97,7 @@ public class YogaLayoutTests
 
         YogaLayoutEngine.CalculateRoot(root, new Vector2(1280, 720));
 
-        var pixelHeight = label.TextScale * 7f;
+        var pixelHeight = label.TextScale * Renderer2D.DefaultTextHeightPx;
         var expectedWidth = TestFonts.Default.MeasureTextWidth("Hello", pixelHeight);
         var expectedHeight = TestFonts.Default.LineHeightEm * pixelHeight;
         // Yoga rounds computed layout to the pixel grid (default point scale 1.0), so allow <=1px.
