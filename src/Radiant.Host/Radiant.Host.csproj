@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Radiant.Host</RootNamespace>
+    <!-- Library, not Exe: the compositing host runs inside the application's own binary via the
+         host type switch (HostEntry.Run), so one executable is host, renderer and drag overlay. -->
+    <OutputType>Library</OutputType>
+    <DebugType>embedded</DebugType>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <!-- Carried over with the code from the repository it was written in, whose build suppressed these solution-wide. -->
+    <NoWarn>$(NoWarn);CA1000;CA1002;CA1003;CA1033;CA1062;CA1303;CA1716;CA1720;CA1721;CA1812;CA2007;CA2225</NoWarn>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Radiant.Host.Ipc/Radiant.Host.Ipc.csproj" />
+    <ProjectReference Include="../Radiant.Host.AgentControlProtocol/Radiant.Host.AgentControlProtocol.csproj" />
+    <ProjectReference Include="../Radiant/Radiant.csproj" />
+  </ItemGroup>
+
+  <!-- Default app icon: embedded so MacDockIcon can set the macOS Dock icon at runtime
+       (works for `dotnet run` and the NativeAOT binary, neither of which is an .app bundle).
+       An application supplies its own through RadiantAppIdentity.DockIcon. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Radiant.Host.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -73,7 +73,7 @@ namespace Radiant.MsdfBaker
 
             // Self-test: render a sample string at a few sizes so we can
             // eyeball whether the MSDF actually resolves to sharp glyphs.
-            var sample = "Hello Dynamis Ø25.4 ±0.05";
+            var sample = "Hello Radiant Ø25.4 ±0.05";
             foreach (var px in (ReadOnlySpan<int>)[16, 32, 64, 128])
             {
                 var path = Path.Combine(outDir, $"{outName}-sample-{px}px.png");
@@ -172,7 +172,7 @@ namespace Radiant.MsdfBaker
             for (var c = 0x20; c <= 0x7E; c++) list.Add(c);
             // Latin-1 supplement (covers Ø, ±, ×, µ, °, etc.).
             for (var c = 0xA0; c <= 0xFF; c++) list.Add(c);
-            // Engineering / drafting symbols used across the Dynamis annotation surfaces.
+            // Engineering / drafting symbols for dimension and annotation text.
             int[] engineering =
             [
                 0x2212, // − minus

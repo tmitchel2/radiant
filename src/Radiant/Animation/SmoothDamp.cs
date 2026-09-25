@@ -10,8 +10,8 @@ namespace Radiant.Animation;
 /// frames. Frame-rate independent.
 ///
 /// This is the single source of truth for spring smoothing across Radiant and
-/// its consumers (scroll settle/animated-scroll, and the Dynamis orbit camera,
-/// which forwards here).
+/// its consumers (scroll settle/animated-scroll, and any application camera that
+/// forwards here).
 /// </summary>
 public static class SmoothDamp
 {

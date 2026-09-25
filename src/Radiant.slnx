@@ -6,6 +6,12 @@
   </Configurations>
   <Project Path="Radiant/Radiant.csproj" />
   <Project Path="Radiant.Tests/Radiant.Tests.csproj" />
+  <Project Path="Radiant.Host/Radiant.Host.csproj" />
+  <Project Path="Radiant.Host.Tests/Radiant.Host.Tests.csproj" />
+  <Project Path="Radiant.Host.Ipc/Radiant.Host.Ipc.csproj" />
+  <Project Path="Radiant.Host.Ipc.Tests/Radiant.Host.Ipc.Tests.csproj" />
+  <Project Path="Radiant.Host.AgentControlProtocol/Radiant.Host.AgentControlProtocol.csproj" />
+  <Project Path="Radiant.Host.AgentControlProtocol.Tests/Radiant.Host.AgentControlProtocol.Tests.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>

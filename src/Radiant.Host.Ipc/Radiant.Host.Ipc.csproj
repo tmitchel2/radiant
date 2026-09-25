@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Radiant.Host.Ipc</RootNamespace>
+    <DebugType>embedded</DebugType>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <!-- Carried over with the code from the repository it was written in, whose build suppressed these solution-wide. -->
+    <NoWarn>$(NoWarn);CA1000;CA1002;CA1003;CA1033;CA1062;CA1303;CA1716;CA1720;CA1721;CA1812;CA2007;CA2225</NoWarn>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>
