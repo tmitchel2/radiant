@@ -30,6 +30,8 @@ public sealed class UIRoot : IDisposable
     private readonly List<EffectHook> _effects = [];
     private readonly HashSet<ScrollRenderNode> _scrollers = [];
     private readonly HashSet<ScrollRenderNode> _animating = [];
+    private readonly List<PortalRenderNode> _portals = [];
+    private bool _portalsChanged;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private List<RenderNode> _hovered = [];
     private List<RenderNode>? _pressed;
@@ -181,6 +183,11 @@ public sealed class UIRoot : IDisposable
                     SyncRenderChildren(node.NearestHost());
                 }
             }
+        }
+        if (_portalsChanged)
+        {
+            _portalsChanged = false;
+            SyncRenderChildren(_root);
         }
     }
 
@@ -363,13 +370,20 @@ public sealed class UIRoot : IDisposable
         }
     }
 
-    /// <summary>Sets a host's render children to the render nodes of its element children, in order.</summary>
-    private static void SyncRenderChildren(ElementNode host)
+    /// <summary>
+    /// Sets a host's render children to the render nodes of its element children, in order.
+    /// Portals are left out: they are children of the root, after the app, in the order they appeared.
+    /// </summary>
+    private void SyncRenderChildren(ElementNode host)
     {
         var nodes = new List<RenderNode>();
         foreach (var child in host.Children)
         {
             CollectRenderNodes(child, nodes);
+        }
+        if (ReferenceEquals(host, _root))
+        {
+            nodes.AddRange(_portals);
         }
         host.RenderNode!.SetChildren(nodes);
 
@@ -377,7 +391,10 @@ public sealed class UIRoot : IDisposable
         {
             if (node.RenderNode is { } renderNode)
             {
-                into.Add(renderNode);
+                if (renderNode is not PortalRenderNode)
+                {
+                    into.Add(renderNode);
+                }
                 return;
             }
             foreach (var child in node.Children)
@@ -405,6 +422,18 @@ public sealed class UIRoot : IDisposable
     }
 
     internal void AddScroller(ScrollRenderNode scroller) => _scrollers.Add(scroller);
+
+    internal void AddPortal(PortalRenderNode portal)
+    {
+        _portals.Add(portal);
+        _portalsChanged = true;
+    }
+
+    internal void RemovePortal(PortalRenderNode portal)
+    {
+        _portals.Remove(portal);
+        _portalsChanged = true;
+    }
 
     internal void RemoveScroller(ScrollRenderNode scroller)
     {
@@ -531,6 +560,62 @@ public sealed class UIRoot : IDisposable
     /// <summary>Takes focus away from whatever has it.</summary>
     public void ClearFocus() => SetFocus(null, visible: false);
 
+    internal void Focus(RenderNode node, bool visible) => SetFocus(node, visible);
+
+    /// <summary>
+    /// The accessibility tree as of the last layout: boxes with <see cref="Box.Semantics"/> or
+    /// focus, and text, in the order they are drawn; other boxes pass their children up.
+    /// </summary>
+    public SemanticsNode GetSemantics()
+    {
+        var children = new List<SemanticsNode>();
+        if (_mounted)
+        {
+            foreach (var child in RootRenderNode.Children)
+            {
+                CollectSemantics(child, children);
+            }
+        }
+        return new SemanticsNode(new Semantics { Role = SemanticsRole.Group }, null,
+            new System.Drawing.RectangleF(0, 0, Size.X, Size.Y), false, false, children);
+    }
+
+    private void CollectSemantics(RenderNode node, List<SemanticsNode> into)
+    {
+        var children = new List<SemanticsNode>();
+        foreach (var child in node.Children)
+        {
+            CollectSemantics(child, children);
+        }
+        var position = node.AbsolutePosition;
+        var bounds = new System.Drawing.RectangleF(position.X, position.Y, node.Size.X, node.Size.Y);
+        switch (node)
+        {
+            case TextRenderNode text:
+                into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Text }, text.Element.AttributedText.Text, bounds, false, false, []));
+                break;
+            case BoxRenderNode { Element: var box } when box.Semantics is not null || box.Focusable:
+                var semantics = box.Semantics ?? new Semantics();
+                // A control named by its text (a button's label) takes it as its own name.
+                var label = semantics.Label ?? JoinText(children);
+                if (semantics.Label is null && semantics.Role is not (SemanticsRole.Group or SemanticsRole.List or SemanticsRole.None))
+                {
+                    children.RemoveAll(c => c.Role == SemanticsRole.Text);
+                }
+                into.Add(new SemanticsNode(semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children));
+                break;
+            default:
+                into.AddRange(children);
+                break;
+        }
+
+        static string? JoinText(List<SemanticsNode> nodes)
+        {
+            var texts = nodes.FindAll(n => n.Role == SemanticsRole.Text).ConvertAll(n => n.Label);
+            return texts.Count == 0 ? null : string.Join(" ", texts);
+        }
+    }
+
     private void SetFocus(RenderNode? node, bool visible)
     {
         if (ReferenceEquals(node, _focused))
@@ -561,24 +646,33 @@ public sealed class UIRoot : IDisposable
         return count;
     }
 
-    /// <summary>The render nodes under a point, from the root down to the topmost.</summary>
+    /// <summary>
+    /// The path an event under a point travels: from the root to the topmost render node there,
+    /// through its element ancestors. That's its visual ancestors, except that content in a
+    /// portal bubbles to the elements that rendered the portal, not to the root it's drawn in.
+    /// </summary>
     internal List<RenderNode> HitPath(Vector2 position)
     {
-        var path = new List<RenderNode>();
-        if (_mounted)
+        if (!_mounted)
         {
-            RootRenderNode.HitTest(position, path);
-            path.Reverse();
+            return [];
         }
-        return path;
+        var hits = new List<RenderNode>();
+        RootRenderNode.HitTest(position, hits);
+        return hits.Count == 0 ? [] : EventPath(hits[0]);
     }
 
-    private List<RenderNode> FocusPath()
+    private List<RenderNode> FocusPath() => _focused is null ? [] : EventPath(_focused);
+
+    private static List<RenderNode> EventPath(RenderNode target)
     {
         var path = new List<RenderNode>();
-        for (var node = _focused; node is not null; node = node.Parent)
+        for (var node = target.Owner; node is not null; node = node.Parent)
         {
-            path.Add(node);
+            if (node.RenderNode is { } renderNode)
+            {
+                path.Add(renderNode);
+            }
         }
         path.Reverse();
         return path;

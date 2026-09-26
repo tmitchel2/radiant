@@ -28,10 +28,30 @@ internal sealed class BoxRenderNode : RenderNode
     {
         Element = (Box)element;
         var old = previous as Box;
+        if (!ReferenceEquals(old?.Ref, Element.Ref))
+        {
+            if (old?.Ref is { } oldRef && ReferenceEquals(oldRef.Node, this))
+            {
+                oldRef.Node = null;
+            }
+            if (Element.Ref is { } newRef)
+            {
+                newRef.Node = this;
+            }
+        }
         if (old is null || old.Layout != Element.Layout)
         {
             YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
         }
+    }
+
+    public override void Dispose()
+    {
+        if (Element?.Ref is { } elementRef && ReferenceEquals(elementRef.Node, this))
+        {
+            elementRef.Node = null;
+        }
+        base.Dispose();
     }
 
     public override void Paint(PaintContext context)

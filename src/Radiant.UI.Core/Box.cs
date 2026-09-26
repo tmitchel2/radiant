@@ -58,6 +58,12 @@ public sealed record Box : HostElement
     /// <summary>Tab order: 0 in tree order, negative to skip the box when tabbing.</summary>
     public int TabIndex { get; init; }
 
+    /// <summary>A handle that gives code the box's bounds and a way to focus it.</summary>
+    public ElementRef? Ref { get; init; }
+
+    /// <summary>What assistive technology should know about the box; null leaves it out (unless focusable).</summary>
+    public Semantics? Semantics { get; init; }
+
     /// <summary>A pointer button pressed over the box or its children (bubbling up).</summary>
     public Action<PointerEventArgs>? OnPointerDown { get; init; }
 

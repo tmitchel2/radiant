@@ -33,7 +33,8 @@ RadiantUI.Run(new Counter("Clicks"), new UIAppOptions { Title = "Counter" });
 
 - **Components** (`Component`, a record with `Build`) describe UI in terms of other elements. They
   leave nothing in the render tree.
-- **Host elements** are what gets laid out and drawn: `Box`, `TextBlock` and `ScrollArea` for now.
+- **Host elements** are what gets laid out and drawn: `Box`, `TextBlock`, `ScrollArea` and
+  `Portal` for now.
 - **Structure:** `Fragment` groups elements, and `Provider<T>` passes a context value down.
 
 ## Reconciliation
@@ -105,10 +106,27 @@ a change of order throws.
   that way.
 - **Position:** the scroll position survives rebuilds; pass a `Controller` to set or read it.
 
+## Portals, refs and semantics
+
+- **`Portal`** shows its children above everything, in the root's coordinates, wherever it is in
+  the tree. This is how menus, popovers and dialogs escape their parents' clips and layout.
+  - Later portals are above earlier ones.
+  - An empty part of the layer lets the pointer through.
+  - Events bubble along the *element* tree, as React's do, so a key pressed in a menu reaches the
+    component that opened it.
+- **`ElementRef`** (`Box.Ref`) gives code a box's bounds in root coordinates as of the last layout,
+  and `Focus()`. Anchored popovers position themselves from it in an effect.
+- **Semantics:** `Box.Semantics` gives a box a role, label, value and states.
+  `UIRoot.GetSemantics()` builds the accessibility tree:
+  - Boxes with semantics or focus appear, and so does text.
+  - Other boxes pass their children up.
+  - A control without a label is named by the text inside it.
+
 ## Not yet
 
-- **Host elements:** `Portal` and overlays, `Image`, and a canvas for custom drawing.
+- **Host elements:** `Image`, and a canvas for custom drawing.
+- **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
-- **Semantics and commands:** a semantics tree for accessibility, commands and shortcuts, and
-  `Presence` for exit animations.
+- **Commands and animation:** commands and shortcuts, and `Presence` for exit animations.
+- **Accessibility:** the platform bridge for semantics comes with P7.
 - **Styling and theming:** the style facets and generated forwarders (P5), and theming (P6).

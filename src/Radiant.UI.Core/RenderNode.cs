@@ -88,6 +88,20 @@ internal abstract class RenderNode : IDisposable
         YGNodeSetChildren(ChildContainer, nodes);
     }
 
+    /// <summary>The top left in the root's coordinates (ignoring transforms), as of the last layout.</summary>
+    public Vector2 AbsolutePosition
+    {
+        get
+        {
+            var origin = Position;
+            for (var parent = Parent; parent is not null; parent = parent.Parent)
+            {
+                origin += parent.Position + parent.ChildOffset;
+            }
+            return origin;
+        }
+    }
+
     /// <summary>A point in the root's coordinates, in this node's own (its top left at the origin).</summary>
     public Vector2 ToLocal(Vector2 rootPoint)
     {
