@@ -12,7 +12,7 @@ state beyond what the block itself needs (a form's field values).
 
 | Block | What it is |
 |---|---|
-| `SidebarLayout(title, items, selected, onSelect, content)` | The desktop app shell: a navigation drawer on the left, and a top app bar over the scrolling page. The bar takes its container colour once the page scrolls. Content is centred up to `MaxContentWidth`. |
+| `SidebarLayout(title, items, selected, onSelect, content)` | The desktop app shell: a navigation drawer on the left, and a top app bar over the scrolling page. The bar takes its container colour once the page scrolls. Content is centred up to `MaxContentWidth`. With `FillContent`, the page fills the space below the bar instead of scrolling, for pages that scroll their own panes (an editor beside a preview). |
 | `PageHeading(title)` | A page's title, a line under it, and actions on the right. |
 | `StatsGrid(stats)` / `Stat` | Key figures in cards, each change shown as a signed percentage, coloured success (up) or error (down). |
 | `StackedList(entries)` / `ListEntry` | Rows with an avatar, a title and subtitle, a status chip and a meta line; `OnPress` gets the row's index. |

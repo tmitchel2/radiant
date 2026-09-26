@@ -162,6 +162,39 @@ public class NewComponentTests
     }
 
     [TestMethod]
+    public void APropertyGridGroupsEachSectionUnderItsTitle()
+    {
+        using var root = Mount(new Box
+        {
+            Layout = new LayoutStyle { Width = 400 },
+            Children =
+            [
+                new PropertyGrid(
+                [
+                    new PropertySection("Layout", [new PropertyItem("Width", new SurfaceText("240"))]),
+                    new PropertySection("Appearance", [new PropertyItem("Width", new SurfaceText("2"))]),
+                ]),
+            ],
+        });
+
+        var section = Find(root, n => n.Role == SemanticsRole.Group && n.Label == "Appearance");
+        var row = All(section).First(n => n.Role == SemanticsRole.Group && n.Label == "Width");
+        Assert.IsTrue(All(row).Any(n => n.Label == "2"), "a property is found by its section, then its name");
+    }
+
+    [TestMethod]
+    public void APropertyGridNamesUnlabelledEditors()
+    {
+        using var root = Mount(new Box
+        {
+            Layout = new LayoutStyle { Width = 400 },
+            Children = [new PropertyGrid([new PropertySection("Effects", [new PropertyItem("Shadow", new Switch(true, _ => { }))])])],
+        });
+
+        Assert.IsTrue(All(root.GetSemantics()).Any(n => n.Role == SemanticsRole.Switch && n.Label == "Shadow"), "the switch is named by its row");
+    }
+
+    [TestMethod]
     public void AFieldsetIsAGroupNamedByItsLegendAndHiddenTextIsReadOut()
     {
         using var root = Mount(new Fieldset("Notifications", [new Checkbox(true, _ => { }) { Label = "Email" }, new VisuallyHidden("2 unread")]));

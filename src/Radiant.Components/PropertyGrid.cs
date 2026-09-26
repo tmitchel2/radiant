@@ -47,12 +47,20 @@ public sealed partial record PropertyGrid(IReadOnlyList<PropertySection> Section
                 continue;
             }
             var rows = shown.Select(p => (Element?)Row(p)).ToList();
-            sections.Add(new Collapsible(section.Title, new Box { Layout = new LayoutStyle { RowGap = 4 }, Children = rows })
+            // Each section is a group named by its title, so a property is found by its section and name.
+            sections.Add(new Box
             {
-                // Filtering opens every section, so a match is never hidden.
                 Key = section.Title,
-                Open = query.Length > 0 ? true : null,
-                InitiallyOpen = section.InitiallyOpen,
+                Semantics = new Semantics { Role = SemanticsRole.Group, Label = section.Title },
+                Children =
+                [
+                    new Collapsible(section.Title, new Box { Layout = new LayoutStyle { RowGap = 4 }, Children = rows })
+                    {
+                        // Filtering opens every section, so a match is never hidden.
+                        Open = query.Length > 0 ? true : null,
+                        InitiallyOpen = section.InitiallyOpen,
+                    },
+                ],
             });
             sections.Add(new Box { Layout = new LayoutStyle { Height = 1, Margin = Edges.Symmetric(0, 4) }, Background = theme.OutlineVariant });
         }
@@ -89,7 +97,7 @@ public sealed partial record PropertyGrid(IReadOnlyList<PropertySection> Section
                         property.Description is null ? null : new SurfaceText(property.Description) { TextType = TextType.BodySmall, Legibility = Legibility.Low, MaxLines = 2 },
                     ],
                 },
-                new Box { Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, AlignItems = Align.FlexStart }, Children = [property.Editor] },
+                new Box { Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, AlignItems = Align.FlexStart }, Children = [AccessibleNames.Name(property.Editor, property.Name)] },
             ],
         };
     }
