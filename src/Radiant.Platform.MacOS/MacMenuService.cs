@@ -97,8 +97,8 @@ internal sealed unsafe class MacMenuService(nint view) : IMenuService
             AddSubmenu(main, "Window", window);
             ObjC.Send(app, "setWindowsMenu:", window);
         }
+        // The application keeps the menu; ours was autoreleased when it was made (NewMenu).
         ObjC.Send(app, "setMainMenu:", main);
-        ObjC.Send(main, "release");
     }
 
     // NSEventModifierFlags.

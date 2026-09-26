@@ -114,6 +114,7 @@ internal static unsafe class SelfTest
 
         // The app's commands are on the macOS menu bar.
         CheckMenuBar(root, window, events, Check);
+        CheckMenuBarReplaced(platform.Menus, Check);
 
         return failures;
     }
@@ -210,6 +211,31 @@ internal static unsafe class SelfTest
             keyDownType, default, command, 0, ObjC.Send(window, "windowNumber"), 0, j, j, 0, 38);
         ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "sendEvent:", keyEvent);
         check(events.Count(e => e == "command:hello") == 1, $"its shortcut runs it once, through the menu ({string.Join(",", events)})");
+    }
+
+    // Menus are replaced as commands change; the old ones must be freed exactly once. An over-release
+    // only shows once the run loop drains its autorelease pool, so let it.
+    private static void CheckMenuBarReplaced(IMenuService menus, Action<bool, string> check)
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            using (ObjC.Pool())
+            {
+                menus.SetMenuBar([new PlatformMenu("Test", [new PlatformMenuItem($"Item {i}")])], static (_, _) => { });
+            }
+            RunLoopBriefly();
+        }
+        var main = ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "mainMenu");
+        var menu = ObjC.Send(ObjC.Send(main, "itemWithTitle:", ObjC.String("Test")), "submenu");
+        check(menu != 0 && ObjC.ToManagedString(ObjC.Send(ObjC.Send(menu, "itemAtIndex:", 0), "title")) == "Item 2",
+            "the menu bar can be replaced again and again, and the run loop drains cleanly");
+    }
+
+    private static void RunLoopBriefly()
+    {
+        using var pool = ObjC.Pool();
+        var date = ((delegate* unmanaged<nint, nint, double, nint>)ObjC.MsgSend)(ObjC.Class("NSDate"), ObjC.Sel("dateWithTimeIntervalSinceNow:"), 0.05);
+        ObjC.Send(ObjC.Send(ObjC.Class("NSRunLoop"), "currentRunLoop"), "runUntilDate:", date);
     }
 
     private static void CheckAccessibility(nint view, nint window, UIRoot root, List<string> events, Action<bool, string> check)
