@@ -146,6 +146,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
+  multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
+  item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every
+  build, which is linear in the open items.
 - **Column resize grips sit inside their own cell.** The 6 px grip is at the cell's right edge
   rather than straddling the boundary, for the same tree-order reason as the splitter's handle.
 - **`UseState<T?>(null)` is ambiguous.** `null` fits both the value and the factory overload, so

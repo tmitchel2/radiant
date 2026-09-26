@@ -86,4 +86,10 @@ public enum SemanticsRole
 
     /// <summary>A cell of a table.</summary>
     Cell,
+
+    /// <summary>A tree of items that expand to show their children.</summary>
+    Tree,
+
+    /// <summary>An item of a tree (its value is its level, 1 at the top).</summary>
+    TreeItem,
 }

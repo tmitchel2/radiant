@@ -141,29 +141,35 @@ internal static class ShellPages
             }
 
             var current = open.Value.Count == 0 ? null : open.Value[Math.Min(selected.Value, open.Value.Count - 1)];
-            (string Name, string Icon, int Depth)[] files =
+            TreeNode[] files =
             [
-                ("Hello", "folder_open", 0),
-                ("Counter.cs", "code", 1),
-                ("Program.cs", "code", 1),
-                ("README.md", "description", 1),
-                ("Hello.csproj", "description", 1),
-            ];
-            var explorer = new Box
-            {
-                Layout = new LayoutStyle { Padding = Edges.Symmetric(4, 0) },
-                Children = [.. files.Select(f => (Element?)new PressableSurface
+                new("hello", "Hello")
                 {
-                    Role = SemanticsRole.ListItem,
-                    Label = f.Name,
-                    Selected = current?.Label == f.Name,
-                    SurfaceColor = current?.Label == f.Name ? SurfaceName.Secondary : null,
-                    SurfaceContainerToggle = current?.Label == f.Name ? true : null,
-                    CornerShape = CornerShapeRole.ExtraSmall,
-                    OnPress = f.Depth == 0 ? null : () => Open(f.Name, f.Icon),
-                    Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 6, Height = 26, Padding = new Edges(8 + f.Depth * 16, 0, 8, 0) },
-                    Children = [new SurfaceIcon(f.Icon) { IconSize = 16, Legibility = Legibility.Medium }, new SurfaceText(f.Name) { MaxLines = 1 }],
-                })],
+                    Icon = "folder",
+                    ExpandedIcon = "folder_open",
+                    Children =
+                    [
+                        new("Counter.cs", "Counter.cs") { Icon = "code" },
+                        new("Program.cs", "Program.cs") { Icon = "code" },
+                        new("tests", "Tests") { Icon = "folder", ExpandedIcon = "folder_open", Children = [new("CounterTests.cs", "CounterTests.cs") { Icon = "code" }] },
+                        new("README.md", "README.md") { Icon = "description" },
+                        new("Hello.csproj", "Hello.csproj") { Icon = "description" },
+                    ],
+                },
+            ];
+            var explorer = new TreeView(files)
+            {
+                Label = "Explorer",
+                InitialExpanded = new HashSet<string> { "hello" },
+                Selected = current?.Label,
+                // A single press opens a file, as editors' explorers do.
+                OnSelect = n =>
+                {
+                    if (n.Children.Count == 0)
+                    {
+                        Open(n.Label, n.Icon ?? "description");
+                    }
+                },
             };
 
             var editor = new Box
