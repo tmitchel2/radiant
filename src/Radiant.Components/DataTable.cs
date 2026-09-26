@@ -30,7 +30,6 @@ namespace Radiant.Components;
 public sealed partial record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) : Component
 {
     [TestId] public static partial string Row { get; }
-
     [TestId<Checkbox>] public static partial string SelectAll { get; }
     [TestId<Checkbox>] public static partial string SelectRow { get; }
 
@@ -251,6 +250,8 @@ public sealed partial record DataTable(IReadOnlyList<DataColumn> Columns, int Ro
                 new Box
                 {
                     Focusable = RowCount > 0,
+                    // What takes focus to move through the rows: named for it, not heard as an empty group.
+                    Semantics = new Semantics { Role = SemanticsRole.Group, Label = Label is null ? "Rows" : $"{Label} rows" },
                     Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                     OnKeyDown = Key,
                     OnFocus = e =>

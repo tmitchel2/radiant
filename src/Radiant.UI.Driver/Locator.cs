@@ -88,9 +88,9 @@ public class Locator
         return new Locator(Driver, Nest(Selector, scope.Selector));
     }
 
-    /// <summary>Taps it.</summary>
-    public Task<ActionResult> TapAsync(int count = 1, string? modifiers = null, CancellationToken cancellation = default) =>
-        Act("ui.tap", new ElementActionParams { Selector = Selector, Count = count, Modifiers = modifiers }, cancellation);
+    /// <summary>Taps it; <paramref name="force"/> taps its centre even if it's covered or disabled.</summary>
+    public Task<ActionResult> TapAsync(int count = 1, string? modifiers = null, bool force = false, CancellationToken cancellation = default) =>
+        Act("ui.tap", new ElementActionParams { Selector = Selector, Count = count, Modifiers = modifiers, Force = force ? true : null }, cancellation);
 
     /// <summary>Double-taps it.</summary>
     public Task<ActionResult> DoubleTapAsync(CancellationToken cancellation = default) => TapAsync(2, cancellation: cancellation);

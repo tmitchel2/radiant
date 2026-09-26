@@ -8,7 +8,8 @@ how to skip.
 For driving a UI the way a person would, finding elements, acting and waiting for them, in-process
 or in a real app process, use `Radiant.UI.Driver`: see [automation.md](automation.md). It's
 independent of a test framework too; `Radiant.UI.Driver.MSTest` adds a base class that keeps a failed
-test's screenshot and interaction log.
+test's screenshot and interaction log. The gallery's end-to-end suite, in
+`Radiant.UI.Automation.Tests/Gallery`, is the worked example.
 
 ## Rendering
 

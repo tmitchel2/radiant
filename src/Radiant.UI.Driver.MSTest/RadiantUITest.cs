@@ -53,7 +53,9 @@ public abstract class RadiantUITest
 
     private async Task KeepEvidenceAsync(AppDriver driver)
     {
-        var directory = Path.Combine(TestContext.TestRunResultsDirectory ?? Path.GetTempPath(), "radiant-ui", TestContext.TestName ?? "test");
+        // Data-driven tests share a name, and may run at once: each run gets a folder of its own.
+        var name = string.Concat((TestContext.TestDisplayName ?? TestContext.TestName ?? "test").Select(c => char.IsLetterOrDigit(c) ? c : '-'));
+        var directory = Path.Combine(TestContext.TestRunResultsDirectory ?? Path.GetTempPath(), "radiant-ui", $"{name}-{Guid.NewGuid().ToString("N")[..6]}");
         Directory.CreateDirectory(directory);
         try
         {

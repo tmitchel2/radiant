@@ -36,8 +36,7 @@ internal sealed partial record VerticalSlice(ThemeController Themes) : Component
     [TestId<Checkbox>] public static partial string Some { get; }
     [TestId<Switch>] public static partial string WiFi { get; }
     [TestId<Switch>] public static partial string WiFiOff { get; }
-    [TestId<Radio>] public static partial string Small { get; }
-    [TestId<Radio>] public static partial string Medium { get; }
+    [TestId<RadioGroup>] public static partial string Size { get; }
     [TestId<Checkbox>] public static partial string DisabledCheckbox { get; }
     [TestId<SurfaceButton>] public static partial string OpenDialog { get; }
     [TestId<SurfaceButton>] public static partial string MenuButton { get; }
@@ -81,6 +80,7 @@ internal sealed partial record VerticalSlice(ThemeController Themes) : Component
 
     private static readonly Variant[] s_variants = [Variant.TonalSpot, Variant.Vibrant, Variant.Expressive, Variant.Fidelity, Variant.Content, Variant.Neutral];
     private static readonly float[] s_corners = [0f, 0.5f, 1f, 1.5f, 2f];
+    private static readonly string[] s_sizes = ["Small", "Medium"];
 
     public override Element? Build(BuildContext context)
     {
@@ -147,9 +147,8 @@ internal sealed partial record VerticalSlice(ThemeController Themes) : Component
                     new Checkbox(notify.Value, notify.Set) { TestId = NotifyMe, Label = "Notify me" },
                     new Checkbox(false, null) { TestId = Some, Label = "Some", Indeterminate = true },
                     new Switch(wifi.Value, wifi.Set) { TestId = WiFi, Label = "Wi-Fi" },
-                    new Switch(!wifi.Value, v => wifi.Set(!v)) { TestId = WiFiOff },
-                    new Radio(size.Value == "Small", () => size.Set("Small")) { TestId = Small, Label = "Small" },
-                    new Radio(size.Value == "Medium", () => size.Set("Medium")) { TestId = Medium, Label = "Medium" },
+                    new Switch(!wifi.Value, v => wifi.Set(!v)) { TestId = WiFiOff, AccessibleLabel = "Wi-Fi off" },
+                    new RadioGroup(s_sizes, Array.IndexOf(s_sizes, size.Value), i => size.Set(s_sizes[i])) { TestId = Size, Label = "Size", Horizontal = true },
                     new Checkbox(true, null) { TestId = DisabledCheckbox, Label = "Disabled", Disabled = true }) { Gap = 12 },
                 new Row(
                     new SurfaceButton("Open dialog", ButtonVariant.Outlined) { TestId = OpenDialog, Icon = "open_in_new", OnPress = () => dialog.Set(true) },

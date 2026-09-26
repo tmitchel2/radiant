@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Radiant.Layout;
 using Radiant.Theming;
 using Radiant.UI.Core;
@@ -28,6 +29,9 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
     {
         ArgumentNullException.ThrowIfNull(context);
         var rows = new List<Element?>();
+        var count = Items.Count;
+        // Up and Down move focus through the destinations, as through a tab list; Enter or Space goes there.
+        var refs = context.UseMemo(() => Enumerable.Range(0, count).Select(_ => new ElementRef()).ToArray(), count);
         if (Title is not null)
         {
             rows.Add(new SurfaceText(Title) { TextType = TextType.TitleSmall, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 18, 16, 18) } });
@@ -46,31 +50,54 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
                 }
                 rows.Add(new SurfaceText(section) { TextType = TextType.TitleSmall, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 12, 16, 12) } });
             }
-            rows.Add(new PressableSurface
+            rows.Add(new Box
             {
-                TestId = Item,
-                InsetFocusRing = true,
-                SurfaceColor = chosen ? SurfaceName.Secondary : null,
-                SurfaceContainerToggle = chosen ? true : null,
-                CornerShape = CornerShapeRole.Full,
-                Role = SemanticsRole.Tab,
-                Selected = chosen,
-                OnPress = () => select?.Invoke(index),
-                Layout = new LayoutStyle
+                Ref = refs[i],
+                OnKeyDown = e =>
                 {
-                    FlexDirection = FlexDirection.Row,
-                    AlignItems = Align.Center,
-                    Height = 56,
-                    Padding = new Edges(16, 0, 24, 0),
-                    ColumnGap = 12,
+                    var next = e.Key switch
+                    {
+                        KeyCode.Down => index + 1,
+                        KeyCode.Up => index - 1,
+                        KeyCode.Home => 0,
+                        KeyCode.End => count - 1,
+                        _ => -1,
+                    };
+                    if (next >= 0 && next < count)
+                    {
+                        refs[next].Focus();
+                        e.Handled = true;
+                    }
                 },
                 Children =
                 [
-                    new SurfaceIcon(item.Icon) { IconFilled = chosen, Legibility = chosen ? null : Legibility.Medium },
-                    new SurfaceText(item.Label) { TextType = TextType.LabelLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
-                    item.Badge is { } badge && badge > 0
-                        ? new SurfaceText(badge.ToString(System.Globalization.CultureInfo.InvariantCulture)) { TextType = TextType.LabelLarge }
-                        : null,
+                    new PressableSurface
+                    {
+                        TestId = Item,
+                        InsetFocusRing = true,
+                        SurfaceColor = chosen ? SurfaceName.Secondary : null,
+                        SurfaceContainerToggle = chosen ? true : null,
+                        CornerShape = CornerShapeRole.Full,
+                        Role = SemanticsRole.Tab,
+                        Selected = chosen,
+                        OnPress = () => select?.Invoke(index),
+                        Layout = new LayoutStyle
+                        {
+                            FlexDirection = FlexDirection.Row,
+                            AlignItems = Align.Center,
+                            Height = 56,
+                            Padding = new Edges(16, 0, 24, 0),
+                            ColumnGap = 12,
+                        },
+                        Children =
+                        [
+                            new SurfaceIcon(item.Icon) { IconFilled = chosen, Legibility = chosen ? null : Legibility.Medium },
+                            new SurfaceText(item.Label) { TextType = TextType.LabelLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
+                            item.Badge is { } badge && badge > 0
+                                ? new SurfaceText(badge.ToString(System.Globalization.CultureInfo.InvariantCulture)) { TextType = TextType.LabelLarge }
+                                : null,
+                        ],
+                    },
                 ],
             });
         }

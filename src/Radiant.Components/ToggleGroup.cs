@@ -47,7 +47,7 @@ public sealed partial record ToggleGroup(IReadOnlyList<(string Icon, string Labe
                 {
                     change?.Invoke(next);
                 }
-            }) { TestId = Item });
+            }) { TestId = Item, Exclusive = !multiple });
         }
         return new Box
         {

@@ -18,7 +18,6 @@ namespace Radiant.Components;
 public sealed partial record Pagination(int PageCount, int Page, Action<int>? OnChange) : Component
 {
     [TestId] public static partial string PageButton { get; }
-
     [TestId<IconButton>] public static partial string Previous { get; }
     [TestId<IconButton>] public static partial string Next { get; }
 

@@ -498,6 +498,9 @@ public sealed record InspectNode
     /// <summary>Its test ID.</summary>
     public string? TestId { get; init; }
 
+    /// <summary>Every test ID it answers to, when it has more than one (a caller's and a component's own).</summary>
+    public string[]? TestIds { get; init; }
+
     /// <summary>What kind of node: box, text, editableText, scroll, image, canvas, grid, portal, root.</summary>
     public string? Kind { get; init; }
 

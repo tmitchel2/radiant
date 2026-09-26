@@ -17,6 +17,8 @@ public sealed class InProcessClient : IAgentClient
     private readonly UIAutomation _automation;
     private readonly Connection _connection = new();
     private readonly bool _owns;
+    // One command at a time: the app runs on whichever thread sends, and two can't run its frames at once.
+    private readonly Lock _gate = new();
     private int _nextId;
 
     /// <summary>A client for <paramref name="automation"/>'s app; disposing it disposes the app if <paramref name="owns"/>.</summary>
@@ -59,6 +61,14 @@ public sealed class InProcessClient : IAgentClient
     /// <inheritdoc/>
     public Task<AgentResponse> SendAsync(string action, JsonElement? parameters = null, int? timeoutMs = null, CancellationToken cancellation = default)
     {
+        lock (_gate)
+        {
+            return Task.FromResult(Send(action, parameters, timeoutMs, cancellation));
+        }
+    }
+
+    private AgentResponse Send(string action, JsonElement? parameters, int? timeoutMs, CancellationToken cancellation)
+    {
         var id = "t" + (++_nextId).ToString(CultureInfo.InvariantCulture);
         _connection.Pending = null;
         _automation.Dispatcher.Enqueue(new AgentCommand
@@ -76,16 +86,17 @@ public sealed class InProcessClient : IAgentClient
             {
                 _automation.Dispatcher.Cancel(_connection, id);
                 _automation.Session.Step();
-                return Task.FromResult(_connection.Pending ?? AgentResponse.Err(id, AgentErrorCodes.Timeout, $"{action} ran {frames} frames without answering."));
+                return _connection.Pending ?? AgentResponse.Err(id, AgentErrorCodes.Timeout, $"{action} ran {frames} frames without answering.");
             }
             _automation.Session.Step();
         }
-        return Task.FromResult(_connection.Pending);
+        return _connection.Pending;
     }
 
     /// <inheritdoc/>
     public ValueTask DisposeAsync()
     {
+        using var held = _gate.EnterScope();
         _connection.Events.Writer.TryComplete();
         if (_owns)
         {

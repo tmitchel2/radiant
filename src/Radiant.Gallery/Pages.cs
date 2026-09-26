@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Radiant.Components;
 using Radiant.Layout;
@@ -28,15 +29,10 @@ internal static partial class Pages
 
     internal sealed partial record SettingsPage(ThemeController Themes) : Component
     {
-
         [TestId<Switch>] public static partial string DarkTheme { get; }
-
         [TestId<SelectField>] public static partial string Density { get; }
-
         [TestId<ColorPicker>] public static partial string Accent { get; }
-
         [TestId<Switch>] public static partial string Notifications { get; }
-
         [TestId<Switch>] public static partial string Digest { get; }
 
         public override Element? Build(BuildContext context)
@@ -107,11 +103,14 @@ internal static partial class Pages
         {
             var quantities = context.UseState(() => s_startingCart);
             var lines = new List<CartLine>();
+            // Which product each line is: lines leave out what isn't in the cart.
+            var lineProducts = new List<int>();
             for (var i = 0; i < s_products.Length; i++)
             {
                 if (quantities.Value[i] > 0)
                 {
                     lines.Add(new CartLine(s_products[i], quantities.Value[i], decimal.Parse(s_products[i].Price.TrimStart('$'), System.Globalization.CultureInfo.InvariantCulture)));
+                    lineProducts.Add(i);
                 }
             }
             var snackbars = context.UseSnackbars();
@@ -128,7 +127,16 @@ internal static partial class Pages
                         quantities.Set(next);
                         snackbars.Show($"Added {s_products[i].Name} to your cart");
                     }),
-                    new CartSummary(lines) { Shipping = 0 },
+                    new CartSummary(lines)
+                    {
+                        Shipping = 0,
+                        OnQuantityChange = (line, quantity) =>
+                        {
+                            var next = (int[])quantities.Value.Clone();
+                            next[lineProducts[line]] = Math.Max(0, quantity);
+                            quantities.Set(next);
+                        },
+                    },
                     new Reviews(
                     [
                         new Review("Ada Lovelace", 5, "A calmer desk indeed", "The walnut tray keeps everything in one place.") { Date = "12 March" },

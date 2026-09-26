@@ -15,6 +15,9 @@ internal sealed record Match(SemanticsNode? Semantics, UINode Node, int Depth)
 
     public string? TestId => Semantics?.TestId ?? Node.TestId;
 
+    /// <summary>Every test ID it answers to, <see cref="TestId"/> first.</summary>
+    public IReadOnlyList<string> TestIds => Node.TestIds;
+
     public string? Value => Semantics?.Semantics.Value ?? (Node.Kind == UINodeKind.EditableText ? Node.Text : null) ?? InnerValue;
 
     /// <summary>
@@ -274,7 +277,7 @@ internal sealed class SelectorEngine
     private static bool Passes(Selector selector, Match match)
     {
         var semantics = match.Semantics;
-        if (selector.TestId is { } testId && match.TestId != testId)
+        if (selector.TestId is { } testId && match.TestId != testId && !match.TestIds.Contains(testId))
         {
             return false;
         }
@@ -319,9 +322,10 @@ internal sealed class SelectorEngine
 
     private static string Normalize(string role) => role.Replace("-", "", StringComparison.Ordinal).Replace("_", "", StringComparison.Ordinal).ToLowerInvariant();
 
+    // Within a scope includes the scope itself: a part can be its component's root.
     private bool HasAncestorIn(int index, HashSet<int> scopes)
     {
-        for (var at = _nodes[index].Parent; at >= 0; at = _nodes[at].Parent)
+        for (var at = index; at >= 0; at = _nodes[at].Parent)
         {
             if (scopes.Contains(_nodes[at].Match.Id))
             {

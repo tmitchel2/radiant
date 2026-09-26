@@ -171,6 +171,12 @@ public sealed class UINode : IEquatable<UINode>
     /// </summary>
     public string? TestId => UIRoot.TestIdOf(Node);
 
+    /// <summary>
+    /// Every test ID it answers to, <see cref="TestId"/> first: where a component is nothing but a part of
+    /// another, the node has the caller's ID and the component's own.
+    /// </summary>
+    public IReadOnlyList<string> TestIds => UIRoot.TestIdsOf(Node);
+
     /// <summary>What it tells assistive technology, if it says anything itself.</summary>
     public Semantics? Semantics => Node switch
     {

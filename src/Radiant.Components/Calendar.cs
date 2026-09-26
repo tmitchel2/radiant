@@ -24,7 +24,6 @@ namespace Radiant.Components;
 public sealed partial record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : Component
 {
     [TestId] public static partial string DayButton { get; }
-
     [TestId<IconButton>] public static partial string PreviousMonth { get; }
     [TestId<IconButton>] public static partial string NextMonth { get; }
 

@@ -154,7 +154,7 @@ tests. The JSON form is an object; a string in the compact form is accepted anyw
 | `label=/^Sa/i` | `{"label":{"regex":"^Sa","ignoreCase":true}}` | a regular expression |
 | `visible`, `enabled`, `focused`, `checked`, `selected`, `checked=false` | `{"checked":false}` | state |
 | `[2]`, `[-1]` | `{"index":2}` | which match, from 0; negative counts from the end |
-| `@list >> text=Row` | `{"text":"Row","within":{"testId":"list"}}` | inside another match |
+| `@list >> text=Row` | `{"text":"Row","within":{"testId":"list"}}` | inside another match, or the match itself |
 | `@Dialog has(text=Confirm)` | `{"testId":"Dialog","has":{"text":"Confirm"}}` | with a match inside it |
 
 - **Where matching runs.** It runs over the semantics tree, which is what assistive technology
@@ -199,13 +199,17 @@ accessibility identifier, so XCUITest and Appium can use it too.
   building throwaway UIs can switch them off with `<NoWarn>RAD030;RAD031</NoWarn>`.
 - **Repeated controls share a part.** Rows, items, days and buttons built from data all share one
   part; pick one with `Nth(i)`, `WithLabel(...)` or `WithText(...)`.
-- **Which ID an element gets.**
+- **A node can have several IDs.** Where a component is nothing but a part of another, as a date
+  picker is when it's given an ID, its root answers to both the caller's ID and its own
+  (`@VerticalSlice.StartDate` and `@DatePicker`). Inspect shows the extra ones as `testIds`.
+- **Which ID an element is shown by.**
   - The outermost explicit ID wins, so where a component is used, the caller's ID replaces the
     component's root name.
   - Failing that, the outermost generated root name wins.
   - `Semantics.TestId` beats both.
-  - A component that builds several elements has no single root to name, but its parts are still
-    named.
+  - A popup built beside a control (a portal, or nothing while it's closed) doesn't stop the
+    control's component from naming it. A component that lays out several things has no single root,
+    but its parts are still named.
 - **In the semantics tree.** A box, or a portal's layer, with only a test ID appears with role `None`
   and no label. VoiceOver passes over it.
 - **When a test ID names a container, actions look inside it.** A `TextField`'s test ID names its
@@ -240,6 +244,9 @@ generator as an analyzer:
   enum, so new roles appear by themselves.
 - **In the tree.** The CLI and the tree show the same IDs (`@SignInForm.Email`), so an agent can
   select them too, without a locator.
+- **Example.** `Radiant.UI.Automation.Tests/Gallery` drives every page of the gallery this way:
+  navigation, each control, the templates, keyboard-only journeys, a small window, and an audit that every
+  control has a name and a role.
 
 ## Acting, the Detox way
 

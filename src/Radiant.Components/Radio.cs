@@ -23,6 +23,9 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
     /// <summary>Whether it can't be chosen.</summary>
     public bool Disabled { get; init; }
 
+    /// <summary>Tab order: 0 in tree order, negative to leave it out of tabbing (a group's other options).</summary>
+    public int TabIndex { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -59,6 +62,7 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
             Role = SemanticsRole.RadioButton,
             Checked = Selected,
             Disabled = Disabled,
+            TabIndex = TabIndex,
             OnToggle = () =>
             {
                 if (!Selected)

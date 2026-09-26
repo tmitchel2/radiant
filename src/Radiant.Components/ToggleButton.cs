@@ -21,6 +21,9 @@ public sealed record ToggleButton(string Icon, string Label, bool On, Action<boo
     /// <summary>Tab order: 0 in tree order, negative for one of a roving group's other buttons.</summary>
     public int TabIndex { get; init; }
 
+    /// <summary>Whether it's one of a group only one of which can be on (a radio button to assistive technology).</summary>
+    public bool Exclusive { get; init; }
+
     /// <summary>Whether it can't be used.</summary>
     public bool Disabled { get; init; }
 
@@ -36,7 +39,9 @@ public sealed record ToggleButton(string Icon, string Label, bool On, Action<boo
             CornerShape = CornerShapeRole.Small,
             Label = Label,
             TabIndex = TabIndex,
-            Selected = On,
+            // Heard as on or off: a check box, or a radio button where only one of a group can be on.
+            Role = Exclusive ? SemanticsRole.RadioButton : SemanticsRole.CheckBox,
+            Checked = On,
             OnPress = () => change?.Invoke(!on),
             Layout = new LayoutStyle { Width = 36, Height = 36, AlignItems = Align.Center, JustifyContent = Justify.Center },
             Children = [new SurfaceIcon(Icon) { IconSize = 20, IconFilled = On, Legibility = On ? null : Legibility.Medium }],

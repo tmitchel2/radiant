@@ -112,15 +112,10 @@ internal static partial class ShellPages
 
     internal sealed partial record WorkspacePage : Component
     {
-
         [TestId<IconButton>] public static partial string MoreActions { get; }
-
-        [TestId<Switch>] public static partial string Visible { get; }
-
+        [TestId<Switch>] public static partial string VisibleSwitch { get; }
         [TestId<Slider>] public static partial string Opacity { get; }
-
         [TestId<SegmentedButton>] public static partial string Corners { get; }
-
         [TestId<IconButton>] public static partial string NewFile { get; }
 
         public override Element? Build(BuildContext context)
@@ -141,8 +136,9 @@ internal static partial class ShellPages
                 var index = open.Value.ToList().FindIndex(t => t.Label == name);
                 if (index < 0)
                 {
-                    open.Set([.. open.Value, new DocumentTab(name) { Icon = icon }]);
+                    // The new tab goes on the end: its index is the count before it's added.
                     index = open.Value.Count;
+                    open.Set([.. open.Value, new DocumentTab(name) { Icon = icon }]);
                 }
                 selected.Set(index);
             }
@@ -211,7 +207,7 @@ internal static partial class ShellPages
                     new Divider(),
                     new InspectorSection("Appearance",
                     [
-                        new PropertyRow("Visible", new Switch(visible.Value, visible.Set) { TestId = Visible }),
+                        new PropertyRow("Visible", new Switch(visible.Value, visible.Set) { TestId = VisibleSwitch }),
                         new PropertyRow("Opacity", new Slider(opacity.Value, opacity.Set) { TestId = Opacity, Label = "Opacity" }),
                         new PropertyRow("Corners", new SegmentedButton([new Segment("Round"), new Segment("Square")], new HashSet<int> { corner.Value }, s => corner.Set(s.First())) { TestId = Corners }),
                     ]),
@@ -251,17 +247,11 @@ internal static partial class ShellPages
 
     internal sealed partial record MailPage : Component
     {
-
         [TestId<IconButton>] public static partial string Archive { get; }
-
         [TestId<IconButton>] public static partial string Delete { get; }
-
         [TestId<IconButton>] public static partial string More { get; }
-
         [TestId<SurfaceButton>] public static partial string Reply { get; }
-
         [TestId<SurfaceButton>] public static partial string Forward { get; }
-
         [TestId<IconButton>] public static partial string Compose { get; }
 
         private static readonly ListEntry[] s_messages =
@@ -326,13 +316,9 @@ internal static partial class ShellPages
 
     internal sealed partial record NewProjectPage : Component
     {
-
-        [TestId<Radio>] public static partial string Template { get; }
-
+        [TestId<RadioGroup>] public static partial string Template { get; }
         [TestId<TextField>] public static partial string ProjectName { get; }
-
         [TestId<Switch>] public static partial string Tests { get; }
-
         [TestId<Switch>] public static partial string Git { get; }
 
         public override Element? Build(BuildContext context)
@@ -345,11 +331,7 @@ internal static partial class ShellPages
             string[] templates = ["Empty app", "Sidebar app", "Document editor"];
             WizardStep[] steps =
             [
-                new("Choose a template", new Box
-                {
-                    Layout = new LayoutStyle { RowGap = 4 },
-                    Children = [.. templates.Select((t, i) => (Element?)new Radio(template.Value == i, () => template.Set(i)) { TestId = Template, Label = t })],
-                })
+                new("Choose a template", new RadioGroup(templates, template.Value, template.Set) { TestId = Template, Label = "Template" })
                 {
                     Description = "What the new app starts from.",
                 },
@@ -394,11 +376,8 @@ internal static partial class ShellPages
 
     internal sealed partial record PreferencesPage : Component
     {
-
         [TestId<Switch>] public static partial string Launch { get; }
-
         [TestId<Switch>] public static partial string Updates { get; }
-
         [TestId<Switch>] public static partial string Sounds { get; }
 
         public override Element? Build(BuildContext context)

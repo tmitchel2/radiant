@@ -34,6 +34,9 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     /// <summary>Whether assistive technology should hear it's the chosen one (a tab, a destination).</summary>
     public bool Selected { get; init; }
 
+    /// <summary>Whether it's checked, for a surface that's a check box or radio (a filter chip, a toggle button); null if it isn't one.</summary>
+    public bool? Checked { get; init; }
+
     /// <summary>Whether what it shows or hides is showing (a disclosure, a menu button); null if it doesn't.</summary>
     public bool? Expanded { get; init; }
 
@@ -89,7 +92,7 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         {
             Focusable = !disabled,
             TabIndex = TabIndex,
-            Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Expanded = Expanded },
+            Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Checked = Checked, Expanded = Expanded },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ =>
             {

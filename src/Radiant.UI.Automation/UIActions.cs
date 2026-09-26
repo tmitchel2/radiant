@@ -472,6 +472,7 @@ internal static class UIActions
         }
         if (parameters.Replace == true)
         {
+            // Select everything and delete it, so replacing with nothing empties the field.
             var selectAll = KeyChord.Command(KeyCode.A);
             scope.Input(() =>
             {
@@ -479,8 +480,17 @@ internal static class UIActions
                 scope.Root.KeyUp(selectAll.Key, selectAll.Modifiers);
             });
             yield return null;
+            scope.Input(() =>
+            {
+                scope.Root.KeyDown(KeyCode.Backspace);
+                scope.Root.KeyUp(KeyCode.Backspace);
+            });
+            yield return null;
         }
-        scope.Input(() => scope.Root.TextInput(text));
+        if (text.Length > 0)
+        {
+            scope.Input(() => scope.Root.TextInput(text));
+        }
         if (parameters.Submit == true)
         {
             yield return null;

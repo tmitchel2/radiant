@@ -57,6 +57,8 @@ public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, 
                     TestId = Item,
                     InsetFocusRing = true,
                     Role = SemanticsRole.MenuItem,
+                    // Named by its text alone: its shortcut is a detail, not its name.
+                    Label = item.Text,
                     ShowDisabled = item.Disabled ? true : null,
                     OnPress = () =>
                     {

@@ -61,7 +61,7 @@ internal sealed partial record TablePage : Component
             [
                 new PageHeading("People")
                 {
-                    Description = $"{Count.ToString("N0", CultureInfo.InvariantCulture)} rows, {selection.Value.Count.ToString(CultureInfo.InvariantCulture)} selected",
+                    Description = $"{Count.ToString("N0", CultureInfo.InvariantCulture)} rows, {selection.Value.Count.ToString("N0", CultureInfo.InvariantCulture)} selected",
                     Actions = [new SurfaceButton("Invite") { TestId = Invite, Icon = "add" }],
                 },
                 new Surface

@@ -144,6 +144,15 @@ internal sealed class Inspector(UIAppSession session, SelectorEngine engine, Fie
         String(NodeField.Role, "role", match.Role);
         String(NodeField.Label, "label", match.Label);
         String(NodeField.TestId, "testId", match.TestId);
+        if (fields.Has(NodeField.TestId) && match.TestIds.Count > 1)
+        {
+            writer.WriteStartArray("testIds");
+            foreach (var id in match.TestIds)
+            {
+                writer.WriteStringValue(id);
+            }
+            writer.WriteEndArray();
+        }
         if (fields.Has(NodeField.Kind))
         {
             writer.WriteString("kind", node.Kind.ToString().ToLowerInvariant());

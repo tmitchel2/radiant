@@ -1170,6 +1170,19 @@ public sealed class UIRoot : IDisposable
     /// </summary>
     internal static string? TestIdOf(RenderNode node)
     {
+        var ids = TestIdsOf(node);
+        return ids.Count == 0 ? null : ids[0];
+    }
+
+    /// <summary>
+    /// Every test ID a node answers to, the one it's shown by first: its semantics'
+    /// <see cref="Semantics.TestId"/>, then the explicit <see cref="Element.TestId"/>s of the element that
+    /// made it and the components above that build nothing else in the flow (outermost first), then their
+    /// generated root names (<see cref="Element.DefaultTestId"/>, outermost first). A caller's ID and a
+    /// component's own part ID on one node both find it.
+    /// </summary>
+    internal static IReadOnlyList<string> TestIdsOf(RenderNode node)
+    {
         var declared = node switch
         {
             BoxRenderNode box => box.Element.Semantics?.TestId,
@@ -1177,19 +1190,67 @@ public sealed class UIRoot : IDisposable
             CanvasRenderNode canvas => canvas.Element.Semantics?.TestId,
             _ => null,
         };
-        if (declared is not null || node.Owner is not { } owner)
+        var ids = new List<string>();
+        if (declared is not null)
         {
-            return declared;
+            ids.Add(declared);
         }
-        // An explicit ID wins, the outermost; failing that, the outermost generated root name.
-        var testId = owner.Element.TestId;
-        var fallback = owner.Element.DefaultTestId;
-        for (var above = owner.Parent; above is { RenderNode: null, Children.Count: 1 }; above = above.Parent)
+        if (node.Owner is not { } owner)
         {
-            testId = above.Element.TestId ?? testId;
-            fallback = above.Element.DefaultTestId ?? fallback;
+            return ids;
         }
-        return testId ?? fallback;
+        var explicitIds = new List<string>();
+        var generated = new List<string>();
+        Take(owner);
+        for (ElementNode from = owner, above = owner.Parent!; above is not null && Continues(above, from); from = above, above = above.Parent!)
+        {
+            Take(above);
+        }
+        foreach (var id in explicitIds.Concat(generated))
+        {
+            if (!ids.Contains(id))
+            {
+                ids.Add(id);
+            }
+        }
+        return ids;
+
+        void Take(ElementNode at)
+        {
+            if (at.Element.TestId is { } id)
+            {
+                explicitIds.Insert(0, id);
+            }
+            if (at.Element.DefaultTestId is { } name)
+            {
+                generated.Insert(0, name);
+            }
+        }
+    }
+
+    // Whether a component above builds nothing but what's below it: its only child, or its only child in
+    // the flow when the others just put up a popup (a portal, or nothing while it's closed).
+    private static bool Continues(ElementNode above, ElementNode from) =>
+        above.RenderNode is null
+        && (above.Children.Count == 1 || InFlow(from, 2) == 1 && InFlow(above, 2) == 1);
+
+    // How many render nodes a node puts in the layout's flow (portals aren't), counting no further than limit.
+    private static int InFlow(ElementNode node, int limit)
+    {
+        if (node.RenderNode is { } renderNode)
+        {
+            return renderNode is PortalRenderNode ? 0 : 1;
+        }
+        var count = 0;
+        foreach (var child in node.Children)
+        {
+            count += InFlow(child, limit - count);
+            if (count >= limit)
+            {
+                break;
+            }
+        }
+        return count;
     }
 
     private RenderNode? Find(int id)

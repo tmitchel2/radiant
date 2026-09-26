@@ -20,7 +20,7 @@ public sealed record PropertyRow(string Label, Element? Control) : Component
         Children =
         [
             new SurfaceText(Label) { Legibility = Legibility.Medium, MaxLines = 1, Layout = new LayoutStyle { Width = LabelWidth, FlexShrink = 0 } },
-            new Box { Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, AlignItems = Align.FlexStart }, Children = [Control] },
+            new Box { Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, AlignItems = Align.FlexStart }, Children = [AccessibleNames.Name(Control, Label)] },
         ],
     };
 }

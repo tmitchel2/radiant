@@ -105,10 +105,10 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
                 var handled = true;
                 switch (e.Key.ForDirection(rightToLeft))
                 {
-                    case KeyCode.Right or KeyCode.Up: Set(index, current + step); break;
-                    case KeyCode.Left or KeyCode.Down: Set(index, current - step); break;
-                    case KeyCode.PageUp: Set(index, current + step * 10f); break;
-                    case KeyCode.PageDown: Set(index, current - step * 10f); break;
+                    case KeyCode.Right or KeyCode.Up: Set(index, Slider.Toward(current, props.Min, step, props.Step is not null, 1)); break;
+                    case KeyCode.Left or KeyCode.Down: Set(index, Slider.Toward(current, props.Min, step, props.Step is not null, -1)); break;
+                    case KeyCode.PageUp: Set(index, Slider.Toward(current, props.Min, step, props.Step is not null, 1) + step * 9f); break;
+                    case KeyCode.PageDown: Set(index, Slider.Toward(current, props.Min, step, props.Step is not null, -1) - step * 9f); break;
                     case KeyCode.Home: Set(index, index == 0 ? props.Min : props.Low); break;
                     case KeyCode.End: Set(index, index == 0 ? props.High : props.Max); break;
                     default: handled = false; break;
