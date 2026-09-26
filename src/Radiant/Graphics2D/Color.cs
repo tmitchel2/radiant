@@ -15,7 +15,7 @@ namespace Radiant.Graphics2D;
 /// </para>
 /// <para>
 /// Encoded colours come in at the edges and are decoded exactly once: <see cref="FromArgb(uint)"/>
-/// for the <c>0xAARRGGBB</c> ints a colour library such as Material's produces,
+/// for the <c>0xAARRGGBB</c> ints Radiant.ColorSystem produces,
 /// <see cref="Parse(ReadOnlySpan{char})"/> for CSS-style hex. The implicit conversion to
 /// <see cref="Vector4"/> lets a <see cref="Color"/> go anywhere the renderer takes a colour.
 /// </para>
@@ -36,15 +36,15 @@ public readonly record struct Color(float R, float G, float B, float A = 1f)
     public static Color White { get; } = new(1f, 1f, 1f);
 
     /// <summary>
-    /// A colour from a gamma-encoded <c>0xAARRGGBB</c> value — the packing Android, Material Color
-    /// Utilities and most colour pickers use.
+    /// A colour from a gamma-encoded <c>0xAARRGGBB</c> value — the packing Android, Radiant.ColorSystem
+    /// and most colour pickers use.
     /// </summary>
     public static Color FromArgb(uint argb) => FromSrgb8(
         (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb, (byte)(argb >> 24));
 
     /// <summary>
-    /// A colour from a gamma-encoded <c>0xAARRGGBB</c> held in a signed int, as Material Color
-    /// Utilities returns it (opaque colours are negative).
+    /// A colour from a gamma-encoded <c>0xAARRGGBB</c> held in a signed int, as Radiant.ColorSystem
+    /// returns it (opaque colours are negative).
     /// </summary>
     public static Color FromArgb(int argb) => FromArgb(unchecked((uint)argb));
 

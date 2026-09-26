@@ -100,7 +100,7 @@ public class ColorTests
     [TestMethod]
     public void SignedArgbFromAColourLibraryMatchesUnsigned()
     {
-        // Material Color Utilities hands back opaque colours as negative ints.
+        // Radiant.ColorSystem hands back opaque colours as negative ints.
         var signed = unchecked((int)0xFF6750A4);
 
         Assert.AreEqual(Color.FromArgb(0xFF6750A4), Color.FromArgb(signed));

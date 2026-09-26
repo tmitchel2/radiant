@@ -13,7 +13,7 @@ Encoded colours are decoded exactly once, where they enter the renderer:
 | Source | Use |
 |---|---|
 | `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa` (CSS order, alpha last) | `Color.Parse` / `Color.TryParse` |
-| `0xAARRGGBB` ints, e.g. from Material Color Utilities (signed ints included) | `Color.FromArgb` |
+| `0xAARRGGBB` ints, e.g. from Radiant.ColorSystem (signed ints included) | `Color.FromArgb` |
 | 8-bit or 0–1 sRGB components | `Color.FromSrgb8` / `Color.FromSrgb` |
 | The Tailwind palette | `Colors.*` (already linear, `Vector3`) |
 
