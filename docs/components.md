@@ -95,6 +95,7 @@ turns a filled button red.
 | `AvatarGroup` | Overlapping ringed avatars with the rest counted as "+N"; every name read out |
 | `HoverCard` | Rich content beside a trigger after the pointer rests, staying while the pointer is on the card |
 | `OtpInput` | A one-time code's boxes: typed or pasted characters fill them, non-digits ignored, called when whole |
+| `GridList` | Selectable tiles in as many columns as fit: arrows move across and down, Ctrl/⌘ and Shift select several, Enter or a double click activates |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
