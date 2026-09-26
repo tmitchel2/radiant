@@ -144,9 +144,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Components (`Radiant.Components`)
 
-- **Hugging content takes an extra box.** `Tag` and `Badge` sit in a plain box of their own and
-  set `AlignSelf = FlexStart` inside it, so they keep to their content across a column yet line
-  up with a row's alignment. A "hug" alignment in the layout would do it without the box.
 - **Goldens don't cover everything.** Components, the templates' blocks (two widths, light, dark
   and compact) and a few scheme variants have goldens. Page-sized templates (the gallery's pages),
   the drawer, the navigation bar, pickers opened as popovers and animation mid-way don't, and

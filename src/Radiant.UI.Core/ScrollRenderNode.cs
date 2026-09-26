@@ -82,7 +82,7 @@ internal sealed class ScrollRenderNode : RenderNode
             var vertical = axes is ScrollAxes.Vertical or ScrollAxes.Both;
             var horizontal = axes is ScrollAxes.Horizontal or ScrollAxes.Both;
 
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
             if (Element.Layout.FlexShrink is null)
             {
                 // As in CSS, a scroll container shrinks to fit rather than growing to its content.
@@ -93,7 +93,7 @@ internal sealed class ScrollRenderNode : RenderNode
             YGNodeStyleSetOverflow(Yoga, YGOverflow.Scroll);
             YGNodeStyleSetFlexDirection(Yoga, horizontal && !vertical ? YGFlexDirection.Row : YGFlexDirection.Column);
 
-            YogaStyle.Set(_content, Element.ContentLayout, reset: old is not null);
+            YogaStyle.Set(this, _content, Element.ContentLayout, reset: old is not null);
             // The content keeps its full size along the scrolling axis, and grows to fill the
             // viewport when it's shorter (so it can centre or push things to the end).
             YGNodeStyleSetFlexShrink(_content, 0f);
@@ -270,6 +270,7 @@ internal sealed class ScrollRenderNode : RenderNode
         }
         Owner.Root.RemoveScroller(this);
         base.Dispose();
+        Owner?.Root.TrackHug(_content, false);
         YGNodeFree(_content);
     }
 }

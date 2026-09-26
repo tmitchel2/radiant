@@ -42,7 +42,7 @@ internal sealed class EditableTextRenderNode : RenderNode
         }
         if (old is null || old.Layout != Element.Layout)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
         }
         if (old is null || old.State.Text != Element.State.Text || old.Style != Element.Style
             || old.Multiline != Element.Multiline || old.Alignment != Element.Alignment || old.Placeholder != Element.Placeholder)
