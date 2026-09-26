@@ -50,10 +50,23 @@ internal sealed unsafe class GpuFrame : IDisposable
     }
 
     /// <summary>Renders one frame over <paramref name="clear"/> and returns its BGRA bytes.</summary>
-    public byte[] Render(Vector4 clear, Action<Renderer2D> draw) =>
+    /// <param name="clear">The straight-alpha background.</param>
+    /// <param name="draw">The frame's drawing.</param>
+    /// <param name="clipping">
+    /// Whether the frame starts with the clip-aware <c>BeginFrame(width, height, scale)</c>, or the
+    /// parameterless <c>BeginFrame()</c> that knows nothing of the attachment.
+    /// </param>
+    public byte[] Render(Vector4 clear, Action<Renderer2D> draw, bool clipping = true) =>
         _target.RenderAndRead(clear, pass =>
         {
-            Renderer.BeginFrame((uint)Width, (uint)Height, 1f);
+            if (clipping)
+            {
+                Renderer.BeginFrame((uint)Width, (uint)Height, 1f);
+            }
+            else
+            {
+                Renderer.BeginFrame();
+            }
             draw(Renderer);
             Renderer.EndFrame((RenderPassEncoder*)pass);
         });

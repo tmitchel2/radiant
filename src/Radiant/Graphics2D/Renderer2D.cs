@@ -43,7 +43,6 @@ namespace Radiant.Graphics2D
         private BindGroupLayout* _msdfAtlasBindGroupLayout;
         private PipelineLayout* _msdfPipelineLayout;
         private readonly List<MsdfVertex2D> _msdfVertices = [];
-        private readonly List<MsdfDrawRange> _msdfRanges = [];
         private readonly List<MsdfFont> _ownedFonts = [];
 
         // Batched SDF-shape pipeline (rounded rect / disc / ring). Reuses the group-0 uniform layout,
@@ -51,7 +50,6 @@ namespace Radiant.Graphics2D
         private RenderPipeline* _sdfShapePipeline;
         private ShaderModule* _sdfShapeShader;
         private readonly List<SdfShapeVertex2D> _sdfShapeVertices = [];
-        private readonly List<SdfShapeDrawRange> _sdfShapeRanges = [];
 
         internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
         internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
@@ -91,7 +89,14 @@ namespace Radiant.Graphics2D
 
         // Clip/scissor state
         private readonly Stack<ClipRect> _clipStack = new();
-        private readonly List<DrawRange> _ranges = [];
+
+        // EVERY DRAW, IN THE ORDER IT WAS MADE. Each primitive kind keeps its own vertex list (and
+        // pipeline), but what gets drawn when is decided here: a batch is a run of one kind's
+        // vertices with one clip and one texture, and EndFrame replays the batches in order,
+        // switching pipeline only where the kind changes. So a popup's background drawn after some
+        // text covers that text, whatever pipelines the two use. Consecutive compatible draws extend
+        // the last batch, so a frame of many rects is still one draw call.
+        private readonly List<DrawBatch> _batches = [];
 
         // Scroll-offset state: a translate applied to emitted geometry (not the clip).
         // Markers record the vertex counts at push time; PopScrollOffset shifts everything
@@ -100,8 +105,7 @@ namespace Radiant.Graphics2D
         private readonly Stack<ScrollOffsetMarker> _scrollOffsetStack = new();
 
         private readonly record struct ScrollOffsetMarker(
-            Vector2 Delta, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart);
-        private DrawRange _currentRange;
+            Vector2 Delta, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart);
         private bool _clipEnabled;
         private uint _attachmentWidth;
         private uint _attachmentHeight;
@@ -124,29 +128,29 @@ namespace Radiant.Graphics2D
             }
         }
 
-        private struct DrawRange
+        // Which pipeline (and vertex list) a batch draws with.
+        private enum BatchKind
         {
-            public ClipRect? Clip;
-            public int FilledStart;
-            public int FilledCount;
-            public int LineStart;
-            public int LineCount;
+            Filled,
+            Line,
+            SdfShape,
+            Image,
+            Msdf,
         }
 
-        private struct MsdfDrawRange
+        // A run of consecutive vertices of one kind sharing a clip and a group-1 bind group (the
+        // font atlas or image; zero for kinds that have none).
+        private struct DrawBatch
         {
-            public MsdfFont Font;
+            public BatchKind Kind;
+            public int Start;
+            public int Count;
             public ClipRect? Clip;
-            public int VertexStart;
-            public int VertexCount;
+            public IntPtr BindGroup;
         }
 
-        private struct SdfShapeDrawRange
-        {
-            public ClipRect? Clip;
-            public int VertexStart;
-            public int VertexCount;
-        }
+        /// <summary>Number of draw batches recorded this frame. For tests.</summary>
+        internal int BatchCount => _batches.Count;
 
         /// <summary>Builds the pipelines for a target of a given sample count.</summary>
         /// <param name="engineState">The device to build on.</param>
@@ -597,15 +601,11 @@ namespace Radiant.Graphics2D
             _filledVertices.Clear();
             _lineVertices.Clear();
             _msdfVertices.Clear();
-            _msdfRanges.Clear();
             _sdfShapeVertices.Clear();
-            _sdfShapeRanges.Clear();
             _imageVertices.Clear();
-            _imageRanges.Clear();
+            _batches.Clear();
             _clipStack.Clear();
             _scrollOffsetStack.Clear();
-            _ranges.Clear();
-            _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
             _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
             _attachmentWidth = attachmentWidth;
             _attachmentHeight = attachmentHeight;
@@ -630,7 +630,6 @@ namespace Radiant.Graphics2D
                 (int)MathF.Ceiling(height));
             if (_clipStack.Count > 0)
                 newClip = _clipStack.Peek().Intersect(newClip);
-            CloseCurrentRange();
             _clipStack.Push(newClip);
         }
 
@@ -639,7 +638,6 @@ namespace Radiant.Graphics2D
         {
             if (!_clipEnabled) return;
             if (_clipStack.Count == 0) return;
-            CloseCurrentRange();
             _clipStack.Pop();
         }
 
@@ -655,7 +653,8 @@ namespace Radiant.Graphics2D
                 _filledVertices.Count,
                 _lineVertices.Count,
                 _msdfVertices.Count,
-                _sdfShapeVertices.Count));
+                _sdfShapeVertices.Count,
+                _imageVertices.Count));
 
         /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
         public void PopScrollOffset()
@@ -688,19 +687,43 @@ namespace Radiant.Graphics2D
                 v.Position += m.Delta;
                 _sdfShapeVertices[i] = v;
             }
+            for (var i = m.ImageStart; i < _imageVertices.Count; i++)
+            {
+                var v = _imageVertices[i];
+                v.Position += m.Delta;
+                _imageVertices[i] = v;
+            }
         }
 
-        private void CloseCurrentRange()
+        private void AddFilled(Vertex2D vertex)
         {
-            _currentRange.FilledCount = _filledVertices.Count - _currentRange.FilledStart;
-            _currentRange.LineCount = _lineVertices.Count - _currentRange.LineStart;
-            _currentRange.Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null;
-            _ranges.Add(_currentRange);
-            _currentRange = new DrawRange
+            AppendToBatch(BatchKind.Filled, _filledVertices.Count, 1, IntPtr.Zero);
+            _filledVertices.Add(vertex);
+        }
+
+        private void AddLine(Vertex2D vertex)
+        {
+            AppendToBatch(BatchKind.Line, _lineVertices.Count, 1, IntPtr.Zero);
+            _lineVertices.Add(vertex);
+        }
+
+        // Records that `count` vertices starting at `start` of `kind`'s list are drawn next: they
+        // extend the last batch if it is the same kind, clip and bind group and they follow on from
+        // it, and start a new batch otherwise.
+        private void AppendToBatch(BatchKind kind, int start, int count, IntPtr bindGroup)
+        {
+            ClipRect? clip = _clipStack.Count > 0 ? _clipStack.Peek() : null;
+            if (_batches.Count > 0)
             {
-                FilledStart = _filledVertices.Count,
-                LineStart = _lineVertices.Count,
-            };
+                var last = _batches[^1];
+                if (last.Kind == kind && last.BindGroup == bindGroup && last.Clip == clip && last.Start + last.Count == start)
+                {
+                    last.Count += count;
+                    _batches[^1] = last;
+                    return;
+                }
+            }
+            _batches.Add(new DrawBatch { Kind = kind, Start = start, Count = count, Clip = clip, BindGroup = bindGroup });
         }
 
         private void UpdateUniformBuffer()
@@ -732,13 +755,13 @@ namespace Radiant.Graphics2D
             var v2 = new Vertex2D(new Vector2(x + width, y + height), color);
             var v3 = new Vertex2D(new Vector2(x, y + height), color);
 
-            _filledVertices.Add(v0);
-            _filledVertices.Add(v1);
-            _filledVertices.Add(v2);
+            AddFilled(v0);
+            AddFilled(v1);
+            AddFilled(v2);
 
-            _filledVertices.Add(v0);
-            _filledVertices.Add(v2);
-            _filledVertices.Add(v3);
+            AddFilled(v0);
+            AddFilled(v2);
+            AddFilled(v3);
         }
 
         // A line with a width, as two triangles. WebGPU has no lineWidth -- LineList is always one
@@ -1085,9 +1108,9 @@ namespace Radiant.Graphics2D
 
         public void DrawTriangle(Vector2 a, Vector2 b, Vector2 c, Vector4 color)
         {
-            _filledVertices.Add(new Vertex2D(a, color));
-            _filledVertices.Add(new Vertex2D(b, color));
-            _filledVertices.Add(new Vertex2D(c, color));
+            AddFilled(new Vertex2D(a, color));
+            AddFilled(new Vertex2D(b, color));
+            AddFilled(new Vertex2D(c, color));
         }
 
         public void DrawRectangleOutline(float x, float y, float width, float height, Vector4 color)
@@ -1098,10 +1121,10 @@ namespace Radiant.Graphics2D
             var v2 = new Vertex2D(new Vector2(x + width, y + height), color);
             var v3 = new Vertex2D(new Vector2(x, y + height), color);
 
-            _lineVertices.Add(v0); _lineVertices.Add(v1);
-            _lineVertices.Add(v1); _lineVertices.Add(v2);
-            _lineVertices.Add(v2); _lineVertices.Add(v3);
-            _lineVertices.Add(v3); _lineVertices.Add(v0);
+            AddLine(v0); AddLine(v1);
+            AddLine(v1); AddLine(v2);
+            AddLine(v2); AddLine(v3);
+            AddLine(v3); AddLine(v0);
         }
 
         public void DrawCircleFilled(float cx, float cy, float radius, Vector4 color, int segments = 32)
@@ -1120,9 +1143,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1140,8 +1163,8 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
@@ -1161,9 +1184,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * rx, cy + MathF.Sin(angle2) * ry),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1181,15 +1204,15 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * rx, cy + MathF.Sin(angle2) * ry),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
         public void DrawLine(Vector2 p1, Vector2 p2, Vector4 color)
         {
-            _lineVertices.Add(new Vertex2D(p1, color));
-            _lineVertices.Add(new Vertex2D(p2, color));
+            AddLine(new Vertex2D(p1, color));
+            AddLine(new Vertex2D(p2, color));
         }
 
         public void DrawPolyline(IEnumerable<Vector2> points, Vector4 color)
@@ -1199,8 +1222,8 @@ namespace Radiant.Graphics2D
             {
                 if (prevPoint.HasValue)
                 {
-                    _lineVertices.Add(new Vertex2D(prevPoint.Value, color));
-                    _lineVertices.Add(new Vertex2D(point, color));
+                    AddLine(new Vertex2D(prevPoint.Value, color));
+                    AddLine(new Vertex2D(point, color));
                 }
                 prevPoint = point;
             }
@@ -1222,9 +1245,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1242,8 +1265,8 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
@@ -1314,14 +1337,7 @@ namespace Radiant.Graphics2D
             var added = _msdfVertices.Count - startVertex;
             if (added == 0) return;
 
-            var clip = _clipStack.Count > 0 ? _clipStack.Peek() : (ClipRect?)null;
-            _msdfRanges.Add(new MsdfDrawRange
-            {
-                Font = font,
-                Clip = clip,
-                VertexStart = startVertex,
-                VertexCount = added,
-            });
+            AppendToBatch(BatchKind.Msdf, startVertex, added, (IntPtr)font.BindGroup);
         }
 
         /// <summary>Measure pixel width of a string drawn with an MSDF font at the given pixel height.</summary>
@@ -1477,12 +1493,7 @@ namespace Radiant.Graphics2D
             _sdfShapeVertices.Add(br);
             _sdfShapeVertices.Add(tr);
 
-            _sdfShapeRanges.Add(new SdfShapeDrawRange
-            {
-                Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null,
-                VertexStart = start,
-                VertexCount = 6,
-            });
+            AppendToBatch(BatchKind.SdfShape, start, 6, IntPtr.Zero);
         }
 
         /// <summary>Draws a rectangle outline.</summary>
@@ -1503,149 +1514,110 @@ namespace Radiant.Graphics2D
             DrawCircleOutline(center.X, center.Y, radius, color, segments);
         }
 
+        /// <summary>
+        /// Encodes the frame's draws into <paramref name="renderPass"/>, in the order they were made.
+        /// </summary>
         public void EndFrame(RenderPassEncoder* renderPass)
         {
             _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-
-            if (!_clipEnabled)
+            if (_batches.Count == 0)
             {
-                // Fast path: draw all vertices in one call each.
-                if (_filledVertices.Count > 0)
-                {
-                    var vertexBuffer = CreateAndUploadVertexBuffer(_filledVertices);
-                    _frameBuffers.Add((IntPtr)vertexBuffer);
-                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
-                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                        (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_filledVertices.Count, 1, 0, 0);
-                }
-
-                if (_lineVertices.Count > 0)
-                {
-                    var vertexBuffer = CreateAndUploadVertexBuffer(_lineVertices);
-                    _frameBuffers.Add((IntPtr)vertexBuffer);
-                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
-                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                        (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_lineVertices.Count, 1, 0, 0);
-                }
                 return;
             }
 
-            // Close the final range and emit one draw per range with its scissor.
-            CloseCurrentRange();
+            // One vertex buffer per kind, uploaded once; batches index into them.
+            Buffer* filledBuffer = UploadIfAny(_filledVertices);
+            Buffer* lineBuffer = UploadIfAny(_lineVertices);
+            Buffer* sdfShapeBuffer = UploadIfAny(_sdfShapeVertices);
+            Buffer* imageBuffer = UploadIfAny(_imageVertices);
+            Buffer* msdfBuffer = UploadIfAny(_msdfVertices);
 
-            Buffer* filledBuffer = null;
-            Buffer* lineBuffer = null;
-            if (_filledVertices.Count > 0)
+            BatchKind? boundKind = null;
+            var boundGroup = IntPtr.Zero;
+            ClipRect? appliedClip = null;
+            var scissorApplied = false;
+            foreach (var batch in _batches)
             {
-                filledBuffer = CreateAndUploadVertexBuffer(_filledVertices);
-                _frameBuffers.Add((IntPtr)filledBuffer);
-            }
-            if (_lineVertices.Count > 0)
-            {
-                lineBuffer = CreateAndUploadVertexBuffer(_lineVertices);
-                _frameBuffers.Add((IntPtr)lineBuffer);
-            }
-
-            if (filledBuffer != null)
-            {
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, filledBuffer, 0,
-                    (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
-                foreach (var range in _ranges)
+                if (boundKind != batch.Kind)
                 {
-                    if (range.FilledCount == 0) continue;
-                    ApplyScissor(renderPass, range.Clip);
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.FilledCount, 1, (uint)range.FilledStart, 0);
+                    BindPipeline(renderPass, batch.Kind, filledBuffer, lineBuffer, sdfShapeBuffer, imageBuffer, msdfBuffer);
+                    boundKind = batch.Kind;
+                    boundGroup = IntPtr.Zero;
                 }
+                if (batch.BindGroup != IntPtr.Zero && batch.BindGroup != boundGroup)
+                {
+                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, (BindGroup*)batch.BindGroup, 0, null);
+                    boundGroup = batch.BindGroup;
+                }
+                if (_clipEnabled && (!scissorApplied || appliedClip != batch.Clip))
+                {
+                    ApplyScissor(renderPass, batch.Clip);
+                    appliedClip = batch.Clip;
+                    scissorApplied = true;
+                }
+                _wgpu.RenderPassEncoderDraw(renderPass, (uint)batch.Count, 1, (uint)batch.Start, 0);
             }
 
-            if (lineBuffer != null)
+            if (_clipEnabled)
             {
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, lineBuffer, 0,
-                    (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
-                foreach (var range in _ranges)
-                {
-                    if (range.LineCount == 0) continue;
-                    ApplyScissor(renderPass, range.Clip);
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.LineCount, 1, (uint)range.LineStart, 0);
-                }
-            }
-
-            EmitSdfShapeDraws(renderPass);
-            EmitImageDraws(renderPass);
-            EmitMsdfDraws(renderPass);
-
-            // Restore full-attachment scissor for any subsequent consumer.
-            _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
-        }
-
-        private void EmitMsdfDraws(RenderPassEncoder* renderPass)
-        {
-            if (_msdfVertices.Count == 0 || _msdfRanges.Count == 0) return;
-
-            var msdfBuffer = CreateAndUploadMsdfVertexBuffer(_msdfVertices);
-            _frameBuffers.Add((IntPtr)msdfBuffer);
-
-            _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0,
-                (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
-
-            MsdfFont? boundFont = null;
-            foreach (var range in _msdfRanges)
-            {
-                ApplyScissor(renderPass, range.Clip);
-                if (!ReferenceEquals(boundFont, range.Font))
-                {
-                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, range.Font.BindGroup, 0, null);
-                    boundFont = range.Font;
-                }
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+                // Restore full-attachment scissor for any subsequent consumer.
+                _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
             }
         }
 
-        private void EmitSdfShapeDraws(RenderPassEncoder* renderPass)
+        private void BindPipeline(
+            RenderPassEncoder* renderPass, BatchKind kind,
+            Buffer* filledBuffer, Buffer* lineBuffer, Buffer* sdfShapeBuffer, Buffer* imageBuffer, Buffer* msdfBuffer)
         {
-            if (_sdfShapeVertices.Count == 0 || _sdfShapeRanges.Count == 0) return;
-
-            var buffer = CreateAndUploadSdfShapeVertexBuffer(_sdfShapeVertices);
-            _frameBuffers.Add((IntPtr)buffer);
-
-            _wgpu.RenderPassEncoderSetPipeline(renderPass, _sdfShapePipeline);
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, buffer, 0,
-                (ulong)(_sdfShapeVertices.Count * sizeof(SdfShapeVertex2D)));
-
-            foreach (var range in _sdfShapeRanges)
+            switch (kind)
             {
-                ApplyScissor(renderPass, range.Clip);
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+                case BatchKind.Filled:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, filledBuffer, 0, (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
+                    break;
+                case BatchKind.Line:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, lineBuffer, 0, (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
+                    break;
+                case BatchKind.SdfShape:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _sdfShapePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, sdfShapeBuffer, 0, (ulong)(_sdfShapeVertices.Count * sizeof(SdfShapeVertex2D)));
+                    break;
+                case BatchKind.Image:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _imagePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, imageBuffer, 0, (ulong)(_imageVertices.Count * sizeof(ImageVertex2D)));
+                    break;
+                case BatchKind.Msdf:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0, (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
+                    break;
             }
         }
 
-        private Buffer* CreateAndUploadSdfShapeVertexBuffer(List<SdfShapeVertex2D> vertices)
+        // Uploads a vertex list into a buffer released at the next BeginFrame, or null if it is empty.
+        private Buffer* UploadIfAny<T>(List<T> vertices) where T : unmanaged
         {
-            var bufferDescriptor = new BufferDescriptor
+            if (vertices.Count == 0)
             {
-                Size = (ulong)(vertices.Count * sizeof(SdfShapeVertex2D)),
+                return null;
+            }
+            var bytes = (ulong)(vertices.Count * sizeof(T));
+            var descriptor = new BufferDescriptor
+            {
+                Size = bytes,
                 Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
                 MappedAtCreation = false,
             };
-
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var array = vertices.ToArray();
-            fixed (SdfShapeVertex2D* dataPtr = array)
+            var buffer = _wgpu.DeviceCreateBuffer(_device, in descriptor);
+            var span = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices);
+            fixed (T* data = span)
             {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(SdfShapeVertex2D)));
+                _wgpu.QueueWriteBuffer(_queue, buffer, 0, data, (nuint)bytes);
             }
-
+            _frameBuffers.Add((IntPtr)buffer);
             return buffer;
         }
+
 
         private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
         {
@@ -1671,47 +1643,7 @@ namespace Radiant.Graphics2D
             _wgpu.RenderPassEncoderSetScissorRect(renderPass, (uint)px, (uint)py, (uint)pw, (uint)ph);
         }
 
-        private Buffer* CreateAndUploadMsdfVertexBuffer(List<MsdfVertex2D> vertices)
-        {
-            var bufferDescriptor = new BufferDescriptor
-            {
-                Size = (ulong)(vertices.Count * sizeof(MsdfVertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false,
-            };
 
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var array = vertices.ToArray();
-            fixed (MsdfVertex2D* dataPtr = array)
-            {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(MsdfVertex2D)));
-            }
-
-            return buffer;
-        }
-
-        private Buffer* CreateAndUploadVertexBuffer(List<Vertex2D> vertices)
-        {
-            var bufferDescriptor = new BufferDescriptor
-            {
-                Size = (ulong)(vertices.Count * sizeof(Vertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false
-            };
-
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var vertexArray = vertices.ToArray();
-            fixed (Vertex2D* dataPtr = vertexArray)
-            {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(Vertex2D)));
-            }
-
-            return buffer;
-        }
 
         public void Dispose()
         {

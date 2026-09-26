@@ -62,6 +62,17 @@ a tab frame can be uploaded and drawn 1:1 without a single channel changing. Ima
 a file (PNG etc.) must be premultiplied before `Update`. `DrawImage`'s tint is a straight-alpha
 colour.
 
+## Draws happen in the order they are made
+
+Each primitive kind has its own vertex list and pipeline: filled triangles, hairlines, SDF shapes,
+images and MSDF text. The order draws are made in is kept separately, as a list of batches. A batch
+is a run of one kind's vertices sharing a clip and a texture. `EndFrame` replays the batches in
+order, switching pipeline where the kind changes, so a later draw always covers an earlier one
+whatever pipelines they use. Consecutive compatible draws extend the current batch, so a frame of
+many rectangles is still a single draw call.
+
+Both `BeginFrame` overloads draw every kind. The parameterless one simply sets no scissor.
+
 ## Text
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.
@@ -117,7 +128,6 @@ the CPU. They cannot see text, SDF shapes or images.
 
 | Item | Why deferred | Trigger to revisit |
 |---|---|---|
-| Draw order across pipelines | `EndFrame` still issues each pipeline's draws in turn (filled, lines, SDF, images, text), so z-order follows primitive type | Renderer v2: one ordered, instanced display list |
 | Runtime glyph generation, shaping, wrapping, variable fonts | The atlases are fixed at bake time and `DrawText` walks codepoints | The text stack (`ITextShaper`, paragraph layout, atlas / MSDF / Slug renderers) |
 | Material Symbols icons | Nothing draws icons yet, and the full variable icon font is several megabytes to embed for no user | The first icon-bearing components |
 | Premultiplying decoded images | Nothing in Radiant decodes images into a `Texture2D` yet | An image-loading API |

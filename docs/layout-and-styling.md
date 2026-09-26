@@ -99,8 +99,8 @@ widgets override (e.g. `Button` adds `Hover`/`Active`). `UIElement.Classes` is a
 
 `Renderer2D` gains one **batched SDF-shape pipeline** that draws every analytic 2D shape — rounded
 rectangle (per-corner radii), disc, and ring — from a single shader that dispatches per fragment on a
-shape kind. It mirrors the MSDF pipeline (separate vertex list, per-range scissor, emitted before MSDF
-text so backgrounds sit under text):
+shape kind. Like every pipeline it has its own vertex list, and its draws are interleaved with the
+others in the order they are made (see [rendering.md](rendering.md)):
 
 ```csharp
 renderer.DrawRoundedRectFilled(x, y, w, h, radius, fill);
@@ -163,6 +163,5 @@ content host should still scroll.
 | `ScrollView` as a *full* layout boundary (laying out its children in content space via a nested Yoga pass) | First cut treats it as a leaf (children stay manually positioned / `ContentHeight`-measured); sufficient for `SettingsShell` | Nested flex content inside a scroll region is needed |
 | Yoga-tree caching / incremental layout | Rebuilding per frame is fine at panel scale | Measured frame cost, or trees beyond ~500 nodes |
 | Style inheritance / `!important` | Flat cascade covers current needs (descendant/ancestor matching is already expressible as a predicate that walks parents) | Cascade expressiveness demand |
-| `Renderer2D` no-clip fast path skips SDF-shape + MSDF draws | Matches existing MSDF behaviour; the app always uses the clip-aware `BeginFrame` | A consumer needs the no-clip path to draw text/shapes |
 
 (Done in this work: per-corner `border-radius`, disc, and ring — via the batched SDF-shape pipeline.)
