@@ -11,11 +11,11 @@ public class FontTests
     private static FontFace Inter => FontLibrary.Default.FindFace(FontLibrary.Inter)!;
 
     [TestMethod]
-    public void TheDefaultLibraryHasInterAndJetBrainsMonoWithItalics()
+    public void TheDefaultLibraryHasInterAndJetBrainsMonoWithItalicsAndTheIcons()
     {
         var library = FontLibrary.Default;
 
-        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono }, library.Families.ToArray());
+        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono, FontLibrary.Icons }, library.Families.ToArray());
         Assert.IsTrue(library.FindFace(FontLibrary.Inter, italic: true)!.IsItalic);
         Assert.IsTrue(library.FindFace(FontLibrary.JetBrainsMono, italic: true)!.IsItalic);
     }
