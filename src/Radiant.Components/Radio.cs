@@ -16,6 +16,9 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
     /// <summary>A label beside it, which can also be pressed.</summary>
     public string? Label { get; init; }
 
+    /// <summary>What assistive technology calls it when there's no visible <see cref="Label"/> (a check box in a table row).</summary>
+    public string? AccessibleLabel { get; init; }
+
     /// <summary>Whether it can't be chosen.</summary>
     public bool Disabled { get; init; }
 
@@ -51,6 +54,7 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
         return new SelectionControl(_ => circle, 20)
         {
             Label = Label,
+            AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.RadioButton,
             Checked = Selected,
             Disabled = Disabled,

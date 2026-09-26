@@ -17,6 +17,9 @@ public sealed record Checkbox(bool Checked, Action<bool>? OnChange) : Component
     /// <summary>A label beside it, which can also be pressed.</summary>
     public string? Label { get; init; }
 
+    /// <summary>What assistive technology calls it when there's no visible <see cref="Label"/> (a check box in a table row).</summary>
+    public string? AccessibleLabel { get; init; }
+
     /// <summary>Whether to show the mixed state (a dash) instead: some but not all of a group ticked.</summary>
     public bool Indeterminate { get; init; }
 
@@ -73,6 +76,7 @@ public sealed record Checkbox(bool Checked, Action<bool>? OnChange) : Component
         return new SelectionControl(_ => box, 18)
         {
             Label = Label,
+            AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.CheckBox,
             Checked = Indeterminate ? null : Checked,
             Disabled = Disabled,

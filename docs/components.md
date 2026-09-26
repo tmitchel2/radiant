@@ -35,7 +35,7 @@ turns a filled button red.
 | `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
 | `IconButton` | Standard, filled, tonal and outlined icon buttons, named by a required label |
 
-| `Checkbox` | Controlled check box: checked, indeterminate, error, disabled; the tick fades in |
+| `Checkbox` | Controlled check box: checked, indeterminate, error, disabled; the tick fades in. `AccessibleLabel` names it without showing a label (as do `Radio`'s and `Switch`'s) |
 | `Switch` | Controlled switch; the handle slides and grows (bigger still while pressed) |
 | `Radio` | Controlled radio button; selecting calls `OnSelect`, and the dot grows in |
 
@@ -59,6 +59,7 @@ turns a filled button red.
 | `Avatar` | Initials on a container colour chosen stably from the name, or a person icon |
 | `Skeleton` | A gently pulsing placeholder in the shape of content still loading |
 | `VirtualList` | A scrolling list that builds only the rows in view, so a million rows cost a screenful; fixed row height; `ScrollToIndex` brings a row into view |
+| `DataTable`, `DataColumn` | A virtualised table: sortable headers (the owner sorts), draggable column widths, a growing column, single or multi selection by press, Ctrl/⌘ and Shift, check boxes with select-all, full keyboard (arrows, pages, Home/End, Space, Enter, select all), double click to activate; controlled or not |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
@@ -112,5 +113,5 @@ dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2 
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --page 6 --height 900  # one page
 ```
 
-Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 landing page, 6 store,
-7 workspace, 8 mail, 9 new project (wizard), 10 preferences.
+Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 table, 6 landing page,
+7 store, 8 workspace, 9 mail, 10 new project (wizard), 11 preferences.

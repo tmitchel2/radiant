@@ -14,6 +14,8 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
 {
     public string? Label { get; init; }
 
+    public string? AccessibleLabel { get; init; }
+
     public SemanticsRole Role { get; init; }
 
     public bool? Checked { get; init; }
@@ -42,7 +44,7 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
         return new Box
         {
             Focusable = !disabled,
-            Semantics = new Semantics { Role = Role, Label = Label, Checked = Checked, Disabled = disabled },
+            Semantics = new Semantics { Role = Role, Label = AccessibleLabel ?? Label, Checked = Checked, Disabled = disabled },
             Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 4 },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ =>

@@ -74,4 +74,16 @@ public enum SemanticsRole
 
     /// <summary>A movable divider between panes (a splitter); its value is the sized pane's size.</summary>
     Separator,
+
+    /// <summary>A table of rows and columns.</summary>
+    Table,
+
+    /// <summary>A row of a table (its value, when set, is its position).</summary>
+    Row,
+
+    /// <summary>A column's header in a table (its value is how the column sorts, if it does).</summary>
+    ColumnHeader,
+
+    /// <summary>A cell of a table.</summary>
+    Cell,
 }

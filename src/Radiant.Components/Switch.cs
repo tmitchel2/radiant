@@ -16,6 +16,9 @@ public sealed record Switch(bool On, Action<bool>? OnChange) : Component
     /// <summary>A label beside it, which can also be pressed.</summary>
     public string? Label { get; init; }
 
+    /// <summary>What assistive technology calls it when there's no visible <see cref="Label"/> (a check box in a table row).</summary>
+    public string? AccessibleLabel { get; init; }
+
     /// <summary>Whether it can't be changed.</summary>
     public bool Disabled { get; init; }
 
@@ -70,6 +73,7 @@ public sealed record Switch(bool On, Action<bool>? OnChange) : Component
         return new SelectionControl(Indicator, 52)
         {
             Label = Label,
+            AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.Switch,
             Checked = On,
             Disabled = Disabled,

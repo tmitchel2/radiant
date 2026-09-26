@@ -141,6 +141,16 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
+- **Tables are a first cut.** No horizontal scrolling when the columns are wider than the table,
+  no column reordering or hiding, no sticky first column, no cell editing, and cells aren't
+  exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
+  by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
+  which is fine at 100k rows but wants a range representation beyond that.
+- **Column resize grips sit inside their own cell.** The 6 px grip is at the cell's right edge
+  rather than straddling the boundary, for the same tree-order reason as the splitter's handle.
+- **`UseState<T?>(null)` is ambiguous.** `null` fits both the value and the factory overload, so
+  a nullable state needs a cast (`UseState(((int, int)?)null)`). A distinct name for the factory
+  form (`UseLazyState`) would avoid it.
 - **Virtual lists need a fixed row height.** Variable heights want measured rows and an
   estimated-height index (a Fenwick tree of heights). Past 2^24 px (560k rows of 30 px) the scroll
   offset is a float and moves in 2 px steps; rows stay aligned, because whole-pixel tops and
