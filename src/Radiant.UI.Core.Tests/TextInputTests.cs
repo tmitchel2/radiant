@@ -79,6 +79,22 @@ public class TextInputTests
     }
 
     [TestMethod]
+    public void EventsBeforeARebuildBuildOnEachOther()
+    {
+        var (root, value) = Mount("Hello");
+        using var _ = root;
+
+        // A frame's worth of events, with no rebuild between them.
+        root.KeyDown(KeyCode.A, Command);
+        root.TextInput("B");
+        root.TextInput("y");
+        root.TextInput("e");
+        root.Update(Viewport);
+
+        Assert.AreEqual("Bye[]", Show(value.Value));
+    }
+
+    [TestMethod]
     public void ClickingPlacesTheCaretAndDraggingSelects()
     {
         var (root, value) = Mount("Hello world");

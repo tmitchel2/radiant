@@ -75,6 +75,19 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         var goalX = context.UseRef<float?>(null);
         var latest = context.UseRef(this);
         latest.Value = this;
+        // Several events can arrive before the owner rebuilds the input with the state it was sent
+        // (a key and its text in one frame, key repeat, an input method's burst). Until then, each
+        // builds on the last state sent, not the stale one in the props; after a rebuild the props
+        // win again, so an owner that refuses a change still decides.
+        var builds = context.UseRef(0);
+        builds.Value++;
+        var sent = context.UseRef<(int Build, TextEditState State)?>(null);
+        TextEditState Current() => sent.Value is { } last && last.Build == builds.Value ? last.State : latest.Value.State;
+        void Emit(TextEditState next)
+        {
+            sent.Value = (builds.Value, next);
+            latest.Value.OnChange(next);
+        }
         var clipboard = context.UsePlatform().Clipboard;
         var root = context.Root;
         var isFocused = focused.Value;
@@ -111,19 +124,19 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         void Change(TextEditState next, bool coalesce = false)
         {
             var props = latest.Value;
-            if (next == props.State)
+            if (next == Current())
             {
                 return;
             }
-            if (next.Text != props.State.Text)
+            if (next.Text != Current().Text)
             {
-                history.Value.Record(props.State, coalesce);
+                history.Value.Record(Current(), coalesce);
             }
-            if (next.Selection.Focus != props.State.Selection.Focus || next.Text != props.State.Text)
+            if (next.Selection.Focus != Current().Selection.Focus || next.Text != Current().Text)
             {
                 goalX.Value = null;
             }
-            props.OnChange(next);
+            Emit(next);
         }
 
         bool Editable() => !latest.Value.ReadOnly && !latest.Value.Disabled;
@@ -131,7 +144,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         void OnKey(KeyEventArgs e)
         {
             var props = latest.Value;
-            var state = props.State;
+            var state = Current();
             if (text.Paragraph is not { } paragraph)
             {
                 return;
@@ -162,7 +175,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                     // Keep the column across short lines: remember the x the first vertical move started from.
                     goalX.Value ??= paragraph.GetCaretRect(state.Selection.FocusPosition).Left;
                     var goal = goalX.Value;
-                    props.OnChange(TextEditing.Move(state, paragraph, e.Key == KeyCode.Up ? CaretMovement.Up : CaretMovement.Down, shift, goal));
+                    Emit(TextEditing.Move(state, paragraph, e.Key == KeyCode.Up ? CaretMovement.Up : CaretMovement.Down, shift, goal));
                     break;
                 case KeyCode.Home:
                     Change(TextEditing.Move(state, paragraph, CaretMovement.LineStart, shift));
@@ -215,7 +228,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 case KeyCode.Z when command && Editable():
                     if ((shift ? history.Value.Redo(state) : history.Value.Undo(state)) is { } restored)
                     {
-                        props.OnChange(restored);
+                        Emit(restored);
                     }
                     break;
                 default:
@@ -232,7 +245,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
             {
                 return;
             }
-            var state = latest.Value.State;
+            var state = Current();
             if (!latest.Value.Multiline)
             {
                 typed = typed.Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal);
@@ -247,19 +260,19 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         {
             if (Editable())
             {
-                latest.Value.OnChange(TextEditing.SetComposing(latest.Value.State, marked, start, length));
+                Emit(TextEditing.SetComposing(Current(), marked, start, length));
             }
         };
         inputClient.Unmark = () =>
         {
-            if (latest.Value.State.Composing is not null)
+            if (Current().Composing is not null)
             {
-                Change(TextEditing.EndComposing(latest.Value.State));
+                Change(TextEditing.EndComposing(Current()));
             }
         };
         inputClient.Caret = () =>
         {
-            var state = latest.Value.State;
+            var state = Current();
             // While composing, the composition's start: the candidate window then stays put as the user types.
             var position = state.Composing is { } composing ? new TextPosition(composing.Start) : state.Selection.FocusPosition;
             var caret = text.CaretRect(position);
@@ -274,7 +287,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 return;
             }
             var hit = text.HitTest(e.Position);
-            var state = props.State;
+            var state = Current();
             var next = e.ClickCount switch
             {
                 2 => TextEditing.SelectWord(state, paragraph, hit.Index),
@@ -293,7 +306,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 return;
             }
             var hit = text.HitTest(e.Position);
-            Change(latest.Value.State with { Selection = new TextSelection(drag.Value.Anchor, hit.Index, hit.Affinity) });
+            Change(Current() with { Selection = new TextSelection(drag.Value.Anchor, hit.Index, hit.Affinity) });
         }
 
         return new Box
@@ -318,9 +331,9 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 }
                 drag.Value = (false, 0);
                 var props = latest.Value;
-                if (props.State.Composing is not null)
+                if (Current().Composing is not null)
                 {
-                    props.OnChange(TextEditing.EndComposing(props.State));
+                    Emit(TextEditing.EndComposing(Current()));
                 }
                 props.OnFocusChange?.Invoke(false);
             },
@@ -342,7 +355,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 }
                 if (typed.Length > 0 && !char.IsControl(typed[0]))
                 {
-                    Change(TextEditing.Insert(latest.Value.State, typed), coalesce: typed.Length == 1 && typed != " ");
+                    Change(TextEditing.Insert(Current(), typed), coalesce: typed.Length == 1 && typed != " ");
                     e.Handled = true;
                 }
             },
