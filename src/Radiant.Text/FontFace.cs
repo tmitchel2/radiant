@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using HarfBuzzSharp;
 
 namespace Radiant.Text;
@@ -20,9 +21,12 @@ public sealed class FontFace : IDisposable
 
     private FontFace(byte[] data, string familyName, bool italic)
     {
-        // HarfBuzz reads the font in place, so the bytes are pinned for the face's lifetime by
-        // letting the blob own a copy it frees itself.
-        _blob = Blob.FromStream(new MemoryStream(data, writable: false));
+        // HarfBuzz reads the font in place for the face's lifetime, so it gets a native copy that
+        // the blob frees when HarfBuzz lets go of it. (Blob.FromStream hands HarfBuzz managed
+        // memory that a compacting garbage collection moves, after which every glyph is .notdef.)
+        var copy = Marshal.AllocHGlobal(data.Length);
+        Marshal.Copy(data, 0, copy, data.Length);
+        _blob = new Blob(copy, data.Length, MemoryMode.ReadOnly, () => Marshal.FreeHGlobal(copy));
         _face = new Face(_blob, 0);
         _face.MakeImmutable();
         _probe = new HarfBuzzSharp.Font(_face);
