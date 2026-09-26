@@ -43,6 +43,7 @@ public sealed record MenuBar(IReadOnlyList<MenuBarMenu> Menus) : Component
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         SurfaceColor = isOpen ? SurfaceName.Secondary : null,
                         SurfaceContainerToggle = isOpen ? true : null,
                         CornerShape = CornerShapeRole.ExtraSmall,

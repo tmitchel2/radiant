@@ -29,6 +29,6 @@ public sealed record StatusItem(string Text) : Component
         var layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 4, Height = 22, Padding = Edges.Symmetric(6, 0) };
         return OnPress is null
             ? new Box { Layout = layout, Semantics = Label is null ? null : new Semantics { Role = SemanticsRole.Text, Label = Label }, Children = children }
-            : new PressableSurface { OnPress = OnPress, Label = Label, CornerShape = CornerShapeRole.ExtraSmall, Layout = layout, Children = children };
+            : new PressableSurface { InsetFocusRing = true, OnPress = OnPress, Label = Label, CornerShape = CornerShapeRole.ExtraSmall, Layout = layout, Children = children };
     }
 }

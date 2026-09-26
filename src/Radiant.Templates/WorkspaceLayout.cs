@@ -130,6 +130,7 @@ public sealed record WorkspaceLayout(IReadOnlyList<NavItem> Activities, int Acti
                     [
                         new PressableSurface
                         {
+                            InsetFocusRing = true,
                             Role = SemanticsRole.Tab,
                             Label = item.Label,
                             Selected = chosen,

@@ -52,6 +52,7 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
                 }
                 rows.Add(new PressableSurface
                 {
+                    InsetFocusRing = true,
                     Role = SemanticsRole.MenuItem,
                     ShowDisabled = item.Disabled ? true : null,
                     OnPress = () =>

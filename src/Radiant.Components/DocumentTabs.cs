@@ -123,6 +123,7 @@ public sealed record DocumentTabs(IReadOnlyList<DocumentTab> Tabs, int Selected,
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         SurfaceColor = Chosen ? SurfaceName.Surface : null,
                         Role = SemanticsRole.Tab,
                         Label = Tab.Label,

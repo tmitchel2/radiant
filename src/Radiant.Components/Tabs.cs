@@ -76,6 +76,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         ContentColor = chosen ? SurfaceName.Primary : SurfaceName.SurfaceVariant,
                         ContentOnToggle = chosen ? null : true,
                         Role = SemanticsRole.Tab,

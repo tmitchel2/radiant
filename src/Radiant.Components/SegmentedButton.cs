@@ -96,7 +96,9 @@ public sealed record SegmentedButton(IReadOnlyList<Segment> Segments, IReadOnlyS
                     JustifyContent = Justify.Center,
                     Height = 40,
                     MinWidth = 48,
+                    // Segments share the width equally, whatever their labels.
                     FlexGrow = 1,
+                    FlexBasis = 0,
                     Padding = Edges.Symmetric(12, 0),
                     ColumnGap = 8,
                     // Neighbours share their border.

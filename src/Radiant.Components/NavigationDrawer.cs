@@ -46,6 +46,7 @@ public sealed record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected
             }
             rows.Add(new PressableSurface
             {
+                InsetFocusRing = true,
                 SurfaceColor = chosen ? SurfaceName.Secondary : null,
                 SurfaceContainerToggle = chosen ? true : null,
                 CornerShape = CornerShapeRole.Full,

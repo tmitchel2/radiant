@@ -18,6 +18,13 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     /// <summary>What the surface contains.</summary>
     public IReadOnlyList<Element?> Children { get; init; } = [];
 
+    /// <summary>
+    /// Whether keyboard focus's ring is drawn just inside the edge rather than outside it: for
+    /// items that fill a list, menu or table row, where a ring outside would be clipped or cover
+    /// their neighbours.
+    /// </summary>
+    public bool InsetFocusRing { get; init; }
+
     /// <summary>What the surface is, for assistive technology (a button unless told otherwise).</summary>
     public SemanticsRole Role { get; init; } = SemanticsRole.Button;
 
@@ -66,14 +73,15 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         };
 
         // Keyboard focus also shows a ring just outside the control, as Material's focus indicator
-        // does: 3 wide, 2 out, in the secondary colour.
+        // does: 3 wide, 2 out, in the secondary colour; or just inside, for items in a list.
         const float ringWidth = 3f, ringGap = 2f;
+        var ringOut = InsetFocusRing ? 0f : ringWidth + ringGap;
         var ring = !focusRing.Value || disabled ? null : new Box
         {
-            Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = Edges.All(-(ringWidth + ringGap)) },
+            Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = Edges.All(-ringOut) },
             BorderWidth = ringWidth,
             BorderColor = theme.Get(SurfaceName.Secondary),
-            CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius + ringWidth + ringGap),
+            CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius + ringOut),
             HitTestVisible = false,
         };
 

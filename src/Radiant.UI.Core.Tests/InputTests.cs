@@ -365,4 +365,26 @@ public class InputTests
         CollectionAssert.AreEqual(new[] { "second" }, log.Entries);
         Assert.IsTrue(root.HitPath(new Vector2(5, 5)).Count > 0);
     }
+
+    [TestMethod]
+    public void FocusMovedByCodeShowsItsRingOnlyAfterAKey()
+    {
+        var scope = new ElementRef();
+        var focused = new System.Collections.Generic.List<bool>();
+        using var root = new UIRoot(new Box
+        {
+            Ref = scope,
+            Layout = new LayoutStyle { FlexGrow = 1 },
+            Children = [new Box { Focusable = true, Layout = new LayoutStyle { Width = 20, Height = 20 }, OnFocus = e => focused.Add(e.IsFocusVisible) }],
+        });
+        root.Update(new Vector2(100, 100));
+
+        root.PointerDown(new Vector2(90, 90));
+        root.FocusFirst(scope);
+        root.ClearFocus();
+        root.KeyDown(KeyCode.A);
+        root.FocusFirst(scope);
+
+        CollectionAssert.AreEqual(new[] { false, true }, focused);
+    }
 }

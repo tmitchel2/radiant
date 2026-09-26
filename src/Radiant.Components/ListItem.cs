@@ -78,6 +78,7 @@ public sealed record ListItem(string Headline) : Component
         }
         return new PressableSurface
         {
+            InsetFocusRing = true,
             SurfaceColor = Selected ? SurfaceName.Secondary : null,
             SurfaceContainerToggle = Selected ? true : null,
             ShowDisabled = Disabled ? true : null,

@@ -317,6 +317,7 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
                 var content = column.Sortable
                     ? new PressableSurface
                     {
+                        InsetFocusRing = true,
                         Role = SemanticsRole.ColumnHeader,
                         Label = column.Header,
                         CornerShape = CornerShapeRole.ExtraSmall,

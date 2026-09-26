@@ -28,6 +28,7 @@ public sealed record InspectorSection(string Title, IReadOnlyList<Element?> Rows
             [
                 new PressableSurface
                 {
+                    InsetFocusRing = true,
                     Role = SemanticsRole.Button,
                     Label = Title,
                     Expanded = open.Value,

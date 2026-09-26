@@ -142,6 +142,7 @@ public sealed record MasterDetail(IReadOnlyList<ListEntry> Items, int Selected, 
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         SurfaceColor = Chosen ? SurfaceName.Secondary : null,
                         SurfaceContainerToggle = Chosen ? true : null,
                         CornerShape = CornerShapeRole.Medium,

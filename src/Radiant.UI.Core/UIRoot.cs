@@ -586,6 +586,7 @@ public sealed class UIRoot : IDisposable
     /// <summary>A pointer button was pressed at <paramref name="position"/>.</summary>
     public void PointerDown(Vector2 position, PointerButton button = PointerButton.Left, KeyModifiers modifiers = KeyModifiers.None)
     {
+        UsingKeyboard = false;
         var path = HitPath(position);
         UpdateHover(path, position, modifiers);
         // The press is captured: its moves and release go to where it began.
@@ -646,6 +647,7 @@ public sealed class UIRoot : IDisposable
     /// </summary>
     public void KeyDown(KeyCode key, KeyModifiers modifiers = KeyModifiers.None, bool isRepeat = false)
     {
+        UsingKeyboard = true;
         var args = new KeyEventArgs(key, modifiers, isRepeat);
         Dispatch(FocusPath(), args, box => box.OnKeyDownCapture, box => box.OnKeyDown);
         for (var i = _shortcuts.Count - 1; i >= 0 && !args.Handled; i--)
@@ -729,8 +731,18 @@ public sealed class UIRoot : IDisposable
         }
     }
 
-    /// <summary>Focuses the first focusable box inside <paramref name="scope"/>'s box (or the box itself); false if there is none.</summary>
-    public bool FocusFirst(ElementRef scope, bool visible = true)
+    /// <summary>
+    /// Whether the last input was a key rather than a press: focus moved by code then shows its
+    /// ring only if the user is on the keyboard, as a browser's <c>:focus-visible</c> does.
+    /// </summary>
+    public bool UsingKeyboard { get; private set; }
+
+    /// <summary>
+    /// Focuses the first focusable box inside <paramref name="scope"/>'s box (or the box itself);
+    /// false if there is none. Its ring shows if <paramref name="visible"/> says so, or, left
+    /// null, if the user is on the keyboard (<see cref="UsingKeyboard"/>).
+    /// </summary>
+    public bool FocusFirst(ElementRef scope, bool? visible = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (scope.Node is not { } node)
@@ -743,7 +755,7 @@ public sealed class UIRoot : IDisposable
         {
             return false;
         }
-        SetFocus(order[0], visible);
+        SetFocus(order[0], visible ?? UsingKeyboard);
         return true;
     }
 

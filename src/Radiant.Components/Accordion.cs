@@ -126,6 +126,7 @@ public sealed record Accordion(IReadOnlyList<AccordionItem> Items) : Component
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         Label = Item.Title,
                         Expanded = IsOpen,
                         ShowDisabled = Item.Disabled ? true : null,

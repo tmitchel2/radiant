@@ -67,6 +67,7 @@ public sealed record PreferencesLayout(IReadOnlyList<NavItem> Categories, int Se
                 [
                     new PressableSurface
                     {
+                        InsetFocusRing = true,
                         SurfaceColor = chosen ? SurfaceName.Secondary : null,
                         SurfaceContainerToggle = chosen ? true : null,
                         CornerShape = CornerShapeRole.Small,

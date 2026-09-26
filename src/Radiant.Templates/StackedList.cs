@@ -36,6 +36,7 @@ public sealed record StackedList(IReadOnlyList<ListEntry> Entries) : Component
             }
             rows.Add(new PressableSurface
             {
+                InsetFocusRing = true,
                 OnPress = press is null ? null : () => press(index),
                 Role = SemanticsRole.ListItem,
                 Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, Padding = Edges.Symmetric(16, 12), ColumnGap = 16 },
