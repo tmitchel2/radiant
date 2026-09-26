@@ -16,8 +16,10 @@ namespace Radiant.Components;
 /// out, and the zone says how many it refused.
 /// </summary>
 /// <param name="OnFiles">Called with the files dropped or chosen.</param>
-public sealed record DropZone(Action<IReadOnlyList<string>> OnFiles) : Component
+public sealed partial record DropZone(Action<IReadOnlyList<string>> OnFiles) : Component
 {
+    [TestId<SurfaceButton>] public static partial string BrowseButton { get; }
+
     /// <summary>What it asks for.</summary>
     public string Title { get; init; } = "Drop files here";
 
@@ -104,7 +106,7 @@ public sealed record DropZone(Action<IReadOnlyList<string>> OnFiles) : Component
                 new SurfaceIcon("cloud_upload") { IconSize = 32, Legibility = Legibility.Medium },
                 new SurfaceText(Title) { TextType = TextType.TitleMedium },
                 Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium, Alignment = Radiant.Text.TextAlignment.Center },
-                new SurfaceButton("Browse", ButtonVariant.Tonal) { OnPress = () => _ = Browse(), Layout = new LayoutStyle { Margin = new Edges(0, 4, 0, 0) } },
+                new SurfaceButton("Browse", ButtonVariant.Tonal) { TestId = BrowseButton, OnPress = () => _ = Browse(), Layout = new LayoutStyle { Margin = new Edges(0, 4, 0, 0) } },
                 refused.Value == 0 ? null : new SurfaceText(refused.Value == 1 ? "1 file wasn't a kind this takes" : $"{refused.Value} files weren't a kind this takes")
                 {
                     TextType = TextType.BodySmall,

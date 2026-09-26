@@ -13,6 +13,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Value">The value.</param>
 /// <param name="OnChange">Called with the new value while it's changed.</param>
+[RequiresTestId]
 public sealed record Slider(float Value, Action<float>? OnChange) : Component
 {
     /// <summary>The least value.</summary>

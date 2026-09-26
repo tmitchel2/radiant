@@ -269,9 +269,13 @@ Event handlers and effects aren't guarded: an exception there still throws.
   - Other boxes pass their children up.
   - A control without a label is named by the text inside it.
   - Text with a `HeadingLevel` is a heading (`SurfaceText.HeadingLevel` in components).
-- **Test IDs:** `Element.TestId` names any element for tests and agents (`@save`). On a component
-  it names the one box the component draws, the outermost winning; `Semantics.TestId` overrides it.
-  `SemanticsNode.TestId` carries it, and on macOS it's the accessibility identifier.
+- **Test IDs:** `Element.TestId` names any element for tests and agents. Components declare their
+  parts as `[TestId]` partial properties (`SignInForm.Email`), which the generator fills in, naming the
+  component's root after it (`Element.DefaultTestId`). An explicit ID on a component names the one box
+  it draws, the outermost winning; `Semantics.TestId` overrides it. Controls marked
+  `[RequiresTestId]` must be given a declared one (analyzer rules `RAD030`, `RAD031`).
+  `SemanticsNode.TestId` carries it, and on macOS it's the accessibility identifier. See
+  [automation.md](automation.md#test-ids).
 - **Inspection:** `UIRoot.RootNode`, `FindNode(id)` and `HitTest(point)` give `UINode`s: a laid-out
   node's kind, bounds after transforms, the part that can be seen (`VisibleBounds`, cut by clips and
   the window), effective opacity, scroll position, text and test ID. `UIRoot.ScrollIntoView(id)`

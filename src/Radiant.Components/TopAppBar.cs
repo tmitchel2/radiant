@@ -11,8 +11,10 @@ namespace Radiant.Components;
 /// the right. It takes the container colour once content scrolls under it.
 /// </summary>
 /// <param name="Title">The screen's title.</param>
-public sealed record TopAppBar(string Title) : Component
+public sealed partial record TopAppBar(string Title) : Component
 {
+    [TestId<IconButton>] public static partial string Navigation { get; }
+
     /// <summary>The navigation button's icon (a menu or back arrow); null for none.</summary>
     public string? NavigationIcon { get; init; }
 
@@ -47,7 +49,7 @@ public sealed record TopAppBar(string Title) : Component
             },
             Children =
             [
-                NavigationIcon is null ? new Box { Layout = new LayoutStyle { Width = 12 } } : new IconButton(NavigationIcon, NavigationLabel) { OnPress = OnNavigation },
+                NavigationIcon is null ? new Box { Layout = new LayoutStyle { Width = 12 } } : new IconButton(NavigationIcon, NavigationLabel) { TestId = Navigation, OnPress = OnNavigation },
                 new SurfaceText(Title) { TextType = TextType.TitleLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
                 .. Actions,
             ],

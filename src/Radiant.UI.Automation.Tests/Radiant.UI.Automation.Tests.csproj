@@ -20,6 +20,8 @@
     <ProjectReference Include="..\Radiant.Theming\Radiant.Theming.csproj" />
     <ProjectReference Include="..\Radiant.Gallery\Radiant.Gallery.csproj" />
     <ProjectReference Include="..\Radiant.AgentCli\Radiant.AgentCli.csproj" />
+    <!-- Test IDs for FormApp, typed locators for every component with parts, and the mandatory-ID rule. -->
+    <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

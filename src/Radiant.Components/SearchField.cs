@@ -12,8 +12,11 @@ namespace Radiant.Components;
 /// keeping its own text.
 /// </summary>
 /// <param name="Placeholder">What it says while empty ("Search mail").</param>
-public sealed record SearchField(string Placeholder) : Component
+[RequiresTestId]
+public sealed partial record SearchField(string Placeholder) : Component
 {
+    [TestId<IconButton>] public static partial string Clear { get; }
+
     /// <summary>The text, when the owner keeps it; null for the field to keep it.</summary>
     public TextEditState? Value { get; init; }
 
@@ -97,6 +100,7 @@ public sealed record SearchField(string Placeholder) : Component
                 },
                 state.Text.Length == 0 ? new Box { Layout = new LayoutStyle { Width = 28 } } : new IconButton("close", "Clear search")
                 {
+                    TestId = Clear,
                     OnPress = () =>
                     {
                         Change(TextEditState.Empty);

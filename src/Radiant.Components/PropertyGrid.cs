@@ -14,8 +14,10 @@ namespace Radiant.Components;
 /// section while it does.
 /// </summary>
 /// <param name="Sections">The sections, in order.</param>
-public sealed record PropertyGrid(IReadOnlyList<PropertySection> Sections) : Component
+public sealed partial record PropertyGrid(IReadOnlyList<PropertySection> Sections) : Component
 {
+    [TestId<SearchField>] public static partial string Filter { get; }
+
     /// <summary>The names' column width.</summary>
     public float NameWidth { get; init; } = 120f;
 
@@ -65,7 +67,7 @@ public sealed record PropertyGrid(IReadOnlyList<PropertySection> Sections) : Com
             Layout = new LayoutStyle { AlignSelf = Align.Stretch, RowGap = 4 }.Merge(Layout ?? default),
             Children =
             [
-                Filterable ? new SearchField("Filter properties") { Value = filter.Value, OnChange = filter.Set, Layout = new LayoutStyle { Margin = new Edges(0, 0, 0, 4) } } : null,
+                Filterable ? new SearchField("Filter properties") { TestId = Filter, Value = filter.Value, OnChange = filter.Set, Layout = new LayoutStyle { Margin = new Edges(0, 0, 0, 4) } } : null,
                 .. sections,
                 sections.Count == 0 && query.Length > 0 ? new SurfaceText($"No properties match “{query}”") { Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = Edges.All(8) } } : null,
             ],

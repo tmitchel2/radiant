@@ -67,12 +67,15 @@ public sealed class SignInTests : RadiantUITest
     [TestMethod]
     public async Task SigningInGreets()
     {
-        await Driver.ByTestId("email").TypeAsync("ada@example.com");
-        await Driver.Get("role=button label=\"Sign in\"").TapAsync();
-        await Driver.ByTestId("greeting").Expect().ToHaveTextAsync("Hello, Ada");
+        await Driver.SignInForm().Email().TypeAsync("ada@example.com");
+        await Driver.SignInForm().SignIn().TapAsync();
+        await Driver.MyApp().Greeting().Expect().ToHaveTextAsync("Hello, Ada");
     }
 }
 ```
+
+The locators (`SignInForm()`, `Email()`) are generated from the parts components declare (see
+[Generated locators](#generated-locators)), so no test writes a test ID, or a role, as a string.
 
 - **In-process.** `AppDriver.InProcess` runs the app on the test's thread, headless, on the fixed
   clock. Each command steps frames until it's answered, so a 300 ms transition takes about a
@@ -82,7 +85,12 @@ public sealed class SignInTests : RadiantUITest
 - **Same code either way.** The same actions run in both cases (the in-process client queues onto the
   same dispatcher), so one test means the same in-process, over the socket and over files.
   `RemoteTests` checks this.
-- **Locators** (`Get`, `ByTestId`, `ByText`, `ByRole`, `Nth`, `Within`) are found again each time they're used.
+- **Locators** are found again each time they're used:
+  - generated per component: `Driver.SignInForm().Email()`;
+  - by role, typed: `Driver.Role.Button("Save")`, `scope.Role.CheckBox()`;
+  - narrowed with `Nth`, `First`, `Last`, `Within`, `WithText`, `WithLabel`, `Containing`, and states
+    (`Selected()`, `Checked()`, `Enabled()`, `Visible()`, `Focused()`);
+  - or, as an escape hatch, by selector string: `Get("role=button label=Save")`, `ByTestId`, `ByText`.
 - **Actions:**
   - `TapAsync`, `DoubleTapAsync`, `RightClickAsync`, `PressAsync`, `LongPressAsync`, `HoverAsync`
   - `FocusAsync`, `TypeAsync`, `FillAsync`
@@ -90,7 +98,8 @@ public sealed class SignInTests : RadiantUITest
   - `SwipeAsync`, `DragToAsync`
 - **Reading:** `InspectAsync(fields, depth)`, `QueryAsync`, `CountAsync`, `TextAsync`.
 - **`Expect()`** waits until its condition holds: `ToExist`, `ToBeVisible`, `ToBeHittable`, `ToBeGone`,
-  `ToBeHidden`, `ToBeEnabled`/`Disabled`, `ToBeFocused`, `ToBeChecked`/`Unchecked`, `ToHaveText`,
+  `ToBeHidden`, `ToBeEnabled`/`Disabled`, `ToBeFocused`, `ToBeChecked`/`Unchecked`,
+  `ToBeSelected`/`Unselected`, `ToHaveText`,
   `ToContainText`, `ToHaveValue`.
 - **Failures** throw `AppDriverException`. It carries the error code and the details, and its message
   includes the last dozen log entries.
@@ -135,7 +144,7 @@ tests. The JSON form is an object; a string in the compact form is accepted anyw
 
 | Compact | JSON | Matches |
 |---|---|---|
-| `@save`, `testId=save` | `{"testId":"save"}` | the test ID |
+| `@save`, `testId=save` | `{"testId":"save"}` | the test ID (declared ones read `@SignInForm.Email`) |
 | `#412` | `{"id":412}` | a node id (from a tree; good only while the node lives) |
 | `role=button` | `{"role":"button"}` | the semantics role; case, `-` and `_` are ignored |
 | `label="Save all"` | `{"label":"Save all"}` | the label, exactly |
@@ -146,6 +155,7 @@ tests. The JSON form is an object; a string in the compact form is accepted anyw
 | `visible`, `enabled`, `focused`, `checked`, `selected`, `checked=false` | `{"checked":false}` | state |
 | `[2]`, `[-1]` | `{"index":2}` | which match, from 0; negative counts from the end |
 | `@list >> text=Row` | `{"text":"Row","within":{"testId":"list"}}` | inside another match |
+| `@Dialog has(text=Confirm)` | `{"testId":"Dialog","has":{"text":"Confirm"}}` | with a match inside it |
 
 - **Where matching runs.** It runs over the semantics tree, which is what assistive technology
   sees, with each node joined to its laid-out node for geometry.
@@ -161,19 +171,75 @@ tests. The JSON form is an object; a string in the compact form is accepted anyw
 ## Test IDs
 
 `Element.TestId` names an element for tests. It is never shown; on macOS it becomes the
-accessibility identifier, so XCUITest and Appium can use it too. Set it on a `Box`, a `TextBlock`,
-a `ScrollArea` or any component.
+accessibility identifier, so XCUITest and Appium can use it too.
 
-- **On a component** (`new SurfaceButton("Save") { TestId = "save" }`), it names the one box the
-  component draws.
-- **When nested components all set one,** the outermost wins. That lets a caller rename what a
-  component names inside itself.
-- **`Semantics.TestId`** takes precedence over all of these.
-- **A box with only a test ID** appears in the semantics tree with role `None` and no label.
-  VoiceOver passes over it.
+- **Parts are declared, not written out.** A component declares what can be selected in it as
+  `[TestId]` partial properties and uses them in `Build`. The generator gives each its value, and the
+  component's root the component's name:
+  ```csharp
+  public sealed partial record SignInForm(...) : Component
+  {
+      [TestId<TextField>] public static partial string Email { get; }   // "SignInForm.Email"
+      [TestId<SurfaceButton>] public static partial string SignIn { get; }
+
+      public override Element? Build(BuildContext context) =>
+          … new TextField("Email") { TestId = Email } … new SurfaceButton("Sign in") { TestId = SignIn } …
+  }
+  ```
+  The type argument says what the part is, so its locator can be that component's own
+  (`Email()` is a `TextField`, with its `Input()` and `TrailingButton()`). `[TestId("value")]` gives a
+  value of its own, and `[TestIds("Name")]` on the type renames the root.
+- **Controls must have one.** Buttons, fields, check boxes, switches, sliders, pickers and links are
+  marked `[RequiresTestId]`. Making one without a `TestId` is `RAD030`. Giving it a string, a
+  constant or an interpolation is `RAD031`. What's accepted:
+  - a declared part (`TestId = Email`, `TestId = SignInForm.SignIn`);
+  - one passed on (`TestId = TestId`, a parameter, a variable).
+
+  Both rules are warnings, which this repo's `TreatWarningsAsErrors` turns into errors. A project
+  building throwaway UIs can switch them off with `<NoWarn>RAD030;RAD031</NoWarn>`.
+- **Repeated controls share a part.** Rows, items, days and buttons built from data all share one
+  part; pick one with `Nth(i)`, `WithLabel(...)` or `WithText(...)`.
+- **Which ID an element gets.**
+  - The outermost explicit ID wins, so where a component is used, the caller's ID replaces the
+    component's root name.
+  - Failing that, the outermost generated root name wins.
+  - `Semantics.TestId` beats both.
+  - A component that builds several elements has no single root to name, but its parts are still
+    named.
+- **In the semantics tree.** A box, or a portal's layer, with only a test ID appears with role `None`
+  and no label. VoiceOver passes over it.
 - **When a test ID names a container, actions look inside it.** A `TextField`'s test ID names its
   outer box, so focus and typing go to the first focusable element inside, and its value is the
   field's.
+
+## Generated locators
+
+A test project gets a typed locator for every component that declares parts, in the assemblies it
+references (those listed in their `[TestIdCatalog]`) and in its own code. To turn it on, reference the
+generator as an analyzer:
+
+```xml
+<ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+```
+
+- **Entry points.** `Driver.SignInForm()` finds the form anywhere, and `scope.SignInForm()` finds it
+  inside another locator.
+- **What a locator is.** Each is a `ComponentLocator<T>`, and so a `Locator`: tap it, inspect it,
+  expect things of it.
+- **Parts** (`Email()`, `SignIn()`) refer to the component's own property, so a renamed part renames
+  its locator (or fails to compile), and the value is written in one place.
+- **Finding parts.** A part's ID is unique (`SignInForm.Email`), so from `Driver.SignInForm()` parts
+  are found by ID alone. Once a locator is narrowed to particular instances (`Nth`, `Containing`,
+  `Within`, or a part of another component), parts are found inside it.
+- **Name clashes.** A component whose name would hide a driver or locator member is reached as
+  `NameComponent()` (`RAD021`). Two components with the same name in different namespaces:
+  - the second's locator and entry method are qualified with its namespace (`Other_SignInForm()`);
+  - this is reported as `RAD020`.
+- **Roles.** `RoleLocators` has a method for each `SemanticsRole`: every one of the role,
+  `Button("Save")` for an exact label, or `Button(TextMatch.Contains("sav"))`. It's generated from the
+  enum, so new roles appear by themselves.
+- **In the tree.** The CLI and the tree show the same IDs (`@SignInForm.Email`), so an agent can
+  select them too, without a locator.
 
 ## Acting, the Detox way
 

@@ -16,8 +16,11 @@ namespace Radiant.Components;
 /// <param name="Label">The field's label.</param>
 /// <param name="Value">The date, or null for none.</param>
 /// <param name="OnChange">Called with the new date (null when the field is cleared).</param>
-public sealed record DatePicker(string Label, DateOnly? Value, Action<DateOnly?>? OnChange) : Component
+[RequiresTestId]
+public sealed partial record DatePicker(string Label, DateOnly? Value, Action<DateOnly?>? OnChange) : Component
 {
+    [TestId<TextField>] public static partial string Field { get; }
+
     /// <summary>The earliest date that can be chosen.</summary>
     public DateOnly? Min { get; init; }
 
@@ -133,6 +136,7 @@ public sealed record DatePicker(string Label, DateOnly? Value, Action<DateOnly?>
                 [
                     new TextField(Label)
                     {
+                        TestId = Field,
                         Value = text.Value,
                         OnChange = text.Set,
                         InputRef = input,

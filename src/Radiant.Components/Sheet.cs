@@ -15,8 +15,10 @@ namespace Radiant.Components;
 /// <param name="Open">Whether it's showing.</param>
 /// <param name="OnClose">Called when it should close.</param>
 /// <param name="Content">What it shows.</param>
-public sealed record Sheet(bool Open, Action OnClose, Element? Content) : Component
+public sealed partial record Sheet(bool Open, Action OnClose, Element? Content) : Component
 {
+    [TestId<IconButton>] public static partial string Close { get; }
+
     /// <summary>The edge it slides in from.</summary>
     public SheetSide Side { get; init; }
 
@@ -94,7 +96,7 @@ public sealed record Sheet(bool Open, Action OnClose, Element? Content) : Compon
                                         Children =
                                         [
                                             new SurfaceText(props.Title) { TextType = TextType.TitleLarge, HeadingLevel = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
-                                            new IconButton("close", "Close") { OnPress = close },
+                                            new IconButton("close", "Close") { TestId = Close, OnPress = close },
                                         ],
                                     },
                                     new ScrollArea

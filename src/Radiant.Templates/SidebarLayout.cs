@@ -16,8 +16,12 @@ namespace Radiant.Templates;
 /// <param name="Selected">The current destination.</param>
 /// <param name="OnSelect">Called when a destination is chosen.</param>
 /// <param name="Content">The current page.</param>
-public sealed record SidebarLayout(string Title, IReadOnlyList<NavItem> Items, int Selected, Action<int> OnSelect, Element? Content) : Component
+public sealed partial record SidebarLayout(string Title, IReadOnlyList<NavItem> Items, int Selected, Action<int> OnSelect, Element? Content) : Component
 {
+    [TestId<NavigationDrawer>] public static partial string Drawer { get; }
+    [TestId<TopAppBar>] public static partial string AppBar { get; }
+    [TestId] public static partial string Page { get; }
+
     /// <summary>Actions on the right of the app bar.</summary>
     public IReadOnlyList<Element?> Actions { get; init; } = [];
 
@@ -48,15 +52,16 @@ public sealed record SidebarLayout(string Title, IReadOnlyList<NavItem> Items, i
             Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, FlexDirection = FlexDirection.Row },
             Children =
             [
-                new NavigationDrawer(Items, Selected, OnSelect) { Title = Title, Width = 260 },
+                new NavigationDrawer(Items, Selected, OnSelect) { TestId = Drawer, Title = Title, Width = 260 },
                 new Box
                 {
                     Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                     Children =
                     [
-                        new TopAppBar(title) { Actions = Actions, Scrolled = scrolled.Value },
+                        new TopAppBar(title) { TestId = AppBar, Actions = Actions, Scrolled = scrolled.Value },
                         new ScrollArea
                         {
+                            TestId = Page,
                             Controller = scroll,
                             Layout = new LayoutStyle { FlexGrow = 1 },
                             ContentLayout = new LayoutStyle { AlignItems = Align.Center, Padding = new Edges(24, 8, 24, 32) },

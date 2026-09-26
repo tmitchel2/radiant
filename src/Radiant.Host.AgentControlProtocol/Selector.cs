@@ -51,6 +51,9 @@ public sealed record Selector
     /// <summary>An element the match must be inside.</summary>
     public Selector? Within { get; init; }
 
+    /// <summary>An element the match must have inside it: a dialog that has "Confirm" in it.</summary>
+    public Selector? Has { get; init; }
+
     /// <summary>Parses the compact syntax; see <see cref="SelectorSyntax"/>.</summary>
     public static Selector Parse(string text) => SelectorSyntax.Parse(text);
 
@@ -107,6 +110,7 @@ public sealed class SelectorJsonConverter : JsonConverter<Selector>
                 "selected" => selector with { Selected = reader.GetBoolean() },
                 "index" => selector with { Index = reader.GetInt32() },
                 "within" => selector with { Within = Read(ref reader, typeToConvert, options) },
+                "has" => selector with { Has = Read(ref reader, typeToConvert, options) },
                 _ => Skip(ref reader, selector),
             };
         }
@@ -153,6 +157,11 @@ public sealed class SelectorJsonConverter : JsonConverter<Selector>
             writer.WritePropertyName("within");
             Write(writer, within, options);
         }
+        if (value.Has is { } has)
+        {
+            writer.WritePropertyName("has");
+            Write(writer, has, options);
+        }
         writer.WriteEndObject();
 
         void WriteMatch(string name, TextMatch? match)
@@ -185,6 +194,7 @@ public sealed class SelectorJsonConverter : JsonConverter<Selector>
 /// <c>*=</c> contains; <c>^=</c> equals ignoring case; <c>=/re/</c> or <c>=/re/i</c> a regular expression.</item>
 /// <item><c>visible</c>, <c>enabled</c>, <c>focused</c>, <c>checked</c>, <c>selected</c>, or <c>checked=false</c>.</item>
 /// <item><c>[2]</c>: the third match; <c>[-1]</c> the last.</item>
+/// <item><c>has(text=Confirm)</c>: one with a match for the selector inside it.</item>
 /// <item>anything else, bare or quoted: <c>text=</c> it.</item>
 /// </list>
 /// </summary>
@@ -281,6 +291,10 @@ public static class SelectorSyntax
         AddFlag("focused", selector.Focused);
         AddFlag("checked", selector.Checked);
         AddFlag("selected", selector.Selected);
+        if (selector.Has is { } has)
+        {
+            terms.Add("has(" + Format(has) + ")");
+        }
         if (selector.Index is { } index)
         {
             terms.Add("[" + index.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]");
@@ -331,6 +345,8 @@ public static class SelectorSyntax
                 return selector with { Index = ParseInt(token.Value, token.Position) };
             case TokenKind.Quoted:
                 return selector with { Text = TextMatch.Exact(token.Value) };
+            case TokenKind.Has:
+                return selector with { Has = Parse(token.Value) };
         }
         var term = token.Value;
         if (term == "*")
@@ -468,6 +484,7 @@ public static class SelectorSyntax
         Quoted,
         Index,
         Within,
+        Has,
     }
 
     private readonly record struct Token(TokenKind Kind, string Value, int Position);
@@ -509,6 +526,13 @@ public static class SelectorSyntax
                 i = end;
                 continue;
             }
+            if (string.CompareOrdinal(text, i, "has(", 0, 4) == 0)
+            {
+                var close = ClosingParenthesis(text, i + 3);
+                tokens.Add(new Token(TokenKind.Has, text[(i + 4)..close], start));
+                i = close + 1;
+                continue;
+            }
             var builder = new StringBuilder();
             while (i < text.Length && !char.IsWhiteSpace(text[i]) && text[i] != '[' && !(text[i] == '>' && i + 1 < text.Length && text[i + 1] == '>'))
             {
@@ -545,6 +569,27 @@ public static class SelectorSyntax
             tokens.Add(new Token(TokenKind.Term, builder.ToString(), start));
         }
         return tokens;
+    }
+
+    // The ')' that closes the '(' at open, passing over quoted text and nested parentheses.
+    private static int ClosingParenthesis(string text, int open)
+    {
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            switch (text[i])
+            {
+                case '"':
+                    i = ReadQuoted(text, i).End - 1;
+                    break;
+                case '(':
+                    depth++;
+                    break;
+                case ')' when --depth == 0:
+                    return i;
+            }
+        }
+        throw new FormatException($"'(' at {open} has no closing ')'.");
     }
 
     private static (string Value, int End) ReadQuoted(string text, int open)

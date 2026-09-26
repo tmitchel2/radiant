@@ -15,8 +15,12 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Open">Whether it's showing.</param>
 /// <param name="OnClose">Called when it should close.</param>
-public sealed record Dialog(bool Open, Action OnClose) : Component
+public sealed partial record Dialog(bool Open, Action OnClose) : Component
 {
+    [TestId] public static partial string Panel { get; }
+    [TestId] public static partial string Heading { get; }
+    [TestId] public static partial string ActionRow { get; }
+
     /// <summary>An icon above the title.</summary>
     public string? Icon { get; init; }
 
@@ -57,6 +61,7 @@ public sealed record Dialog(bool Open, Action OnClose) : Component
             [
                 new DismissableLayer(new FocusScope(new Surface
                 {
+                    TestId = Panel,
                     SurfaceColor = SurfaceName.SurfaceContainerHigh,
                     CornerShape = CornerShapeRole.ExtraLarge,
                     Elevation = ElevationLevel.Level3,
@@ -74,6 +79,7 @@ public sealed record Dialog(bool Open, Action OnClose) : Component
                                 props.Icon is null ? null : new SurfaceIcon(props.Icon) { Layout = new LayoutStyle { AlignSelf = Align.Center } },
                                 props.Title is null ? null : new SurfaceText(props.Title)
                                 {
+                                    TestId = Heading,
                                     TextType = TextType.HeadlineSmall,
                                     Alignment = props.Icon is null ? default : Radiant.Text.TextAlignment.Center,
                                 },
@@ -81,6 +87,7 @@ public sealed record Dialog(bool Open, Action OnClose) : Component
                                 .. props.Content,
                                 props.Actions.Count == 0 ? null : new Box
                                 {
+                                    TestId = ActionRow,
                                     Layout = new LayoutStyle
                                     {
                                         FlexDirection = FlexDirection.Row,

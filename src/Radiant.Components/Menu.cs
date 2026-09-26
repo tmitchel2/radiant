@@ -21,8 +21,10 @@ namespace Radiant.Components;
 /// <param name="Open">Whether it's showing.</param>
 /// <param name="OnClose">Called when it should close (a choice, Escape, an outside press).</param>
 /// <param name="Items">The entries.</param>
-public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnlyList<MenuItem> Items) : Component
+public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnlyList<MenuItem> Items) : Component
 {
+    [TestId] public static partial string Item { get; }
+
     /// <summary>Which side of the anchor it opens on.</summary>
     public Side Side { get; init; } = Side.Bottom;
 
@@ -52,6 +54,7 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
                 }
                 rows.Add(new PressableSurface
                 {
+                    TestId = Item,
                     InsetFocusRing = true,
                     Role = SemanticsRole.MenuItem,
                     ShowDisabled = item.Disabled ? true : null,

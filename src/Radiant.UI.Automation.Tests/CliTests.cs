@@ -43,14 +43,14 @@ public sealed class CliTests
         var (code, output, _) = await Run("tree");
 
         Assert.AreEqual(0, code);
-        StringAssert.Matches(output, new System.Text.RegularExpressions.Regex(@"#\d+ button ""Save"" @save \(\d+,\d+ \d+×\d+\) focusable"));
-        Assert.IsFalse(output.Contains("@row-45", StringComparison.Ordinal), "out of view");
+        StringAssert.Matches(output, new System.Text.RegularExpressions.Regex(@"#\d+ button ""Save"" @FormApp.Save \(\d+,\d+ \d+×\d+\) focusable"));
+        Assert.IsFalse(output.Contains("\"Row 45\"", StringComparison.Ordinal), "out of view");
     }
 
     [TestMethod]
     public async Task FindSaysWhereToTap()
     {
-        var (code, output, error) = await Run("find", "@save");
+        var (code, output, error) = await Run("find", "@FormApp.Save");
 
         Assert.AreEqual(0, code);
         StringAssert.Contains(output, "tap(");
@@ -60,11 +60,11 @@ public sealed class CliTests
     [TestMethod]
     public async Task InspectWritesJsonWithTheFieldsAsked()
     {
-        var (code, output, _) = await Run("inspect", "@list", "--fields", "testId,scroll");
+        var (code, output, _) = await Run("inspect", "@FormApp.List", "--fields", "testId,scroll");
 
         Assert.AreEqual(0, code);
         using var node = System.Text.Json.JsonDocument.Parse(output);
-        Assert.AreEqual("list", node.RootElement.GetProperty("testId").GetString());
+        Assert.AreEqual(FormApp.List, node.RootElement.GetProperty("testId").GetString());
         Assert.IsTrue(node.RootElement.GetProperty("scroll").GetProperty("canScroll").GetProperty("y").GetBoolean());
         Assert.IsFalse(node.RootElement.TryGetProperty("bounds", out _));
     }
@@ -72,13 +72,13 @@ public sealed class CliTests
     [TestMethod]
     public async Task ActionsSayWhatTheyDid()
     {
-        var (code, output, _) = await Run("tap", "@agree");
-        var (waited, _, _) = await Run("wait", "@agree", "--checked");
-        var (unchecked_, _, _) = await Run("tap", "@agree", "--transport", "file");
+        var (code, output, _) = await Run("tap", "@FormApp.Agree");
+        var (waited, _, _) = await Run("wait", "@FormApp.Agree", "--checked");
+        var (unchecked_, _, _) = await Run("tap", "@FormApp.Agree", "--transport", "file");
 
         Assert.AreEqual(0, code);
         StringAssert.Contains(output, "ok ui.tap");
-        StringAssert.Contains(output, "@agree");
+        StringAssert.Contains(output, "@FormApp.Agree");
         Assert.AreEqual(0, waited);
         Assert.AreEqual(0, unchecked_);
     }
@@ -86,14 +86,14 @@ public sealed class CliTests
     [TestMethod]
     public async Task FailuresSayWhyAndExitNonZero()
     {
-        var (code, _, error) = await Run("tap", "@sav", "--timeout", "200ms");
+        var (code, _, error) = await Run("tap", "@FormApp.Sav", "--timeout", "200ms");
         var (timedOut, _, _) = await Run("wait", "@never", "--timeout", "100ms");
         var (usage, _, usageError) = await Run("tap");
-        var (unknown, _, _) = await Cli.RunAsync(["tap", "@save", "-i", "no-such-app"], TextWriter.Null, TextWriter.Null) is var c ? (c, "", "") : default;
+        var (unknown, _, _) = await Cli.RunAsync(["tap", "@FormApp.Save", "-i", "no-such-app"], TextWriter.Null, TextWriter.Null) is var c ? (c, "", "") : default;
 
         Assert.AreEqual(1, code);
         StringAssert.Contains(error, "error no_match");
-        StringAssert.Contains(error, "@save");
+        StringAssert.Contains(error, "@FormApp.Save");
         Assert.AreEqual(2, timedOut);
         Assert.AreEqual(64, usage);
         StringAssert.Contains(usageError, "Missing a selector");
@@ -103,7 +103,7 @@ public sealed class CliTests
     [TestMethod]
     public async Task TheLogReadsBack()
     {
-        await Run("tap", "@save");
+        await Run("tap", "@FormApp.Save");
         await Run("log", "note", "hello", "from", "the", "cli");
 
         var (code, output, _) = await Run("log", "--src", "agent");

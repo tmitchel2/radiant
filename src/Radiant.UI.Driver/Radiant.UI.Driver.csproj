@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Radiant.UI.Automation\Radiant.UI.Automation.csproj" />
+    <!-- Generates RoleLocators' method per role. -->
+    <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

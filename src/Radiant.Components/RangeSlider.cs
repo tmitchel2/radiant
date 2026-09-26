@@ -15,6 +15,7 @@ namespace Radiant.Components;
 /// <param name="Low">The range's start.</param>
 /// <param name="High">The range's end.</param>
 /// <param name="OnChange">Called with the new start and end.</param>
+[RequiresTestId]
 public sealed record RangeSlider(float Low, float High, Action<float, float>? OnChange) : Component
 {
     /// <summary>The least value.</summary>

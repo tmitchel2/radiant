@@ -12,8 +12,12 @@ namespace Radiant.Components;
 /// <param name="Text">The usual action's label.</param>
 /// <param name="OnPress">The usual action.</param>
 /// <param name="Alternatives">What the arrow offers.</param>
-public sealed record SplitButton(string Text, Action? OnPress, IReadOnlyList<MenuItem> Alternatives) : Component
+[RequiresTestId]
+public sealed partial record SplitButton(string Text, Action? OnPress, IReadOnlyList<MenuItem> Alternatives) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Main { get; }
+    [TestId<IconButton>] public static partial string More { get; }
+
     /// <summary>An icon before the label.</summary>
     public string? Icon { get; init; }
 
@@ -33,10 +37,11 @@ public sealed record SplitButton(string Text, Action? OnPress, IReadOnlyList<Men
                 Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 2, AlignSelf = Align.FlexStart },
                 Children =
                 [
-                    new SurfaceButton(Text, Variant) { Icon = Icon, OnPress = OnPress },
+                    new SurfaceButton(Text, Variant) { TestId = Main, Icon = Icon, OnPress = OnPress },
                     new IconButton(open.Value ? "expand_less" : "expand_more", $"More {Text} options",
                         Variant == ButtonVariant.Tonal ? IconButtonVariant.Tonal : IconButtonVariant.Filled)
                     {
+                        TestId = More,
                         OnPress = () => open.Set(true),
                     },
                 ],

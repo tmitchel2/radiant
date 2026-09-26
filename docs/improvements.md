@@ -464,6 +464,19 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   everywhere.
 - **The host's `tab.*` actions are on files only.** `LiveHost` pumps a dispatcher now, but doesn't
   serve the socket or write a log.
+- **Test IDs aren't keyed.** Repeated parts (rows, items, days) share one ID and are told apart by
+  position or text. A keyed form (`Row(key)`, giving `"DataTable.Row:42"`) would let a test name one
+  row whatever it shows.
+- **The locator generator isn't packaged.** A test project references `Radiant.Generators` as an
+  analyzer by hand; shipped as a NuGet package, `Radiant.UI.Driver` should carry it in its
+  `analyzers` folder.
+- **An explicit ID replaces a component's root name.** `new Dialog(...) { TestId = Confirm }` makes the
+  dialog's root `@FormApp.Confirm`, so `Driver.Dialog()` no longer finds it (the caller's locator,
+  `Driver.FormApp().Confirm()`, does). Keeping both names would need an element to carry more than one ID.
+- **A component with several roots has no scope.** Its parts are found by their unique IDs, but
+  `Containing` or `Nth` on the component find nothing, as there's no root node to narrow to.
+- **`Chip` isn't a required-ID control.** Only a pressable chip should be, and the analyzer can't
+  tell from the type. A `PressableChip`, or the rule looking at `OnPress`, would close the gap.
 - **Typing is recorded twice where a platform sends both.** Committed text is reported from the text
   input client and from `UIRoot.TextInput`; macOS sends one or the other, but a platform that sent
   both would log the text twice.

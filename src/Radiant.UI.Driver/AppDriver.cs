@@ -114,7 +114,11 @@ public sealed class AppDriver : IAsyncDisposable
     public Locator ByText(string text) => new(this, new Selector { Text = TextMatch.Exact(text) });
 
     /// <summary>Elements of this role, and label if given.</summary>
-    public Locator ByRole(string role, string? label = null) => new(this, new Selector { Role = role, Label = label is null ? null : TextMatch.Exact(label) });
+    public Locator ByRole(SemanticsRole role, string? label = null) =>
+        new(this, new Selector { Role = RoleLocators.NameOf(role), Label = label is null ? null : TextMatch.Exact(label) });
+
+    /// <summary>Elements by their semantics role, typed: <c>Driver.Role.Button("Save")</c>, <c>Driver.Role.TextField("Email")</c>.</summary>
+    public RoleLocators Role => new(this, null);
 
     /// <summary>Sends a command and returns its response, whatever it is.</summary>
     public Task<AgentResponse> SendAsync(string action, JsonElement? parameters = null, TimeSpan? timeout = null, CancellationToken cancellation = default) =>

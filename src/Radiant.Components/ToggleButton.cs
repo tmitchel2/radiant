@@ -15,6 +15,7 @@ namespace Radiant.Components;
 /// <param name="Label">What it toggles.</param>
 /// <param name="On">Whether it's on.</param>
 /// <param name="OnChange">Called with the new state.</param>
+[RequiresTestId]
 public sealed record ToggleButton(string Icon, string Label, bool On, Action<bool>? OnChange) : Component
 {
     /// <summary>Tab order: 0 in tree order, negative for one of a roving group's other buttons.</summary>

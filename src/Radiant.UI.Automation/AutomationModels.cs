@@ -252,7 +252,7 @@ public sealed record WaitForParams
 
     /// <summary>
     /// <c>exists</c> (the default), <c>visible</c>, <c>hittable</c>, <c>gone</c>, <c>hidden</c>,
-    /// <c>enabled</c>, <c>disabled</c>, <c>focused</c> (it or something in it has focus), <c>checked</c>, <c>unchecked</c>.
+    /// <c>enabled</c>, <c>disabled</c>, <c>focused</c> (it or something in it has focus), <c>checked</c>, <c>unchecked</c>, <c>selected</c>, <c>unselected</c>.
     /// </summary>
     public string? State { get; init; }
 

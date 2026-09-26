@@ -17,8 +17,12 @@ namespace Radiant.Components;
 /// </para>
 /// </summary>
 /// <param name="Label">The label.</param>
-public sealed record TextField(string Label) : Component
+[RequiresTestId]
+public sealed partial record TextField(string Label) : Component
 {
+    [TestId] public static partial string Input { get; }
+    [TestId<IconButton>] public static partial string TrailingButton { get; }
+
     /// <summary>The text, selection and composition, for a controlled field.</summary>
     public TextEditState? Value { get; init; }
 
@@ -168,6 +172,7 @@ public sealed record TextField(string Label) : Component
                                 },
                                 new TextInput(state, onChange)
                                 {
+                                    TestId = Input,
                                     Ref = input,
                                     Label = Label,
                                     Disabled = Disabled,
@@ -200,7 +205,7 @@ public sealed record TextField(string Label) : Component
                             [
                                 OnTrailingIconPress is null
                                     ? new SurfaceIcon(TrailingIcon) { Legibility = Disabled ? Legibility.Low : Legibility.Medium }
-                                    : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { OnPress = OnTrailingIconPress },
+                                    : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { TestId = TrailingButton, OnPress = OnTrailingIconPress },
                             ],
                         },
                         !filled ? null : new Box

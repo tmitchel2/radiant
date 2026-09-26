@@ -11,6 +11,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Text">What it says.</param>
 /// <param name="OnPress">Where pressing it goes.</param>
+[RequiresTestId]
 public sealed record Link(string Text, Action? OnPress) : Component
 {
     /// <summary>The text's type-scale step.</summary>

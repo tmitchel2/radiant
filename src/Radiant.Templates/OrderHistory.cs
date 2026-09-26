@@ -14,8 +14,11 @@ namespace Radiant.Templates;
 /// it, and actions to view it or buy it again.
 /// </summary>
 /// <param name="Orders">The orders.</param>
-public sealed record OrderHistory(IReadOnlyList<Order> Orders) : Component
+public sealed partial record OrderHistory(IReadOnlyList<Order> Orders) : Component
 {
+    [TestId<SurfaceButton>] public static partial string ViewOrder { get; }
+    [TestId<SurfaceButton>] public static partial string BuyAgain { get; }
+
     /// <summary>Called with an order to view it.</summary>
     public Action<Order>? OnView { get; init; }
 
@@ -73,8 +76,8 @@ public sealed record OrderHistory(IReadOnlyList<Order> Orders) : Component
                     Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, JustifyContent = Justify.FlexEnd, ColumnGap = 8, Margin = new Edges(0, 4, 0, 0) },
                     Children =
                     [
-                        view is null ? null : new SurfaceButton("View order", ButtonVariant.Text) { OnPress = () => view(order) },
-                        again is null ? null : new SurfaceButton("Buy again", ButtonVariant.Tonal) { Icon = "replay", OnPress = () => again(order) },
+                        view is null ? null : new SurfaceButton("View order", ButtonVariant.Text) { TestId = ViewOrder, OnPress = () => view(order) },
+                        again is null ? null : new SurfaceButton("Buy again", ButtonVariant.Tonal) { TestId = BuyAgain, Icon = "replay", OnPress = () => again(order) },
                     ],
                 };
             }

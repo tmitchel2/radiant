@@ -13,8 +13,10 @@ namespace Radiant.Components;
 /// <param name="Items">The destinations.</param>
 /// <param name="Selected">The current destination's index.</param>
 /// <param name="OnSelect">Called with a destination's index when it's chosen.</param>
-public sealed record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected, Action<int>? OnSelect) : Component
+public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected, Action<int>? OnSelect) : Component
 {
+    [TestId] public static partial string Item { get; }
+
     /// <summary>A heading at the top.</summary>
     public string? Title { get; init; }
 
@@ -46,6 +48,7 @@ public sealed record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected
             }
             rows.Add(new PressableSurface
             {
+                TestId = Item,
                 InsetFocusRing = true,
                 SurfaceColor = chosen ? SurfaceName.Secondary : null,
                 SurfaceContainerToggle = chosen ? true : null,

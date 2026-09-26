@@ -70,6 +70,8 @@ public sealed class SelectorSyntaxTests
     [DataRow("label=/^Sa ve$/i value^=X")]
     [DataRow("testId=\"has space\" text*=b")]
     [DataRow("\"visible\"")]
+    [DataRow("@Dialog has(role=button label=\"OK (now)\") [0]")]
+    [DataRow("@a has(@b has(text~=c))")]
     public void FormatsWhatItReads(string text)
     {
         var selector = Selector.Parse(text);
@@ -88,9 +90,20 @@ public sealed class SelectorSyntaxTests
     [DataRow("[x]")]
     [DataRow("checked=maybe")]
     [DataRow("role~=button")]
+    [DataRow("@a has(text=b")]
     public void RejectsWhatIsNotASelector(string text)
     {
         Assert.ThrowsExactly<FormatException>(() => Selector.Parse(text));
+    }
+
+    [TestMethod]
+    public void HasNestsASelector()
+    {
+        var selector = Selector.Parse("@Dialog has(text=Confirm)");
+
+        Assert.AreEqual("Dialog", selector.TestId);
+        Assert.AreEqual(new Selector { Text = TextMatch.Exact("Confirm") }, selector.Has);
+        Assert.AreEqual(selector, System.Text.Json.JsonSerializer.Deserialize("""{"testId":"Dialog","has":{"text":"Confirm"}}""", AgentJsonContext.Default.Selector));
     }
 
     [TestMethod]

@@ -11,6 +11,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Selected">Whether it's the chosen one.</param>
 /// <param name="OnSelect">Called when pressed.</param>
+[RequiresTestId]
 public sealed record Radio(bool Selected, Action? OnSelect) : Component
 {
     /// <summary>A label beside it, which can also be pressed.</summary>

@@ -21,8 +21,13 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Selected">The chosen day, or null.</param>
 /// <param name="OnSelect">Called with the chosen day.</param>
-public sealed record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : Component
+public sealed partial record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : Component
 {
+    [TestId] public static partial string DayButton { get; }
+
+    [TestId<IconButton>] public static partial string PreviousMonth { get; }
+    [TestId<IconButton>] public static partial string NextMonth { get; }
+
     private const float Cell = 40f;
 
     /// <summary>The earliest day that can be chosen.</summary>
@@ -166,8 +171,8 @@ public sealed record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : 
                     Children =
                     [
                         new SurfaceText(title) { TextType = TextType.TitleSmall, HeadingLevel = 2, Layout = new LayoutStyle { FlexGrow = 1 } },
-                        new IconButton("chevron_left", "Previous month") { OnPress = () => focus.Set(focus.Value.AddMonths(-1)) },
-                        new IconButton("chevron_right", "Next month") { OnPress = () => focus.Set(focus.Value.AddMonths(1)) },
+                        new IconButton("chevron_left", "Previous month") { TestId = PreviousMonth, OnPress = () => focus.Set(focus.Value.AddMonths(-1)) },
+                        new IconButton("chevron_right", "Next month") { TestId = NextMonth, OnPress = () => focus.Set(focus.Value.AddMonths(1)) },
                     ],
                 },
                 new Box { Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, Height = 32, AlignItems = Align.Center }, Children = weekdays },
@@ -189,6 +194,7 @@ public sealed record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : 
                 [
                     new PressableSurface
                     {
+                        TestId = DayButton,
                         SurfaceColor = Chosen ? SurfaceName.Primary : null,
                         ContentColor = !Chosen && IsToday ? SurfaceName.Primary : null,
                         ShowOutline = !Chosen && IsToday ? true : null,

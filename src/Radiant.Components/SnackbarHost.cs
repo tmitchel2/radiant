@@ -10,8 +10,10 @@ namespace Radiant.Components;
 /// centre of the window, each for its duration, sliding in and out. Put one near the root.
 /// </summary>
 /// <param name="Child">The app.</param>
-public sealed record SnackbarHost(Element? Child) : Component
+public sealed partial record SnackbarHost(Element? Child) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Action { get; }
+
     /// <summary>The context the queue is provided in.</summary>
     public static Context<Snackbars?> Queue { get; } = new(null);
 
@@ -89,6 +91,7 @@ public sealed record SnackbarHost(Element? Child) : Component
                             },
                             message.ActionLabel is null ? null : new SurfaceButton(message.ActionLabel, ButtonVariant.Text)
                             {
+                                TestId = Action,
                                 // Material's inverse primary: the inverse role's container colour itself,
                                 // not the colour on it (which is the snackbar's own).
                                 ContentColor = SurfaceName.Inverse,

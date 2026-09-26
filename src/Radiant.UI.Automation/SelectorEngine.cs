@@ -112,11 +112,16 @@ internal sealed class SelectorEngine
         {
             scopes = [.. Find(within).Select(m => m.Id)];
         }
+        HashSet<int>? inner = null;
+        if (selector.Has is { } has)
+        {
+            inner = [.. Find(has).Select(m => m.Id)];
+        }
         var found = new List<Match>();
         for (var i = 1; i < _nodes.Count; i++)
         {
             var (match, _) = _nodes[i];
-            if (Passes(selector, match) && (scopes is null || HasAncestorIn(i, scopes)))
+            if (Passes(selector, match) && (scopes is null || HasAncestorIn(i, scopes)) && (inner is null || Descendants(match).Any(d => inner.Contains(d.Id))))
             {
                 found.Add(match);
             }

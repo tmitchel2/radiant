@@ -12,6 +12,7 @@ namespace Radiant.Components;
 [ForwardFacets(typeof(PressableSurface), "Container",
     typeof(IHasBackgroundColor), typeof(IHasCornerShape), typeof(IHasOutline), typeof(IHasLayout), typeof(IHasPressable))]
 [ForwardFacets(typeof(SurfaceIcon), "Glyph", typeof(IHasIcon))]
+[RequiresTestId]
 public sealed partial record IconButton : Component, IHasBackgroundColor, IHasCornerShape, IHasOutline, IHasLayout, IHasPressable, IHasIcon
 {
     /// <summary>An icon button.</summary>

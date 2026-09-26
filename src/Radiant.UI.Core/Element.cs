@@ -25,4 +25,11 @@ public abstract record Element
     /// identifier.
     /// </summary>
     public string? TestId { get; init; }
+
+    /// <summary>
+    /// The test ID this element's root has when nothing sets one: generated as the type's name for a
+    /// component that declares parts (<see cref="TestIdAttribute"/>), so its parts can be found within it.
+    /// An explicit <see cref="TestId"/> anywhere on the chain wins.
+    /// </summary>
+    protected internal virtual string? DefaultTestId => null;
 }

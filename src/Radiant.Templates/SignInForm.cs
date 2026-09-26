@@ -11,8 +11,14 @@ namespace Radiant.Templates;
 /// me, a forgotten-password link and the sign-in button. Reports the entered details on submit.
 /// </summary>
 /// <param name="OnSignIn">Called with the email, password and remember-me choice.</param>
-public sealed record SignInForm(Action<string, string, bool> OnSignIn) : Component
+public sealed partial record SignInForm(Action<string, string, bool> OnSignIn) : Component
 {
+    [TestId<TextField>] public static partial string Email { get; }
+    [TestId<TextField>] public static partial string Password { get; }
+    [TestId<Checkbox>] public static partial string RememberMe { get; }
+    [TestId<SurfaceButton>] public static partial string ForgotPassword { get; }
+    [TestId<SurfaceButton>] public static partial string SignIn { get; }
+
     /// <summary>The heading.</summary>
     public string Title { get; init; } = "Sign in to your account";
 
@@ -37,6 +43,7 @@ public sealed record SignInForm(Action<string, string, bool> OnSignIn) : Compone
             new SurfaceText(Title) { TextType = TextType.HeadlineSmall },
             new TextField("Email")
             {
+                TestId = Email,
                 Value = email.State,
                 OnChange = email.Set,
                 OnFocusChange = email.FocusChanged,
@@ -48,6 +55,7 @@ public sealed record SignInForm(Action<string, string, bool> OnSignIn) : Compone
             },
             new TextField("Password")
             {
+                TestId = Password,
                 Value = shown,
                 OnChange = next => password.Set(reveal.Value ? next : Unmask(password.State, next)),
                 OnFocusChange = password.FocusChanged,
@@ -65,11 +73,11 @@ public sealed record SignInForm(Action<string, string, bool> OnSignIn) : Compone
                 Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, JustifyContent = Justify.SpaceBetween },
                 Children =
                 [
-                    new Checkbox(remember.Value, remember.Set) { Label = "Remember me" },
-                    new SurfaceButton("Forgot password?", ButtonVariant.Text),
+                    new Checkbox(remember.Value, remember.Set) { TestId = RememberMe, Label = "Remember me" },
+                    new SurfaceButton("Forgot password?", ButtonVariant.Text) { TestId = ForgotPassword },
                 ],
             },
-            new SurfaceButton("Sign in") { OnPress = Submit, Layout = new LayoutStyle { AlignSelf = Align.Stretch } })
+            new SurfaceButton("Sign in") { TestId = SignIn, OnPress = Submit, Layout = new LayoutStyle { AlignSelf = Align.Stretch } })
         {
             Variant = CardVariant.Outlined,
             Layout = new LayoutStyle { MaxWidth = 420, Padding = Edges.All(28), RowGap = 16, AlignSelf = Align.Center },

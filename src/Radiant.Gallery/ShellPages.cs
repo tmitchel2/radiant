@@ -11,7 +11,7 @@ using Radiant.UI.Core;
 namespace Radiant.Gallery;
 
 /// <summary>The gallery's desktop shell pages, each a whole window shown in a frame.</summary>
-internal static class ShellPages
+internal static partial class ShellPages
 {
     public static Element Workspace() => Frame(new WorkspacePage());
 
@@ -110,8 +110,19 @@ internal static class ShellPages
         }
     }
 
-    private sealed record WorkspacePage : Component
+    internal sealed partial record WorkspacePage : Component
     {
+
+        [TestId<IconButton>] public static partial string MoreActions { get; }
+
+        [TestId<Switch>] public static partial string Visible { get; }
+
+        [TestId<Slider>] public static partial string Opacity { get; }
+
+        [TestId<SegmentedButton>] public static partial string Corners { get; }
+
+        [TestId<IconButton>] public static partial string NewFile { get; }
+
         public override Element? Build(BuildContext context)
         {
             var activity = context.UseState(0);
@@ -183,7 +194,7 @@ internal static class ShellPages
                     new DocumentTabs(open.Value, selected.Value, selected.Set)
                     {
                         OnClose = Close,
-                        Actions = [new IconButton("more_horiz", "More actions")],
+                        Actions = [new IconButton("more_horiz", "More actions") { TestId = MoreActions }],
                     },
                     current is null
                         ? new Box { Layout = new LayoutStyle { FlexGrow = 1, JustifyContent = Justify.Center }, Children = [new EmptyState("code", "No open editors")] }
@@ -200,9 +211,9 @@ internal static class ShellPages
                     new Divider(),
                     new InspectorSection("Appearance",
                     [
-                        new PropertyRow("Visible", new Switch(visible.Value, visible.Set)),
-                        new PropertyRow("Opacity", new Slider(opacity.Value, opacity.Set) { Label = "Opacity" }),
-                        new PropertyRow("Corners", new SegmentedButton([new Segment("Round"), new Segment("Square")], new HashSet<int> { corner.Value }, s => corner.Set(s.First()))),
+                        new PropertyRow("Visible", new Switch(visible.Value, visible.Set) { TestId = Visible }),
+                        new PropertyRow("Opacity", new Slider(opacity.Value, opacity.Set) { TestId = Opacity, Label = "Opacity" }),
+                        new PropertyRow("Corners", new SegmentedButton([new Segment("Round"), new Segment("Square")], new HashSet<int> { corner.Value }, s => corner.Set(s.First())) { TestId = Corners }),
                     ]),
                     new InspectorSection("Text",
                     [
@@ -225,7 +236,7 @@ internal static class ShellPages
                     Layout = new LayoutStyle { Padding = Edges.All(16) },
                     Children = [new SurfaceText("Nothing here yet.") { Legibility = Legibility.Medium }],
                 },
-                SidebarActions = [new IconButton("add", "New file")],
+                SidebarActions = [new IconButton("add", "New file") { TestId = NewFile }],
                 Panel = new CodeView(s_terminal, Numbers: false),
                 PanelTitle = "Terminal",
                 Inspector = inspector,
@@ -238,8 +249,21 @@ internal static class ShellPages
         }
     }
 
-    private sealed record MailPage : Component
+    internal sealed partial record MailPage : Component
     {
+
+        [TestId<IconButton>] public static partial string Archive { get; }
+
+        [TestId<IconButton>] public static partial string Delete { get; }
+
+        [TestId<IconButton>] public static partial string More { get; }
+
+        [TestId<SurfaceButton>] public static partial string Reply { get; }
+
+        [TestId<SurfaceButton>] public static partial string Forward { get; }
+
+        [TestId<IconButton>] public static partial string Compose { get; }
+
         private static readonly ListEntry[] s_messages =
         [
             new("Ada Lovelace", "Notes on the Analytical Engine") { Meta = "9:41" },
@@ -265,9 +289,9 @@ internal static class ShellPages
                         Children =
                         [
                             new SurfaceText(message.Subtitle) { TextType = TextType.HeadlineSmall, HeadingLevel = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
-                            new IconButton("archive", "Archive"),
-                            new IconButton("delete", "Delete"),
-                            new IconButton("more_vert", "More"),
+                            new IconButton("archive", "Archive") { TestId = Archive },
+                            new IconButton("delete", "Delete") { TestId = Delete },
+                            new IconButton("more_vert", "More") { TestId = More },
                         ],
                     },
                     new Box
@@ -289,19 +313,28 @@ internal static class ShellPages
                     new Box
                     {
                         Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 8 },
-                        Children = [new SurfaceButton("Reply", ButtonVariant.Tonal) { Icon = "reply" }, new SurfaceButton("Forward", ButtonVariant.Outlined)],
+                        Children = [new SurfaceButton("Reply", ButtonVariant.Tonal) { TestId = Reply, Icon = "reply" }, new SurfaceButton("Forward", ButtonVariant.Outlined) { TestId = Forward }],
                     },
                 ],
             })
             {
                 Title = "Inbox",
-                Actions = [new IconButton("edit", "Compose")],
+                Actions = [new IconButton("edit", "Compose") { TestId = Compose }],
             };
         }
     }
 
-    private sealed record NewProjectPage : Component
+    internal sealed partial record NewProjectPage : Component
     {
+
+        [TestId<Radio>] public static partial string Template { get; }
+
+        [TestId<TextField>] public static partial string ProjectName { get; }
+
+        [TestId<Switch>] public static partial string Tests { get; }
+
+        [TestId<Switch>] public static partial string Git { get; }
+
         public override Element? Build(BuildContext context)
         {
             var step = context.UseState(0);
@@ -315,12 +348,12 @@ internal static class ShellPages
                 new("Choose a template", new Box
                 {
                     Layout = new LayoutStyle { RowGap = 4 },
-                    Children = [.. templates.Select((t, i) => (Element?)new Radio(template.Value == i, () => template.Set(i)) { Label = t })],
+                    Children = [.. templates.Select((t, i) => (Element?)new Radio(template.Value == i, () => template.Set(i)) { TestId = Template, Label = t })],
                 })
                 {
                     Description = "What the new app starts from.",
                 },
-                new("Name it", new TextField("Project name") { Value = name.Value, OnChange = name.Set, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { MaxWidth = 360 } })
+                new("Name it", new TextField("Project name") { TestId = ProjectName, Value = name.Value, OnChange = name.Set, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { MaxWidth = 360 } })
                 {
                     Description = "Used for the folder and the namespace.",
                     CanContinue = name.Value.Text.Trim().Length > 0,
@@ -330,8 +363,8 @@ internal static class ShellPages
                     Layout = new LayoutStyle { RowGap = 8, MaxWidth = 420 },
                     Children =
                     [
-                        new SettingsRow("Add a test project", new Switch(tests.Value, tests.Set)),
-                        new SettingsRow("Create a Git repository", new Switch(git.Value, git.Set)),
+                        new SettingsRow("Add a test project", new Switch(tests.Value, tests.Set) { TestId = Tests }),
+                        new SettingsRow("Create a Git repository", new Switch(git.Value, git.Set) { TestId = Git }),
                     ],
                 }),
                 new("Review", new Box
@@ -359,8 +392,15 @@ internal static class ShellPages
         }
     }
 
-    private sealed record PreferencesPage : Component
+    internal sealed partial record PreferencesPage : Component
     {
+
+        [TestId<Switch>] public static partial string Launch { get; }
+
+        [TestId<Switch>] public static partial string Updates { get; }
+
+        [TestId<Switch>] public static partial string Sounds { get; }
+
         public override Element? Build(BuildContext context)
         {
             var category = context.UseState(0);
@@ -385,10 +425,10 @@ internal static class ShellPages
                     [
                         new SettingsSection("Startup",
                         [
-                            new SettingsRow("Open at login", new Switch(launch.Value, launch.Set)),
-                            new SettingsRow("Check for updates", new Switch(updates.Value, updates.Set)) { Description = "Once a day, in the background" },
+                            new SettingsRow("Open at login", new Switch(launch.Value, launch.Set) { TestId = Launch }),
+                            new SettingsRow("Check for updates", new Switch(updates.Value, updates.Set) { TestId = Updates }) { Description = "Once a day, in the background" },
                         ]),
-                        new SettingsSection("Sound", [new SettingsRow("Play sounds", new Switch(sounds.Value, sounds.Set))]),
+                        new SettingsSection("Sound", [new SettingsRow("Play sounds", new Switch(sounds.Value, sounds.Set) { TestId = Sounds })]),
                     ],
                 },
                 _ => new EmptyState(categories[category.Value].Icon, $"{categories[category.Value].Label} settings") { Description = "Nothing to set here yet." },
@@ -398,7 +438,7 @@ internal static class ShellPages
     }
 
     /// <summary>A docked workspace: drag a tab to another area, or move it with its context menu.</summary>
-    private sealed record DockingPage : Component
+    internal sealed record DockingPage : Component
     {
         private static readonly DockLayout s_initial = new()
         {

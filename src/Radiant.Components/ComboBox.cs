@@ -20,8 +20,11 @@ namespace Radiant.Components;
 /// <param name="Options">The suggestions.</param>
 /// <param name="Value">The chosen value, or null for none.</param>
 /// <param name="OnChange">Called with the new value.</param>
-public sealed record ComboBox(string Label, IReadOnlyList<string> Options, string? Value, Action<string?>? OnChange) : Component
+[RequiresTestId]
+public sealed partial record ComboBox(string Label, IReadOnlyList<string> Options, string? Value, Action<string?>? OnChange) : Component
 {
+    [TestId<TextField>] public static partial string Field { get; }
+
     private const float RowHeight = 40f;
 
     /// <summary>Whether text that matches no option is kept as the value.</summary>
@@ -179,6 +182,7 @@ public sealed record ComboBox(string Label, IReadOnlyList<string> Options, strin
                 [
                     new TextField(Label)
                     {
+                        TestId = Field,
                         Value = text.Value,
                         OnChange = next =>
                         {

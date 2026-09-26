@@ -185,7 +185,9 @@ internal static class UIActions
             "focused" => m => IsFocusedWithin(scope.Root, m.Node),
             "checked" => m => m.Semantics?.Semantics.Checked == true,
             "unchecked" => m => m.Semantics?.Semantics.Checked == false,
-            _ => throw new AgentException(AgentErrorCodes.InvalidParams, $"Unknown state '{state}': exists, visible, hittable, gone, hidden, enabled, disabled, focused, checked, unchecked."),
+            "selected" => m => m.Semantics?.Semantics.Selected == true,
+            "unselected" => m => m.Semantics?.Semantics.Selected != true,
+            _ => throw new AgentException(AgentErrorCodes.InvalidParams, $"Unknown state '{state}': exists, visible, hittable, gone, hidden, enabled, disabled, focused, checked, unchecked, selected, unselected."),
         };
         var negative = state is "gone" or "hidden";
         var text = parameters.Text;

@@ -16,8 +16,17 @@ namespace Radiant.Templates;
 /// <param name="Countries">The countries it ships to.</param>
 /// <param name="Delivery">The delivery options.</param>
 /// <param name="OnPlaceOrder">Called with the details.</param>
-public sealed record CheckoutForm(IReadOnlyList<string> Countries, IReadOnlyList<DeliveryOption> Delivery, Action<CheckoutDetails> OnPlaceOrder) : Component
+public sealed partial record CheckoutForm(IReadOnlyList<string> Countries, IReadOnlyList<DeliveryOption> Delivery, Action<CheckoutDetails> OnPlaceOrder) : Component
 {
+    [TestId<TextField>] public static partial string Email { get; }
+    [TestId<TextField>] public static partial string FullName { get; }
+    [TestId<TextField>] public static partial string Street { get; }
+    [TestId<TextField>] public static partial string City { get; }
+    [TestId<TextField>] public static partial string Postcode { get; }
+    [TestId<SelectField>] public static partial string Country { get; }
+    [TestId<Radio>] public static partial string DeliveryOption { get; }
+    [TestId<SurfaceButton>] public static partial string PlaceOrder { get; }
+
     /// <summary>The button's label, with the total ("Pay $142.00").</summary>
     public string PlaceOrderLabel { get; init; } = "Place order";
 
@@ -40,8 +49,9 @@ public sealed record CheckoutForm(IReadOnlyList<string> Countries, IReadOnlyList
             countries.Count > 0 ? countries[country.Value] : "", delivery.Value)));
 
         // A field fills its line; two sharing a line (inRow) split it, wrapping when it's narrow.
-        Element Field(FormField field, string label, string? icon = null, bool inRow = false) => new TextField(label)
+        Element Field(string testId, FormField field, string label, string? icon = null, bool inRow = false) => new TextField(label)
         {
+            TestId = testId,
             Value = field.State,
             OnChange = field.Set,
             OnFocusChange = field.FocusChanged,
@@ -57,24 +67,24 @@ public sealed record CheckoutForm(IReadOnlyList<string> Countries, IReadOnlyList
             Layout = new LayoutStyle { RowGap = 20, AlignSelf = Align.Stretch, MaxWidth = 560 },
             Children =
             [
-                new Fieldset("Contact", [Field(email, "Email address", "mail")]),
+                new Fieldset("Contact", [Field(Email, email, "Email address", "mail")]),
                 new Fieldset("Shipping address",
                 [
-                    Field(name, "Full name"),
-                    Field(address, "Street address"),
+                    Field(FullName, name, "Full name"),
+                    Field(Street, address, "Street address"),
                     new Box
                     {
                         Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, FlexWrap = FlexWrap.Wrap, ColumnGap = 12, RowGap = 12 },
-                        Children = [Field(city, "City", inRow: true), Field(postcode, "Postcode", inRow: true)],
+                        Children = [Field(City, city, "City", inRow: true), Field(Postcode, postcode, "Postcode", inRow: true)],
                     },
-                    new SelectField("Country", Countries, country.Value, country.Set) { Layout = new LayoutStyle { AlignSelf = Align.Stretch } },
+                    new SelectField("Country", Countries, country.Value, country.Set) { TestId = Country, Layout = new LayoutStyle { AlignSelf = Align.Stretch } },
                 ]),
                 new Fieldset("Delivery", [.. Delivery.Select((option, i) => (Element?)new Box
                 {
                     Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 8 },
                     Children =
                     [
-                        new Radio(delivery.Value == i, () => delivery.Set(i)) { AccessibleLabel = $"{option.Name}, {option.Detail}, {option.Price}" },
+                        new Radio(delivery.Value == i, () => delivery.Set(i)) { TestId = DeliveryOption, AccessibleLabel = $"{option.Name}, {option.Detail}, {option.Price}" },
                         new Box
                         {
                             Layout = new LayoutStyle { FlexGrow = 1 },
@@ -87,7 +97,7 @@ public sealed record CheckoutForm(IReadOnlyList<string> Countries, IReadOnlyList
                         new SurfaceText(option.Price) { TextType = TextType.TitleSmall },
                     ],
                 })]),
-                new SurfaceButton(PlaceOrderLabel) { Icon = "lock", OnPress = Submit, Layout = new LayoutStyle { AlignSelf = Align.Stretch } },
+                new SurfaceButton(PlaceOrderLabel) { TestId = PlaceOrder, Icon = "lock", OnPress = Submit, Layout = new LayoutStyle { AlignSelf = Align.Stretch } },
             ],
         };
     }

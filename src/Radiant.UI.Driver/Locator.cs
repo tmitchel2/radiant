@@ -9,10 +9,13 @@ namespace Radiant.UI.Driver;
 /// on the one it means (an <c>ambiguous</c> error if it means several: narrow it, or pick with
 /// <see cref="Nth"/>); <see cref="Expect"/> waits for something to be true of it.
 /// </summary>
-public sealed class Locator
+public class Locator
 {
-    internal Locator(AppDriver driver, Selector selector)
+    /// <summary>A locator for what <paramref name="selector"/> means in <paramref name="driver"/>'s app.</summary>
+    protected internal Locator(AppDriver driver, Selector selector)
     {
+        ArgumentNullException.ThrowIfNull(driver);
+        ArgumentNullException.ThrowIfNull(selector);
         Driver = driver;
         Selector = selector;
     }
@@ -22,6 +25,9 @@ public sealed class Locator
 
     /// <summary>The selector.</summary>
     public Selector Selector { get; }
+
+    /// <summary>Elements by their semantics role, typed: <c>scope.Role.Button("Save")</c>, within this.</summary>
+    public RoleLocators Role => new(Driver, Selector);
 
     /// <summary>The <paramref name="index"/>th match, from 0; negative counts from the end.</summary>
     public Locator Nth(int index) => new(Driver, Selector.WithIndex(index));
@@ -34,6 +40,46 @@ public sealed class Locator
 
     /// <summary>What <paramref name="selector"/> means inside this.</summary>
     public Locator Get(string selector) => new(Driver, Selector.Parse(selector) is var inner ? Nest(inner, Selector) : Selector);
+
+    /// <summary>What <paramref name="selector"/> means inside this.</summary>
+    public Locator Get(Selector selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return new(Driver, Nest(selector, Selector));
+    }
+
+    /// <summary>Those whose own label, value or text is <paramref name="text"/>.</summary>
+    public Locator WithText(string text) => WithText(TextMatch.Exact(text));
+
+    /// <summary>Those whose own label, value or text passes <paramref name="text"/>.</summary>
+    public Locator WithText(TextMatch text) => new(Driver, Selector with { Text = text });
+
+    /// <summary>Those labelled <paramref name="label"/>.</summary>
+    public Locator WithLabel(string label) => WithLabel(TextMatch.Exact(label));
+
+    /// <summary>Those whose label passes <paramref name="label"/>.</summary>
+    public Locator WithLabel(TextMatch label) => new(Driver, Selector with { Label = label });
+
+    /// <summary>Those with <paramref name="text"/> (a label, a value, some text) somewhere inside them.</summary>
+    public Locator Containing(string text) => Containing(TextMatch.Exact(text));
+
+    /// <summary>Those with something inside them whose label, value or text passes <paramref name="text"/>.</summary>
+    public Locator Containing(TextMatch text) => new(Driver, Selector with { Has = new Selector { Text = text } });
+
+    /// <summary>Those that are (or, false, aren't) selected: a tab, a row.</summary>
+    public Locator Selected(bool selected = true) => new(Driver, Selector with { Selected = selected });
+
+    /// <summary>Those that are (or aren't) checked.</summary>
+    public Locator Checked(bool isChecked = true) => new(Driver, Selector with { Checked = isChecked });
+
+    /// <summary>Those that are (or aren't) enabled.</summary>
+    public Locator Enabled(bool enabled = true) => new(Driver, Selector with { Enabled = enabled });
+
+    /// <summary>Those that can (or can't) be seen.</summary>
+    public Locator Visible(bool visible = true) => new(Driver, Selector with { Visible = visible });
+
+    /// <summary>Those that have (or haven't) keyboard focus.</summary>
+    public Locator Focused(bool focused = true) => new(Driver, Selector with { Focused = focused });
 
     /// <summary>This, only inside <paramref name="scope"/>.</summary>
     public Locator Within(Locator scope)
@@ -189,6 +235,12 @@ public sealed class Expectation
 
     /// <summary>That it's checked.</summary>
     public Task<ActionResult> ToBeCheckedAsync() => Wait("checked");
+
+    /// <summary>That it's selected.</summary>
+    public Task<ActionResult> ToBeSelectedAsync() => Wait("selected");
+
+    /// <summary>That it's not selected.</summary>
+    public Task<ActionResult> ToBeUnselectedAsync() => Wait("unselected");
 
     /// <summary>That it's not checked.</summary>
     public Task<ActionResult> ToBeUncheckedAsync() => Wait("unchecked");

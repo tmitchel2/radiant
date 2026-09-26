@@ -16,8 +16,10 @@ namespace Radiant.Templates;
 /// <param name="Selected">The chosen item's index, or -1 for none.</param>
 /// <param name="OnSelect">Called with an item's index (in <paramref name="Items"/>) when it's chosen.</param>
 /// <param name="Detail">The chosen item's detail.</param>
-public sealed record MasterDetail(IReadOnlyList<ListEntry> Items, int Selected, Action<int>? OnSelect, Element? Detail) : Component
+public sealed partial record MasterDetail(IReadOnlyList<ListEntry> Items, int Selected, Action<int>? OnSelect, Element? Detail) : Component
 {
+    [TestId<SearchField>] public static partial string Search { get; }
+
     /// <summary>The list's heading.</summary>
     public string? Title { get; init; }
 
@@ -93,7 +95,7 @@ public sealed record MasterDetail(IReadOnlyList<ListEntry> Items, int Selected, 
                 Searchable ? new Box
                 {
                     Layout = new LayoutStyle { Padding = new Edges(12, 8, 12, 8) },
-                    Children = [new SearchField("Search") { Value = query.Value, OnChange = query.Set }],
+                    Children = [new SearchField("Search") { TestId = Search, Value = query.Value, OnChange = query.Set }],
                 } : null,
                 shown.Count == 0
                     ? new SurfaceText("No matches") { Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = Edges.All(16) } }

@@ -14,8 +14,10 @@ namespace Radiant.Templates;
 /// beside the reviews themselves, which move under it on narrow widths.
 /// </summary>
 /// <param name="Items">The reviews.</param>
-public sealed record Reviews(IReadOnlyList<Review> Items) : Component
+public sealed partial record Reviews(IReadOnlyList<Review> Items) : Component
 {
+    [TestId<SurfaceButton>] public static partial string WriteReview { get; }
+
     /// <summary>The heading.</summary>
     public string Title { get; init; } = "Customer reviews";
 
@@ -63,7 +65,7 @@ public sealed record Reviews(IReadOnlyList<Review> Items) : Component
                     ],
                 },
                 .. bars,
-                OnWrite is null ? null : new SurfaceButton("Write a review", ButtonVariant.Outlined) { OnPress = OnWrite, Layout = new LayoutStyle { Margin = new Edges(0, 8, 0, 0) } },
+                OnWrite is null ? null : new SurfaceButton("Write a review", ButtonVariant.Outlined) { TestId = WriteReview, OnPress = OnWrite, Layout = new LayoutStyle { Margin = new Edges(0, 8, 0, 0) } },
             ],
         };
 

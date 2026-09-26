@@ -12,6 +12,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Icon">The action's icon.</param>
 /// <param name="Label">What it does: shown when <see cref="Extended"/>, and always to assistive technology.</param>
+[RequiresTestId]
 public sealed record Fab(string Icon, string Label) : Component
 {
     /// <summary>Whether the label shows beside the icon.</summary>

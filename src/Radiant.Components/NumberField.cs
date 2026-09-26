@@ -16,8 +16,13 @@ namespace Radiant.Components;
 /// <param name="Label">The field's label.</param>
 /// <param name="Value">The number.</param>
 /// <param name="OnChange">Called with the new number.</param>
-public sealed record NumberField(string Label, double Value, Action<double>? OnChange) : Component
+[RequiresTestId]
+public sealed partial record NumberField(string Label, double Value, Action<double>? OnChange) : Component
 {
+    [TestId<TextField>] public static partial string Field { get; }
+    [TestId<IconButton>] public static partial string Increase { get; }
+    [TestId<IconButton>] public static partial string Decrease { get; }
+
     /// <summary>The least value.</summary>
     public double Min { get; init; } = double.MinValue;
 
@@ -102,8 +107,8 @@ public sealed record NumberField(string Label, double Value, Action<double>? OnC
             Layout = new LayoutStyle { Width = 28 },
             Children =
             [
-                new IconButton("expand_less", $"Increase {Label}") { OnPress = Value < Max ? () => StepBy(1) : null, ShowDisabled = Value >= Max ? true : null, Layout = new LayoutStyle { Width = 28, Height = 22 } },
-                new IconButton("expand_more", $"Decrease {Label}") { OnPress = Value > Min ? () => StepBy(-1) : null, ShowDisabled = Value <= Min ? true : null, Layout = new LayoutStyle { Width = 28, Height = 22 } },
+                new IconButton("expand_less", $"Increase {Label}") { TestId = Increase, OnPress = Value < Max ? () => StepBy(1) : null, ShowDisabled = Value >= Max ? true : null, Layout = new LayoutStyle { Width = 28, Height = 22 } },
+                new IconButton("expand_more", $"Decrease {Label}") { TestId = Decrease, OnPress = Value > Min ? () => StepBy(-1) : null, ShowDisabled = Value <= Min ? true : null, Layout = new LayoutStyle { Width = 28, Height = 22 } },
             ],
         };
 
@@ -129,6 +134,7 @@ public sealed record NumberField(string Label, double Value, Action<double>? OnC
             [
                 new TextField(Label)
                 {
+                    TestId = Field,
                     Value = text.Value,
                     OnChange = text.Set,
                     Variant = Variant,

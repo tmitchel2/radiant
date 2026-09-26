@@ -15,8 +15,10 @@ namespace Radiant.Components;
 /// <param name="Items">The tabs.</param>
 /// <param name="Selected">The chosen tab's index.</param>
 /// <param name="OnSelect">Called with a tab's index when it's chosen.</param>
-public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? OnSelect) : Component
+public sealed partial record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? OnSelect) : Component
 {
+    [TestId] public static partial string TabButton { get; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -76,6 +78,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
                 [
                     new PressableSurface
                     {
+                        TestId = TabButton,
                         InsetFocusRing = true,
                         ContentColor = chosen ? SurfaceName.Primary : SurfaceName.SurfaceVariant,
                         ContentOnToggle = chosen ? null : true,

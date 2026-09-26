@@ -13,8 +13,11 @@ namespace Radiant.Templates;
 /// </summary>
 /// <param name="Headline">The headline ("Stay up to date").</param>
 /// <param name="OnSubscribe">Called with the address.</param>
-public sealed record Newsletter(string Headline, Action<string>? OnSubscribe) : Component
+public sealed partial record Newsletter(string Headline, Action<string>? OnSubscribe) : Component
 {
+    [TestId<TextField>] public static partial string Email { get; }
+    [TestId<SurfaceButton>] public static partial string Subscribe { get; }
+
     /// <summary>A sentence under the headline.</summary>
     public string? Text { get; init; }
 
@@ -59,6 +62,7 @@ public sealed record Newsletter(string Headline, Action<string>? OnSubscribe) : 
                         [
                             new TextField("Email address")
                             {
+                                TestId = Email,
                                 Value = email.State,
                                 OnChange = email.Set,
                                 OnFocusChange = email.FocusChanged,
@@ -68,7 +72,7 @@ public sealed record Newsletter(string Headline, Action<string>? OnSubscribe) : 
                                 OnSubmit = Submit,
                                 Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                             },
-                            new SurfaceButton("Subscribe") { OnPress = Submit, Layout = new LayoutStyle { Margin = new Edges(0, 8, 0, 0) } },
+                            new SurfaceButton("Subscribe") { TestId = Subscribe, OnPress = Submit, Layout = new LayoutStyle { Margin = new Edges(0, 8, 0, 0) } },
                         ],
                     },
             ],

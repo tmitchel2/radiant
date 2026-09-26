@@ -13,6 +13,7 @@ namespace Radiant.Components;
 /// <param name="Segments">The options.</param>
 /// <param name="Selected">The chosen options' indices.</param>
 /// <param name="OnChange">Called with the new set of chosen indices.</param>
+[RequiresTestId]
 public sealed record SegmentedButton(IReadOnlyList<Segment> Segments, IReadOnlySet<int> Selected, Action<IReadOnlySet<int>>? OnChange) : Component
 {
     /// <summary>Whether several can be chosen (otherwise choosing one unchooses the rest).</summary>

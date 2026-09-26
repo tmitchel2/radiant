@@ -14,8 +14,10 @@ namespace Radiant.Templates;
 /// read out as unread.
 /// </summary>
 /// <param name="Entries">The notifications.</param>
-public sealed record NotificationFeed(IReadOnlyList<NotificationEntry> Entries) : Component
+public sealed partial record NotificationFeed(IReadOnlyList<NotificationEntry> Entries) : Component
 {
+    [TestId<SurfaceButton>] public static partial string MarkAllRead { get; }
+
     /// <summary>Called to mark them all read; with none, there's no button for it.</summary>
     public Action? OnMarkAllRead { get; init; }
 
@@ -42,7 +44,7 @@ public sealed record NotificationFeed(IReadOnlyList<NotificationEntry> Entries) 
                         new SurfaceText("Notifications") { TextType = TextType.TitleLarge, HeadingLevel = 2 },
                         unread == 0 ? null : new Tag($"{unread} new"),
                         new Box { Layout = new LayoutStyle { FlexGrow = 1 } },
-                        OnMarkAllRead is null || unread == 0 ? null : new SurfaceButton("Mark all as read", ButtonVariant.Text) { OnPress = OnMarkAllRead },
+                        OnMarkAllRead is null || unread == 0 ? null : new SurfaceButton("Mark all as read", ButtonVariant.Text) { TestId = MarkAllRead, OnPress = OnMarkAllRead },
                     ],
                 },
                 new Box

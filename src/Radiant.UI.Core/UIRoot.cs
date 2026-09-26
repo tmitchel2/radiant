@@ -1166,7 +1166,7 @@ public sealed class UIRoot : IDisposable
     /// <summary>
     /// A node's test ID: its semantics' <see cref="Semantics.TestId"/>, else the outermost
     /// <see cref="Element.TestId"/> among the element that made it and the components above that
-    /// build nothing but it.
+    /// build nothing but it, else the outermost of their generated root names (<see cref="Element.DefaultTestId"/>).
     /// </summary>
     internal static string? TestIdOf(RenderNode node)
     {
@@ -1181,12 +1181,15 @@ public sealed class UIRoot : IDisposable
         {
             return declared;
         }
+        // An explicit ID wins, the outermost; failing that, the outermost generated root name.
         var testId = owner.Element.TestId;
+        var fallback = owner.Element.DefaultTestId;
         for (var above = owner.Parent; above is { RenderNode: null, Children.Count: 1 }; above = above.Parent)
         {
             testId = above.Element.TestId ?? testId;
+            fallback = above.Element.DefaultTestId ?? fallback;
         }
-        return testId;
+        return testId ?? fallback;
     }
 
     private RenderNode? Find(int id)
@@ -1251,7 +1254,15 @@ public sealed class UIRoot : IDisposable
                 into.Add(new SemanticsNode(node.Id, semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children, testId));
                 break;
             default:
-                into.AddRange(children);
+                if (testId is not null)
+                {
+                    // A named node that's no box (a portal's layer, a grid): in the tree as a scope for its parts.
+                    into.Add(new SemanticsNode(node.Id, new Semantics { Role = SemanticsRole.None }, null, bounds, false, false, children, testId));
+                }
+                else
+                {
+                    into.AddRange(children);
+                }
                 break;
         }
 

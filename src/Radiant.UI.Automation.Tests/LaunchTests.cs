@@ -1,4 +1,5 @@
 using Radiant.Host.AgentControlProtocol;
+using Radiant.UI.Driver;
 using Radiant.UI.Driver.MSTest;
 
 namespace Radiant.UI.Automation.Tests;
@@ -18,11 +19,11 @@ public sealed class LaunchTests : RadiantUITest
     {
         await LaunchAsync(new AgentLaunchOptions { Target = GalleryProject, Headless = true }, transport);
 
-        await Driver.Get("role=button label=Filled").TapAsync();
-        await Driver.ByText("Filled pressed 1 times").Expect().ToBeVisibleAsync();
-        await Driver.Get("role=tab label=\"Sign in\"").TapAsync();
-        await Driver.Get("role=textField label=Email").TypeAsync("ada@example.com");
-        await Driver.Get("role=textField label=Email").Expect().ToHaveValueAsync("ada@example.com");
+        await Driver.VerticalSlice().Filled().TapAsync();
+        await Driver.Role.Text("Filled pressed 1 times").Expect().ToBeVisibleAsync();
+        await Driver.NavigationDrawer().Item().WithLabel("Sign in").TapAsync();
+        await Driver.SignInForm().Email().TypeAsync("ada@example.com");
+        await Driver.SignInForm().Email().Input().Expect().ToHaveValueAsync("ada@example.com");
         Assert.IsTrue((await Driver.InfoAsync()).Headless);
     }
 }

@@ -14,8 +14,10 @@ namespace Radiant.Templates;
 /// </summary>
 /// <param name="Name">The product or company name.</param>
 /// <param name="Columns">The link columns.</param>
-public sealed record SiteFooter(string Name, IReadOnlyList<FooterColumn> Columns) : Component
+public sealed partial record SiteFooter(string Name, IReadOnlyList<FooterColumn> Columns) : Component
 {
+    [TestId<Link>] public static partial string Link { get; }
+
     /// <summary>A line under the name.</summary>
     public string? Tagline { get; init; }
 
@@ -33,7 +35,7 @@ public sealed record SiteFooter(string Name, IReadOnlyList<FooterColumn> Columns
             Children =
             [
                 new SurfaceText(column.Title) { TextType = TextType.TitleSmall },
-                .. column.Links.Select(text => (Element?)new Link(text, column.OnFollow is { } follow ? () => follow(text) : null)),
+                .. column.Links.Select(text => (Element?)new Link(text, column.OnFollow is { } follow ? () => follow(text) : null) { TestId = Link }),
             ],
         }).ToList();
         return new Surface

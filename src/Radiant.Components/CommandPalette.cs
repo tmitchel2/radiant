@@ -17,8 +17,11 @@ namespace Radiant.Components;
 /// <param name="Open">Whether it's showing.</param>
 /// <param name="OnClose">Called when it should close.</param>
 /// <param name="Commands">The commands: the UI's registered ones (<c>context.UseCommands()</c>), or a list of its own.</param>
-public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Command> Commands) : Component
+public sealed partial record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Command> Commands) : Component
 {
+    [TestId] public static partial string Search { get; }
+    [TestId] public static partial string Result { get; }
+
     /// <summary>The search field's placeholder.</summary>
     public string Placeholder { get; init; } = "Type a command or search";
 
@@ -192,6 +195,7 @@ public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Com
                                             active.Set(0);
                                         })
                                         {
+                                            TestId = Search,
                                             // The palette's own search isn't one of the commands it lists.
                                             OffersEditCommands = false,
                                             Label = "Search commands",
@@ -238,6 +242,7 @@ public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Com
             var (highlight, run) = (Highlight, Run);
             return ThemeContexts.Surface.Provide(state, new Box
             {
+                TestId = Result,
                 Ref = Ref,
                 Semantics = new Semantics { Role = SemanticsRole.ListItem, Label = Command.Title, Selected = Highlighted },
                 Background = Highlighted ? theme.SurfaceColor(state) : null,

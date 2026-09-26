@@ -15,10 +15,10 @@ public sealed class DriverTests : RadiantUITest
     [TestMethod]
     public async Task TappingAButtonWaitsForTheAppAndActs()
     {
-        var result = await Driver.ByTestId("save").TapAsync();
+        var result = await Driver.FormApp().Save().TapAsync();
 
-        await Driver.ByTestId("status").Expect().ToHaveTextAsync("Saved 1 times");
-        Assert.AreEqual("save", result.Target!.TestId);
+        await Driver.FormApp().Status().Expect().ToHaveTextAsync("Saved 1 times");
+        Assert.AreEqual(FormApp.Save, result.Target!.TestId);
         Assert.IsTrue(result.Idle, "a spinner doesn't keep the app busy");
         Assert.IsNotNull(result.At);
     }
@@ -29,47 +29,47 @@ public sealed class DriverTests : RadiantUITest
         await Driver.Get("role=button label=Save").TapAsync();
         await Driver.Get("text=Save").TapAsync();
 
-        await Driver.Get("@status").Expect().ToContainTextAsync("saved 2");
+        await Driver.Get("@FormApp.Status").Expect().ToContainTextAsync("saved 2");
     }
 
     [TestMethod]
     public async Task TypingGoesIntoTheField()
     {
-        var typed = await Driver.ByTestId("name").TypeAsync("Ada");
-        await Driver.ByTestId("name").FillAsync("Grace");
+        var typed = await Driver.FormApp().Name().TypeAsync("Ada");
+        await Driver.FormApp().Name().FillAsync("Grace");
 
         Assert.AreEqual("Ada", typed.Value);
-        await Driver.ByTestId("name").Expect().ToHaveValueAsync("Grace");
+        await Driver.FormApp().Name().Expect().ToHaveValueAsync("Grace");
     }
 
     [TestMethod]
     public async Task CheckBoxesCheck()
     {
-        await Driver.ByTestId("agree").Expect().ToBeUncheckedAsync();
+        await Driver.FormApp().Agree().Expect().ToBeUncheckedAsync();
 
-        await Driver.ByTestId("agree").TapAsync();
+        await Driver.FormApp().Agree().TapAsync();
 
-        await Driver.ByTestId("agree").Expect().ToBeCheckedAsync();
+        await Driver.FormApp().Agree().Expect().ToBeCheckedAsync();
     }
 
     [TestMethod]
     public async Task ActingOnARowOutOfViewScrollsItIn()
     {
-        var before = await Driver.ByTestId("row-45").InspectAsync("visibility");
+        var before = await Driver.FormApp().Row().WithLabel("Row 45").InspectAsync("visibility");
         Assert.IsNull(before.Visible, "it starts out of view");
 
-        await Driver.ByTestId("row-45").TapAsync();
+        await Driver.FormApp().Row().WithLabel("Row 45").TapAsync();
 
-        await Driver.ByTestId("picked").Expect().ToHaveTextAsync("Picked row 45");
-        var list = await Driver.ByTestId("list").InspectAsync("scroll");
+        await Driver.FormApp().Picked().Expect().ToHaveTextAsync("Picked row 45");
+        var list = await Driver.FormApp().List().InspectAsync("scroll");
         Assert.IsTrue(list.Scroll!.Offset!.Y > 0);
-        Assert.AreEqual(1f, (await Driver.ByTestId("row-45").InspectAsync("visibility")).VisibleRatio);
+        Assert.AreEqual(1f, (await Driver.FormApp().Row().WithLabel("Row 45").InspectAsync("visibility")).VisibleRatio);
     }
 
     [TestMethod]
     public async Task InspectGivesWhereToTap()
     {
-        var node = await Driver.ByTestId("save").InspectAsync("basic,geometry,hit");
+        var node = await Driver.FormApp().Save().InspectAsync("basic,geometry,hit");
 
         Assert.AreEqual("button", node.Role);
         Assert.AreEqual("Save", node.Label);
@@ -82,17 +82,17 @@ public sealed class DriverTests : RadiantUITest
     [TestMethod]
     public async Task TappingThePointInspectGaveHitsTheElement()
     {
-        var node = await Driver.ByTestId("save").InspectAsync("hit");
+        var node = await Driver.FormApp().Save().InspectAsync("hit");
 
         await Driver.TapAtAsync(new Vector2(node.Tap!.X, node.Tap.Y));
 
-        await Driver.ByTestId("status").Expect().ToHaveTextAsync("Saved 1 times");
+        await Driver.FormApp().Status().Expect().ToHaveTextAsync("Saved 1 times");
     }
 
     [TestMethod]
     public async Task NamedFieldsAreWrittenEvenWhenEmpty()
     {
-        var node = await Driver.ByTestId("save").InspectAsync("id,checked,disabled,-id");
+        var node = await Driver.FormApp().Save().InspectAsync("id,checked,disabled,-id");
 
         Assert.IsNull(node.Id);
         Assert.AreEqual(false, node.Disabled);
@@ -109,64 +109,77 @@ public sealed class DriverTests : RadiantUITest
         Assert.IsTrue(root.Children!.Any(c => c.ChildCount > 0), "where it stops it counts");
         Assert.AreEqual("semantics", deep.Tree);
         var all = Flatten(deep.Nodes.Single()).ToList();
-        Assert.IsTrue(all.Any(n => n.TestId == "list" && n.Scroll is not null));
-        Assert.IsFalse(all.Any(n => n.TestId == "row-45"), "visibleOnly leaves out rows out of view");
+        Assert.IsTrue(all.Any(n => n.TestId == FormApp.List && n.Scroll is not null));
+        Assert.IsFalse(all.Any(n => n.Label == "Row 45"), "visibleOnly leaves out rows out of view");
     }
 
     [TestMethod]
     public async Task ADialogCoversWhatsBehindIt()
     {
-        await Driver.ByTestId("open").TapAsync();
-        await Driver.Get("role=dialog").Expect().ToBeVisibleAsync();
+        await Driver.FormApp().Open().TapAsync();
+        await Driver.FormApp().Confirm().Panel().Expect().ToBeVisibleAsync();
 
-        var covered = await Driver.ByTestId("save").InspectAsync("hit");
+        var covered = await Driver.FormApp().Save().InspectAsync("hit");
         var error = await Assert.ThrowsAsync<AppDriverException>(() =>
-            Driver.CallAsync("ui.tap", JsonDocument.Parse("""{"selector":"@save"}""").RootElement, TimeSpan.FromMilliseconds(300)));
+            Driver.CallAsync("ui.tap", JsonDocument.Parse("""{"selector":"@FormApp.Save"}""").RootElement, TimeSpan.FromMilliseconds(300)));
 
         Assert.IsFalse(covered.Hittable);
         Assert.IsNotNull(covered.ObscuredBy);
         Assert.AreEqual(AgentErrorCodes.NotHittable, error.Code);
 
-        await Driver.ByTestId("close").TapAsync();
-        await Driver.Get("role=dialog").Expect().ToBeGoneAsync();
-        await Driver.ByTestId("save").Expect().ToBeHittableAsync();
+        await Driver.FormApp().Close().TapAsync();
+        await Driver.FormApp().Confirm().Panel().Expect().ToBeGoneAsync();
+        await Driver.FormApp().Save().Expect().ToBeHittableAsync();
     }
 
     [TestMethod]
     public async Task NoMatchSuggestsWhatWasMeant()
     {
         var error = await Assert.ThrowsAsync<AppDriverException>(() =>
-            Driver.CallAsync("ui.tap", JsonDocument.Parse("""{"selector":"@sav"}""").RootElement, TimeSpan.FromMilliseconds(200)));
+            Driver.CallAsync("ui.tap", JsonDocument.Parse("""{"selector":"@FormApp.Sav"}""").RootElement, TimeSpan.FromMilliseconds(200)));
 
         Assert.AreEqual(AgentErrorCodes.NoMatch, error.Code);
-        StringAssert.Contains(error.Message, "@save");
+        StringAssert.Contains(error.Message, "@FormApp.Save");
         StringAssert.Contains(error.Message, "What happened last", "the log's end comes with it");
     }
 
     [TestMethod]
     public async Task SeveralMatchesAreAmbiguousUntilPicked()
     {
-        var error = await Assert.ThrowsAsync<AppDriverException>(() => Driver.Get("role=listItem").TapAsync());
+        var error = await Assert.ThrowsAsync<AppDriverException>(() => Driver.Role.ListItem().TapAsync());
 
         Assert.AreEqual(AgentErrorCodes.Ambiguous, error.Code);
-        await Driver.Get("role=listItem [3]").TapAsync();
-        await Driver.ByTestId("picked").Expect().ToHaveTextAsync("Picked row 3");
-        Assert.AreEqual(60, await Driver.Get("role=listItem").CountAsync());
+        await Driver.FormApp().Row().Nth(3).TapAsync();
+        await Driver.FormApp().Picked().Expect().ToHaveTextAsync("Picked row 3");
+        Assert.AreEqual(60, await Driver.Role.ListItem().CountAsync());
     }
 
     [TestMethod]
     public async Task WithinNarrowsToWhatsInside()
     {
-        var rows = await Driver.Get("@list >> text~=\"row 1\"").QueryAsync();
+        var rows = await Driver.FormApp().List().Role.ListItem(TextMatch.Contains("row 1")).QueryAsync();
 
         Assert.AreEqual(11, rows.Count, "row 1 and rows 10 to 19");
     }
 
     [TestMethod]
+    public async Task GeneratedLocatorsNarrowByStateAndContent()
+    {
+        await Driver.FormApp().Agree().TapAsync();
+        await Driver.FormApp().Open().TapAsync();
+
+        await Driver.FormApp().Agree().Checked().Expect().ToExistAsync();
+        await Driver.FormApp().Confirm().Containing("Are you sure?").Panel().Expect().ToBeVisibleAsync();
+        await Driver.FormApp().Confirm().Containing("Not in it").Expect().ToBeGoneAsync();
+        Assert.AreEqual(1, await Driver.FormApp().Confirm().Role.Button("Close").CountAsync(), "roles within a component");
+        Assert.AreEqual(60, await Driver.FormApp().Row().CountAsync(), "one part, many rows");
+    }
+
+    [TestMethod]
     public async Task KeysMoveFocus()
     {
-        var focused = await Driver.ByTestId("name").FocusAsync();
-        await Driver.ByTestId("name").Expect().ToBeFocusedAsync();
+        var focused = await Driver.FormApp().Name().FocusAsync();
+        await Driver.FormApp().Name().Expect().ToBeFocusedAsync();
 
         var after = await Driver.KeyAsync("Tab");
 
@@ -177,12 +190,12 @@ public sealed class DriverTests : RadiantUITest
     [TestMethod]
     public async Task ScrollingByAndToEdges()
     {
-        var down = await Driver.ByTestId("list").ScrollAsync(new Vector2(0, 100));
-        var bottom = await Driver.ByTestId("list").ScrollToAsync("bottom");
+        var down = await Driver.FormApp().List().ScrollAsync(new Vector2(0, 100));
+        var bottom = await Driver.FormApp().List().ScrollToAsync("bottom");
 
         Assert.AreEqual(100, down.Scroll!.Offset.Y, 0.5f);
         Assert.AreEqual(bottom.Scroll!.Max.Y, bottom.Scroll.Offset.Y, 0.5f);
-        await Driver.ByTestId("row-59").Expect().ToBeVisibleAsync();
+        await Driver.FormApp().Row().WithLabel("Row 59").Expect().ToBeVisibleAsync();
     }
 
     [TestMethod]
@@ -207,8 +220,8 @@ public sealed class DriverTests : RadiantUITest
     [TestMethod]
     public async Task TheLogRecordsTestsActionsAndPeoplesInput()
     {
-        await Driver.ByTestId("save").TapAsync();
-        var save = await Driver.ByTestId("save").InspectAsync("hit");
+        await Driver.FormApp().Save().TapAsync();
+        var save = await Driver.FormApp().Save().InspectAsync("hit");
         // Input given to the app directly, as a window gives it: a person's.
         var session = Driver.Session!;
         session.Root.PointerDown(new Vector2(save.Tap!.X, save.Tap.Y));
@@ -220,14 +233,14 @@ public sealed class DriverTests : RadiantUITest
 
         var action = log.Single(e => e.Kind == LogKinds.Action && e.Action!.Name == "ui.tap");
         Assert.AreEqual(LogSources.Test, action.Src);
-        Assert.AreEqual("@save", action.Action!.Selector);
+        Assert.AreEqual("@" + FormApp.Save, action.Action!.Selector);
         var result = log.Single(e => e.Kind == LogKinds.Result && e.Action!.Name == "ui.tap");
-        Assert.AreEqual("save", result.Target!.TestId);
+        Assert.AreEqual(FormApp.Save, result.Target!.TestId);
         var human = log.Single(e => e.Src == LogSources.Human);
         Assert.AreEqual("tap", human.Input!.Type);
-        Assert.AreEqual("save", human.Target!.TestId);
+        Assert.AreEqual(FormApp.Save, human.Target!.TestId);
         Assert.IsTrue(log.Any(e => e.Kind == LogKinds.Note && e.Note == "checked by hand"));
-        StringAssert.Contains(LogFormatter.Format(human), "button \"Save\" @save");
+        StringAssert.Contains(LogFormatter.Format(human), "button \"Save\" @FormApp.Save");
     }
 
     [TestMethod]
@@ -247,7 +260,7 @@ public sealed class DriverTests : RadiantUITest
             }
         });
         await Task.Delay(50);
-        await Driver.ByTestId("save").TapAsync();
+        await Driver.FormApp().Save().TapAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(10)));
 
@@ -285,9 +298,9 @@ public sealed class DriverTests : RadiantUITest
         {
             Assert.IsTrue(File.Exists(shot.Path));
             Assert.AreEqual(800, shot.Width);
-            var save = shot.Marks!.Single(m => m.TestId == "save");
+            var save = shot.Marks!.Single(m => m.TestId == FormApp.Save);
             Assert.IsNotNull(save.Tap);
-            Assert.IsFalse(shot.Marks!.Any(m => m.TestId == "row-45"), "out of view, so unmarked");
+            Assert.IsFalse(shot.Marks!.Any(m => m.Label == "Row 45"), "out of view, so unmarked");
         }
         finally
         {

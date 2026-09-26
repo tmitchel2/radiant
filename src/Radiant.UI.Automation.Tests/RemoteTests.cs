@@ -26,16 +26,16 @@ public sealed class RemoteTests
         };
 
         Assert.AreEqual(how, driver.Client.Transport);
-        await driver.ByTestId("save").TapAsync();
-        await driver.ByTestId("status").Expect().ToHaveTextAsync("Saved 1 times");
-        await driver.ByTestId("name").TypeAsync("Ada");
-        await driver.ByTestId("name").Expect().ToHaveValueAsync("Ada");
-        await driver.ByTestId("row-45").TapAsync();
-        await driver.ByTestId("picked").Expect().ToHaveTextAsync("Picked row 45");
-        var node = await driver.ByTestId("save").InspectAsync("hit,scroll");
+        await driver.FormApp().Save().TapAsync();
+        await driver.FormApp().Status().Expect().ToHaveTextAsync("Saved 1 times");
+        await driver.FormApp().Name().TypeAsync("Ada");
+        await driver.FormApp().Name().Expect().ToHaveValueAsync("Ada");
+        await driver.FormApp().Row().WithLabel("Row 45").TapAsync();
+        await driver.FormApp().Picked().Expect().ToHaveTextAsync("Picked row 45");
+        var node = await driver.FormApp().Save().InspectAsync("hit,scroll");
         Assert.IsTrue(node.Hittable);
         var error = await Assert.ThrowsAsync<AppDriverException>(() => driver.CallAsync("ui.tap",
-            System.Text.Json.JsonDocument.Parse("""{"selector":"@sav"}""").RootElement, TimeSpan.FromMilliseconds(300)));
+            System.Text.Json.JsonDocument.Parse("""{"selector":"@FormApp.Sav"}""").RootElement, TimeSpan.FromMilliseconds(300)));
         Assert.AreEqual(AgentErrorCodes.NoMatch, error.Code);
     }
 
@@ -76,9 +76,9 @@ public sealed class RemoteTests
         await using var app = await LiveApp.StartAsync(FormApp.Themed(), UIClockMode.Real);
         await using var driver = await AppDriver.AttachAsync(app.Name, AgentTransport.Socket, TestContext.CancellationToken);
 
-        await driver.ByTestId("save").TapAsync();
+        await driver.FormApp().Save().TapAsync();
 
-        await driver.ByTestId("status").Expect().ToHaveTextAsync("Saved 1 times");
+        await driver.FormApp().Status().Expect().ToHaveTextAsync("Saved 1 times");
         Assert.AreEqual("real", (await driver.InfoAsync()).Clock);
     }
 
@@ -102,7 +102,7 @@ public sealed class RemoteTests
         }, TestContext.CancellationToken);
         await Task.Delay(100, TestContext.CancellationToken);
 
-        await driver.ByTestId("save").TapAsync();
+        await driver.FormApp().Save().TapAsync();
         await Assert.ThrowsAsync<OperationCanceledException>(() => reading.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken));
 
         Assert.AreEqual("ui.tap", streamed[0].Action!.Name);
@@ -122,6 +122,6 @@ public sealed class RemoteTests
 
         Assert.AreEqual(AgentErrorCodes.Unreachable, response.Error!.Code);
         await using var again = await AppDriver.AttachAsync(app.Name, AgentTransport.Socket, TestContext.CancellationToken);
-        await again.ByTestId("save").TapAsync();
+        await again.FormApp().Save().TapAsync();
     }
 }
