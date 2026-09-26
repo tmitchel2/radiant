@@ -28,3 +28,12 @@ gen --file DerivedCoreProperties.txt --alias InCB --property InCB --enum IndicCo
 gen --file emoji/emoji-data.txt --binary Extended_Pictographic --enum ExtendedPictographicValue --table ExtendedPictographic
 conformance auxiliary/WordBreakTest.txt
 conformance auxiliary/GraphemeBreakTest.txt
+
+# Line breaking (UAX #14): Line_Break, plus the East_Asian_Width and General_Category values its
+# rules consult (only the few that matter, to keep the tables small). It shares Extended_Pictographic
+# with segmentation above.
+gen --file extracted/DerivedLineBreak.txt --alias lb --enum LineBreakClass --table LineBreak
+gen --file extracted/DerivedEastAsianWidth.txt --alias ea --enum EastAsianWidth --table EastAsianWidth --values "N F H W"
+gen --file extracted/DerivedGeneralCategory.txt --alias gc --enum GeneralCategory --table GeneralCategory \
+  --values "Unlisted Cn Mc Mn Pf Pi" --default Unlisted
+conformance auxiliary/LineBreakTest.txt
