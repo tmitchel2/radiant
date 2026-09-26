@@ -199,7 +199,7 @@ public sealed partial record Calendar(DateOnly? Selected, Action<DateOnly>? OnSe
                         ShowOutline = !Chosen && IsToday ? true : null,
                         OutlineInContentColor = !Chosen && IsToday ? true : null,
                         ShowDisabled = Enabled ? null : true,
-                        CornerShape = CornerShapeRole.Full,
+                        CornerShape = context.UseTheme().Theme.Components.Field.CalendarDay,
                         Label = Date.ToString("D", Culture),
                         Selected = Chosen,
                         // Only the focused day is a Tab stop; arrows move between days.

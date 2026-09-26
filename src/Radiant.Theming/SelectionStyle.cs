@@ -27,6 +27,12 @@ public sealed record SelectionStyle
     /// <summary>The thickness of slider and progress tracks, in pixels.</summary>
     public float TrackThickness { get; init; } = 4f;
 
+    /// <summary>The family whose colour the empty part of slider and progress tracks is drawn in.</summary>
+    public SurfaceName Track { get; init; } = SurfaceName.Secondary;
+
+    /// <summary>Whether the track takes its family's container colour.</summary>
+    public bool TrackContainer { get; init; } = true;
+
     /// <summary>The label beside a check box, radio button or switch.</summary>
     public TextType Label { get; init; } = TextType.BodyLarge;
 }

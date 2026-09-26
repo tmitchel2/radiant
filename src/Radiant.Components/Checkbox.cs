@@ -62,8 +62,8 @@ public sealed record Checkbox(bool Checked, Action<bool>? OnChange) : Component
                 CornerRadii = Radiant.Graphics2D.CornerRadii.All(style.CheckboxRadius),
                 BorderWidth = fill >= 1f ? 0f : style.BorderWidth,
                 BorderColor = outline,
-                Background = fill <= 0f ? (style.Halo ? null : theme.Get(SurfaceName.SurfaceContainerLowest))
-                    : Radiant.Graphics2D.Color.Lerp(style.Halo ? Radiant.Graphics2D.Color.Transparent : theme.Get(SurfaceName.SurfaceContainerLowest), accent, fill),
+                Background = fill <= 0f ? (style.Halo ? null : theme.Get(SurfaceName.SurfaceBright))
+                    : Radiant.Graphics2D.Color.Lerp(style.Halo ? Radiant.Graphics2D.Color.Transparent : theme.Get(SurfaceName.SurfaceBright), accent, fill),
                 Children =
                 [
                     fill <= 0.5f ? null : new TextBlock(Indeterminate ? "remove" : "check")

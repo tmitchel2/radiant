@@ -70,7 +70,7 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
                 ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
                 : state.Hovered && !state.Disabled ? theme.Get(SurfaceName.SurfaceVariant, on: true) : theme.Outline;
             var accent = recolor ? outline : theme.Get(SurfaceName.Primary);
-            var blank = theme.Get(SurfaceName.SurfaceContainerLowest);
+            var blank = theme.Get(SurfaceName.SurfaceBright);
             var inner = outer * 0.375f * dot;
             return new Box
             {

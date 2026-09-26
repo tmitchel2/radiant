@@ -17,4 +17,7 @@ public sealed record FieldStyle
 
     /// <summary>With <see cref="FieldLook.LabelAbove"/>, the label's text.</summary>
     public TextType Label { get; init; } = TextType.LabelLarge;
+
+    /// <summary>The shape of a calendar's days (the chosen one's fill, today's ring).</summary>
+    public CornerShapeRole CalendarDay { get; init; } = CornerShapeRole.Full;
 }

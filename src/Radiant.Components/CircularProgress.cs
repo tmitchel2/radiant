@@ -38,7 +38,7 @@ public sealed record CircularProgress : Component
             : null, spinning);
 
         var indicator = (Vector4)theme.Get(SurfaceName.Primary);
-        var track = (Vector4)theme.Get(SurfaceName.Secondary, container: true);
+        var track = (Vector4)theme.Track();
         var (size, thickness, value, t) = (Size, Thickness, Value, time.Value);
         return new Canvas((paint, origin, box) =>
         {

@@ -309,7 +309,7 @@ public sealed partial record TextField(string Label) : Component
                         Padding = new Edges(LeadingIcon is null ? 12 : 10, 0, TrailingIcon is null && Trailing is null ? 12 : 4, 0),
                         ColumnGap = 8,
                     },
-                    Background = filled ? theme.Get(SurfaceName.SurfaceContainer) : theme.Get(SurfaceName.SurfaceContainerLowest),
+                    Background = filled ? theme.Get(SurfaceName.SurfaceContainer) : theme.Get(SurfaceName.SurfaceBright),
                     CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius),
                     BorderWidth = 1f,
                     BorderColor = filled && !active && !error ? theme.Get(SurfaceName.SurfaceContainer) : border,

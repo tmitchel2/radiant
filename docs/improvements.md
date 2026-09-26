@@ -148,10 +148,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   share the width equally (flex basis 0), so in a row that doesn't give it one they shrink to
   48 px and their labels truncate. Segmented ones (the `Hairline` look) size to their labels. It
   could size to its widest segment times the count when nothing constrains it.
-- **`Tag` and `Badge` pin themselves to the top of a row.** They set `AlignSelf = FlexStart` so
-  they don't stretch across a column, which also lifts them to the top of a row whose items are
-  centred (the Studio page wraps its tags in a row of their own). A "hug" alignment that means
-  start across a column and leaves a row's alignment alone would fix both.
+- **Hugging content takes an extra box.** `Tag` and `Badge` sit in a plain box of their own and
+  set `AlignSelf = FlexStart` inside it, so they keep to their content across a column yet line
+  up with a row's alignment. A "hug" alignment in the layout would do it without the box.
 - **Goldens don't cover everything.** Components, the templates' blocks (two widths, light, dark
   and compact) and a few scheme variants have goldens. Page-sized templates (the gallery's pages),
   the drawer, the navigation bar, pickers opened as popovers and animation mid-way don't, and
@@ -334,14 +333,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   high-contrast pair of `ColorRoles`, or push content and outlines towards black or white by the
   contrast level. Deriving a palette's primary family from the seed would also let the user pick
   an accent while keeping the palette's neutrals.
-- **Not every component reads the component styles yet.** Buttons, icon buttons, chips, tags,
-  cards, menus, dialogs, popovers, the app bar, drawer, tabs, segmented buttons, text fields,
-  check boxes, radios, switches, the slider and linear progress do. Still fixed at Material's
-  look: the dialog's layout (headline, text buttons at the end; a `Hairline` dialog would have a
-  close button and a footer), tooltips and snackbars (a toast card would suit `Hairline`),
-  `RangeSlider`'s thumbs, `CircularProgress`'s thickness, `NavigationRail`, `Fab`, `SplitButton`,
-  `ButtonGroup`'s height, list rows, `DataTable` and `TreeView` rows, `Accordion` headers,
-  `Calendar` days and `Pagination`. Each wants its sizes and looks moved into a style record.
+- **Not every component reads the component styles yet.** Still fixed at one look: `Fab`,
+  `SplitButton` and `ButtonGroup` (40 px), `DataTable` headers and rows, `TreeView` rows,
+  `DocumentTabs`, `Pagination`'s sizes, `CommandPalette`, `MenuBar`, `StatusBar` and the
+  templates' own blocks. Each wants its sizes and looks moved into a style record.
 - **Component styles are theme-wide.** A `SurfaceLook` or a `TabsLook` applies to every instance;
   there's no way to give one screen's tabs a different structure than another's except by
   providing a different theme below it. A per-instance override (a `Look` prop) would be the

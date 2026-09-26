@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Radiant.Layout;
 using Radiant.Theming;
 using Radiant.UI.Core;
@@ -27,7 +27,13 @@ public sealed record Tag(string Text) : Component
         var preset = style.OutlinedTags
             ? new Surface { ContentColor = Color == SurfaceName.Secondary ? null : Color, ShowOutline = true, OutlineVariant = true }
             : new Surface { SurfaceColor = Color, SurfaceContainerToggle = true };
-        return preset with
+        // Held in a box of its own: across a column it keeps to its text at the start; in a row it
+        // lines up with its neighbours as the row aligns them.
+        return new Box
+        {
+            Children =
+            [
+                preset with
         {
             CornerShape = style.TagShape,
             Semantics = new Semantics { Role = SemanticsRole.None, Label = Text },
@@ -44,6 +50,8 @@ public sealed record Tag(string Text) : Component
             [
                 Icon is null ? null : new SurfaceIcon(Icon) { IconSize = 16 },
                 new SurfaceText(Text) { TextType = TextType.LabelMedium, MaxLines = 1 },
+            ],
+        },
             ],
         };
     }

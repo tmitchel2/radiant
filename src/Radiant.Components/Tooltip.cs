@@ -24,6 +24,7 @@ public sealed record Tooltip(string Text, Element? Child) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var theme = context.UseTheme();
         var anchor = context.UseRef(new ElementRef()).Value;
         var hovered = context.UseState(false);
         var visible = context.UseState(false);
@@ -70,7 +71,7 @@ public sealed record Tooltip(string Text, Element? Child) : Component
             new Presence(visible.Value, progress => new Anchored(anchor, new Surface
             {
                 SurfaceColor = SurfaceName.Inverse,
-                CornerShape = CornerShapeRole.ExtraSmall,
+                CornerShape = theme.Theme.Components.Overlay.TooltipShape,
                 Semantics = new Semantics { Role = SemanticsRole.Tooltip },
                 Layout = new LayoutStyle { Padding = Edges.Symmetric(8, 4), MaxWidth = 280 },
                 Children = [new Box { Opacity = progress, Children = [new SurfaceText(text) { TextType = TextType.BodySmall }] }],

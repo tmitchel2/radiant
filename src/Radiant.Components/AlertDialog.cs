@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using Radiant.Theming;
 using Radiant.UI.Core;
 
 namespace Radiant.Components;
@@ -33,18 +34,24 @@ public sealed partial record AlertDialog(bool Open, string Title, Action OnConfi
     public string? Icon { get; init; }
 
     /// <inheritdoc/>
-    public override Element? Build(BuildContext context) => new Dialog(Open, OnCancel)
+    public override Element? Build(BuildContext context)
     {
-        Icon = Icon,
-        Title = Title,
-        Text = Text,
-        Dismissible = false,
-        Actions =
-        [
-            new SurfaceButton(CancelText, ButtonVariant.Text) { TestId = Cancel, OnPress = OnCancel },
-            Destructive
-                ? new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm, SurfaceColor = Radiant.Theming.SurfaceName.Error }
-                : new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm },
-        ],
-    };
+        System.ArgumentNullException.ThrowIfNull(context);
+        // A card dialog pairs its main action with an outlined cancel; a headline dialog with a text one.
+        var card = context.UseTheme().Theme.Components.Overlay.DialogLook == DialogLook.Card;
+        return new Dialog(Open, OnCancel)
+        {
+            Icon = Icon,
+            Title = Title,
+            Text = Text,
+            Dismissible = false,
+            Actions =
+            [
+                new SurfaceButton(CancelText, card ? ButtonVariant.Outlined : ButtonVariant.Text) { TestId = Cancel, OnPress = OnCancel },
+                Destructive
+                    ? new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm, SurfaceColor = SurfaceName.Error }
+                    : new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm },
+            ],
+        };
+    }
 }

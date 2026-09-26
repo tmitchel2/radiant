@@ -114,6 +114,7 @@ public sealed record Accordion(IReadOnlyList<AccordionItem> Items) : Component
         public override Element? Build(BuildContext context)
         {
             var theme = context.UseTheme();
+            var list = theme.Theme.Components.List;
             var motion = theme.Theme.Motion;
             var duration = motion.Reduced ? TimeSpan.Zero : motion.ShortDuration;
             var turn = context.UseTransition(IsOpen ? 1f : 0f, duration, motion.Standard);
@@ -131,7 +132,7 @@ public sealed record Accordion(IReadOnlyList<AccordionItem> Items) : Component
                         Expanded = IsOpen,
                         ShowDisabled = Item.Disabled ? true : null,
                         OnPress = Toggle,
-                        Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 16, MinHeight = 56, Padding = Edges.Symmetric(16, 8) },
+                        Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 16, MinHeight = list.AccordionHeaderHeight, Padding = Edges.Symmetric(16, 8) },
                         Children =
                         [
                             Item.Icon is null ? null : new SurfaceIcon(Item.Icon) { Legibility = Legibility.Medium },
@@ -140,7 +141,7 @@ public sealed record Accordion(IReadOnlyList<AccordionItem> Items) : Component
                                 Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, RowGap = 2 },
                                 Children =
                                 [
-                                    new SurfaceText(Item.Title) { TextType = TextType.TitleMedium },
+                                    new SurfaceText(Item.Title) { TextType = list.AccordionTitle },
                                     Item.Subtitle is null ? null : new SurfaceText(Item.Subtitle) { Legibility = Legibility.Medium },
                                 ],
                             },

@@ -59,12 +59,15 @@ family, and components read it instead of constants. Two sets are built in:
 
 | | `ComponentStyles.Tonal` (default) | `ComponentStyles.Hairline` |
 |---|---|---|
-| Variants | Low-emphasis buttons in the accent; tonal containers | The accent only for the main action and what's on; outlined and text buttons in the ink colour; cards, menus and dialogs white with 1 px lines |
+| Variants | Low-emphasis buttons in the accent; tonal containers | The accent only for the main action and what's on; outlined and text buttons in the ink colour; cards, menus and dialogs on the bright surface (white, or lighter than the page in dark) with 1 px lines |
 | Sizes | 40 px buttons padded 24; 48 px menu rows; 56 px drawer rows and fields; 64 px app bar | 40 px buttons padded 14 (36 compact); 36 px menu and drawer rows, inset and rounded; 40 px fields; 56 px app bar with a line under it |
 | Tabs, segments | Underlined, icons above labels; joined outlined segments with a tick | A tray with the chosen one a raised pill (sliding, for tabs); icons beside labels |
 | Fields | Label floats into the field or its outline | Label above a plain bordered input, ringed in the accent while focused |
 | Selection | Halos round indicators; 52 × 32 switch whose handle grows; filled slider thumb | No halos (focus rings the indicator); 16 px boxes and radios; 36 × 20 switch; ringed slider thumb |
 | Disabled | Recoloured faint | The usual colours, faded to 50% |
+| Overlays | Headline dialogs with text buttons; a dark snackbar bar at the bottom centre | Card dialogs with a close button (and an outlined cancel in an `AlertDialog`); toast cards at the bottom end |
+| Lists | 56 px rows in body large; 56 px accordion headers | 44 px rows in body medium, rounded when selected; 48 px accordion headers; rounded calendar days |
+| Tracks | Secondary container | The highest surface container (a neutral grey) |
 | Icons | 24 px, weight 400, chosen ones filled | 20 px, weight 300, never filled |
 | Focus ring | 3 px, 2 out, secondary | 2 px, 2 out, primary |
 
@@ -75,10 +78,11 @@ The records:
 - `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, and a `SurfaceLook` per variant.
 - `ChipStyle`: chips' and tags' sizes, corners and looks.
 - `CardStyle`: corners, padding and a look per variant.
-- `OverlayStyle`: menus, dialogs, popovers and the scrim.
+- `OverlayStyle`: menus, dialogs (and their `DialogLook`), popovers, tooltips, snackbars (`SnackbarLook`) and the scrim.
 - `NavigationStyle`: the app bar, the drawer and the `TabsLook`.
-- `FieldStyle`: the `FieldLook`, height, corners and text.
-- `SelectionStyle`: halos, check box and radio sizes, the `SwitchLook`, the `SliderThumb` and track thickness.
+- `FieldStyle`: the `FieldLook`, height, corners and text, and calendar days' shape.
+- `SelectionStyle`: halos, check box and radio sizes, the `SwitchLook`, the `SliderThumb` (for `Slider` and `RangeSlider`), and tracks' thickness and colour.
+- `ListStyle`: list rows' heights, padding, text, corners and selected look, and accordion headers.
 
 A `SurfaceLook` is a variant's colours as data: surface and content families, on and container
 toggles, outline and elevation, the same things a component's facets set. Where the structure

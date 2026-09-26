@@ -74,8 +74,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
         var thickness = style.TrackThickness;
         var active = recolor ? theme.ContentColor(faded) : theme.Get(SurfaceName.Primary);
         var inactive = recolor ? theme.StateLayerColor(surface, 0.12f)
-            : style.Halo ? theme.Get(SurfaceName.Secondary, container: true) : theme.Get(SurfaceName.SurfaceContainerHighest);
-        var ringed = style.SliderThumb == SliderThumb.Ring;
+            : theme.Track();
         var layers = theme.Theme.StateLayers;
         var layer = Disabled ? 0f : pressed.Value ? layers.Pressed : focusRing.Value ? layers.Focus : hovered.Value ? layers.Hover : 0f;
 
@@ -201,31 +200,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                             CornerRadii = Radiant.Graphics2D.CornerRadii.All(20),
                             Children =
                             [
-                                // Filled: a raised disc in the accent. Ringed: a white disc edged in the accent.
-                                new Box
-                                {
-                                    HitTestVisible = false,
-                                    Layout = new LayoutStyle { Width = 20, Height = 20 },
-                                    Background = ringed ? theme.Get(SurfaceName.SurfaceContainerLowest) : active,
-                                    BorderWidth = ringed ? 2f : 0f,
-                                    BorderColor = active,
-                                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
-                                    Shadows = recolor ? [] : theme.Elevation(ElevationLevel.Level1),
-                                },
-                                // Without a halo, keyboard focus rings the thumb.
-                                style.Halo || !focusRing.Value || Disabled ? null : new Box
-                                {
-                                    HitTestVisible = false,
-                                    Layout = new LayoutStyle
-                                    {
-                                        Position = PositionType.Absolute,
-                                        Width = 20 + 2 * (interaction.FocusRingWidth + interaction.FocusRingGap),
-                                        Height = 20 + 2 * (interaction.FocusRingWidth + interaction.FocusRingGap),
-                                    },
-                                    BorderWidth = interaction.FocusRingWidth,
-                                    BorderColor = theme.Get(interaction.FocusRingColor),
-                                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(10 + interaction.FocusRingWidth + interaction.FocusRingGap),
-                                },
+                                .. SliderParts.Thumb(theme, active, focusRing.Value && !Disabled, raised: !recolor),
                             ],
                         },
                     ],

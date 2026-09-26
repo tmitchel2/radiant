@@ -107,6 +107,54 @@ public class PresetGoldenTests
 
     [TestMethod]
     [DynamicData(nameof(Presets))]
+    public void Dialog(string preset) => InPreset(preset, "Dialog", 520, 360, () => new Dialog(true, () => { })
+    {
+        Icon = "delete",
+        Title = "Delete 3 files?",
+        Text = "They'll be moved to the bin, where you can restore them for 30 days.",
+        Actions = [new SurfaceButton("Cancel", ButtonVariant.Outlined), new SurfaceButton("Delete") { SurfaceColor = SurfaceName.Error }],
+    });
+
+    [TestMethod]
+    [DynamicData(nameof(Presets))]
+    public void Snackbar(string preset) => InPreset(preset, "Snackbar", 520, 200, () => new SnackbarHost(new Host(context =>
+    {
+        var snackbars = context.UseSnackbars();
+        context.UseEffect(() =>
+        {
+            snackbars.Show("Photo deleted", "Undo", () => { });
+            return null;
+        }, default(ValueTuple));
+        return null;
+    })), frames: 40);
+
+    [TestMethod]
+    [DynamicData(nameof(Presets))]
+    public void ListsAndDates(string preset) => InPreset(preset, "ListsAndDates", 680, 440, () => Row(
+        Column(12,
+            new Card(
+                new ListItem("Inbox") { LeadingIcon = "inbox", TrailingText = "24", OnPress = () => { } },
+                new ListItem("Drafts") { LeadingIcon = "drafts", SupportingText = "Two unsent replies", Selected = true, OnPress = () => { } },
+                new ListItem("Archive") { LeadingIcon = "archive", OnPress = () => { } })
+            {
+                Variant = CardVariant.Outlined,
+                Layout = new LayoutStyle { Width = 300, Padding = Edges.All(4), RowGap = 0 },
+            },
+            new Box
+            {
+                Layout = new LayoutStyle { Width = 300 },
+                Children = [new Accordion([new AccordionItem("Shipping", new SurfaceText("Two to four days.")), new AccordionItem("Returns", new SurfaceText("Thirty days."))])],
+            },
+            new Box { Layout = new LayoutStyle { Width = 300 }, Children = [new RangeSlider(20f, 70f, (_, _) => { }) { Min = 0, Max = 100, Label = "Price" }] }),
+        new Calendar(new DateOnly(2026, 3, 18), _ => { })
+        {
+            Today = new DateOnly(2026, 3, 16),
+            InitialMonth = new DateOnly(2026, 3, 18),
+            Culture = System.Globalization.CultureInfo.GetCultureInfo("en-GB"),
+        }));
+
+    [TestMethod]
+    [DynamicData(nameof(Presets))]
     public void FocusRing(string preset)
     {
         foreach (var dark in new[] { false, true })
@@ -123,11 +171,16 @@ public class PresetGoldenTests
         return theme with { Colors = theme.Colors with { IsDark = dark } };
     }
 
-    private static void InPreset(string preset, string name, int width, int height, Func<Element> sheet)
+    private static void InPreset(string preset, string name, int width, int height, Func<Element> sheet, int frames = 30)
     {
         foreach (var dark in new[] { false, true })
         {
-            CheckIn(Theme(preset, dark), $"Preset_{preset}_{name}_{(dark ? "dark" : "light")}", width, height, sheet);
+            CheckIn(Theme(preset, dark), $"Preset_{preset}_{name}_{(dark ? "dark" : "light")}", width, height, sheet, frames: frames);
         }
+    }
+
+    private sealed record Host(Func<BuildContext, Element?> Body) : Component
+    {
+        public override Element? Build(BuildContext context) => Body(context);
     }
 }

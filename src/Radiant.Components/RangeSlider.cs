@@ -46,8 +46,10 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
         var span = MathF.Max(Max - Min, 1e-6f);
         var lowFraction = Math.Clamp((Low - Min) / span, 0f, 1f);
         var highFraction = Math.Clamp((High - Min) / span, 0f, 1f);
+        var style = theme.Theme.Components.Selection;
+        var thickness = style.TrackThickness;
         var active = theme.Get(SurfaceName.Primary);
-        var inactive = theme.Get(SurfaceName.Secondary, container: true);
+        var inactive = theme.Track();
 
         float Snap(float value)
         {
@@ -90,12 +92,12 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
                 Position = PositionType.Absolute,
                 Width = 40,
                 Height = 40,
-                Inset = new Edges(Dimension.Percent(fraction * 100f), -18, Dimension.Undefined, Dimension.Undefined),
+                Inset = new Edges(Dimension.Percent(fraction * 100f), -(40f - thickness) / 2f, Dimension.Undefined, Dimension.Undefined),
                 Margin = new Edges(-20, 0, 0, 0),
                 AlignItems = Align.Center,
                 JustifyContent = Justify.Center,
             },
-            Background = ring ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, theme.Theme.StateLayers.Focus) : null,
+            Background = ring && style.Halo ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, theme.Theme.StateLayers.Focus) : null,
             CornerRadii = Radiant.Graphics2D.CornerRadii.All(20),
             OnKeyDown = e =>
             {
@@ -117,17 +119,7 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
             },
             OnFocus = e => rings.Set(index == 0 ? rings.Value with { Low = e.IsFocusVisible } : rings.Value with { High = e.IsFocusVisible }),
             OnBlur = _ => rings.Set(index == 0 ? rings.Value with { Low = false } : rings.Value with { High = false }),
-            Children =
-            [
-                new Box
-                {
-                    HitTestVisible = false,
-                    Layout = new LayoutStyle { Width = 20, Height = 20 },
-                    Background = active,
-                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
-                    Shadows = theme.Elevation(ElevationLevel.Level1),
-                },
-            ],
+            Children = SliderParts.Thumb(theme, active, ring, raised: true),
         };
 
         return new Box
@@ -161,9 +153,9 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
                 {
                     Ref = line,
                     HitTestVisible = false,
-                    Layout = new LayoutStyle { Height = 4 },
+                    Layout = new LayoutStyle { Height = thickness },
                     Background = inactive,
-                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
                     Children =
                     [
                         new Box
@@ -172,7 +164,7 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
                             Layout = new LayoutStyle
                             {
                                 Position = PositionType.Absolute,
-                                Height = 4,
+                                Height = thickness,
                                 Inset = new Edges(Dimension.Percent(lowFraction * 100f), 0, Dimension.Undefined, Dimension.Undefined),
                                 Width = Dimension.Percent((highFraction - lowFraction) * 100f),
                             },

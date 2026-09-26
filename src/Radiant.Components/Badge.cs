@@ -79,6 +79,8 @@ public sealed record Badge(Element? Child) : Component
                 Children = text is null ? [] : [new TextBlock(text) { Style = style, Wrap = false }],
             };
         }
-        return new Box { Layout = new LayoutStyle { AlignSelf = Align.FlexStart }, Children = [Child, marker] };
+        // Held in a box of its own: across a column it keeps to its child's width at the start; in a
+        // row it lines up with its neighbours as the row aligns them.
+        return new Box { Children = [new Box { Layout = new LayoutStyle { AlignSelf = Align.FlexStart }, Children = [Child, marker] }] };
     }
 }

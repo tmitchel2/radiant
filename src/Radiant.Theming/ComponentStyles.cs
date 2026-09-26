@@ -38,6 +38,9 @@ public sealed record ComponentStyles
     /// <summary>Check boxes, radio buttons, switches, sliders and progress.</summary>
     public SelectionStyle Selection { get; init; } = new();
 
+    /// <summary>List rows and accordion headers.</summary>
+    public ListStyle List { get; init; } = new();
+
     /// <summary>
     /// Tonal: containers in tonal colours, pill controls, floating labels, underlined tabs, state
     /// layers and halos, and greyed-out disabled controls. The default.
@@ -61,16 +64,16 @@ public sealed record ComponentStyles
             IconSize = 18f,
             Tonal = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
             ToggleOn = new SurfaceLook { Surface = SurfaceName.Primary, SurfaceContainer = true },
-            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true },
+            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true },
             Text = new SurfaceLook(),
-            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
+            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
         },
         IconButton = new IconButtonStyle
         {
             Size = 36f,
             IconSize = 20f,
             Tonal = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
-            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true },
+            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true },
             Standard = new SurfaceLook { Content = SurfaceName.SurfaceVariant, ContentOn = true },
         },
         Chip = new ChipStyle
@@ -79,9 +82,9 @@ public sealed record ComponentStyles
             Padding = 12f,
             Shape = CornerShapeRole.Full,
             Label = TextType.BodyMedium,
-            Rest = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true },
+            Rest = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true },
             Chosen = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
-            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
+            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
             TagHeight = 24f,
             TagShape = CornerShapeRole.Full,
             OutlinedTags = true,
@@ -90,13 +93,13 @@ public sealed record ComponentStyles
         {
             Shape = CornerShapeRole.Medium,
             Padding = 16f,
-            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
+            Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
             Filled = new SurfaceLook { Surface = SurfaceName.SurfaceContainer },
-            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true },
+            Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true },
         },
         Overlay = new OverlayStyle
         {
-            Menu = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level2 },
+            Menu = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level2 },
             MenuShape = CornerShapeRole.Medium,
             MenuPadding = 4f,
             MenuItemInset = 4f,
@@ -104,12 +107,15 @@ public sealed record ComponentStyles
             MenuItemShape = CornerShapeRole.Small,
             MenuItemText = TextType.BodyMedium,
             MenuIconSize = 20f,
-            Dialog = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level3 },
+            Dialog = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level3 },
             DialogShape = CornerShapeRole.Large,
             DialogPadding = 24f,
             DialogTitle = TextType.TitleLarge,
-            Popover = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLowest, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level2 },
+            Popover = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level2 },
             ScrimOpacity = 0.4f,
+            DialogLook = DialogLook.Card,
+            Snackbar = SnackbarLook.Toast,
+            TooltipShape = CornerShapeRole.Small,
         },
         Navigation = new NavigationStyle
         {
@@ -134,6 +140,7 @@ public sealed record ComponentStyles
             Shape = CornerShapeRole.Small,
             Text = TextType.BodyMedium,
             Label = TextType.LabelLarge,
+            CalendarDay = CornerShapeRole.Small,
         },
         Selection = new SelectionStyle
         {
@@ -145,7 +152,21 @@ public sealed record ComponentStyles
             Switch = SwitchLook.Compact,
             SliderThumb = SliderThumb.Ring,
             TrackThickness = 4f,
+            Track = SurfaceName.SurfaceContainerHighest,
+            TrackContainer = false,
             Label = TextType.BodyMedium,
+        },
+        List = new ListStyle
+        {
+            OneLineHeight = 44f,
+            LineStep = 16f,
+            Padding = 12f,
+            Headline = TextType.BodyMedium,
+            Supporting = TextType.BodySmall,
+            Shape = CornerShapeRole.Small,
+            Selected = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
+            AccordionHeaderHeight = 48f,
+            AccordionTitle = TextType.TitleSmall,
         },
     };
 }

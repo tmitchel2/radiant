@@ -69,7 +69,7 @@ public sealed record LinearProgress : Component
                 Value = Value is { } v ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{MathF.Round(v * 100)}%") : null,
             },
             Layout = new LayoutStyle { Height = thickness, AlignSelf = Align.Stretch },
-            Background = theme.Get(SurfaceName.Secondary, container: true),
+            Background = theme.Track(),
             CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
             ClipContent = true,
             Children = [bar],

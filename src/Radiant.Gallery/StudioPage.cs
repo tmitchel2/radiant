@@ -52,7 +52,7 @@ internal sealed partial record StudioPage : Component
         var step = context.UseState(1f);
         return new Surface
         {
-            SurfaceColor = SurfaceName.SurfaceContainerLowest,
+            SurfaceColor = SurfaceName.SurfaceBright,
             ShowOutline = true,
             OutlineVariant = true,
             CornerShape = CornerShapeRole.Large,
@@ -82,11 +82,9 @@ internal sealed partial record StudioPage : Component
         Children =
         [
             new SurfaceText("Alpine Chalet") { TextType = TextType.TitleMedium, Layout = new LayoutStyle { Margin = new Edges(0, 0, 8, 0) } },
-            new Box
-            {
-                Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 6 },
-                Children = [new Tag("611 pieces"), new Tag("118 steps"), new Tag("32×32 studs")],
-            },
+            new Tag("611 pieces"),
+            new Tag("118 steps"),
+            new Tag("32×32 studs"),
             new Box { Layout = new LayoutStyle { FlexGrow = 1 } },
             new IconButton("undo", "Undo") { TestId = Undo },
             new IconButton("redo", "Redo") { TestId = Redo },
@@ -246,7 +244,7 @@ internal sealed partial record StudioPage : Component
     // A raised bar of controls floating over the canvas.
     private static Surface Raised(CornerShapeRole shape, Edges padding, params Element?[] children) => new()
     {
-        SurfaceColor = SurfaceName.SurfaceContainerLowest,
+        SurfaceColor = SurfaceName.SurfaceBright,
         ShowOutline = true,
         OutlineVariant = true,
         Elevation = ElevationLevel.Level2,

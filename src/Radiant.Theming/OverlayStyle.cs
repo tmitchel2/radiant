@@ -39,6 +39,15 @@ public sealed record OverlayStyle
     /// <summary>A dialog's title.</summary>
     public TextType DialogTitle { get; init; } = TextType.HeadlineSmall;
 
+    /// <summary>How a dialog is laid out.</summary>
+    public DialogLook DialogLook { get; init; } = DialogLook.Headline;
+
+    /// <summary>How brief messages are shown.</summary>
+    public SnackbarLook Snackbar { get; init; } = SnackbarLook.Bar;
+
+    /// <summary>A tooltip's corners.</summary>
+    public CornerShapeRole TooltipShape { get; init; } = CornerShapeRole.ExtraSmall;
+
     /// <summary>A popover's panel.</summary>
     public SurfaceLook Popover { get; init; } = new() { Surface = SurfaceName.SurfaceContainerHigh, Elevation = ElevationLevel.Level2 };
 
