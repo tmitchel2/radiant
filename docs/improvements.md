@@ -146,6 +146,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **Opening sections don't grow.** An accordion's content fades in at full height; sliding it
+  open needs the content's measured height and a height transition, which `Presence` doesn't
+  offer yet.
 - **Command palettes show matches plainly.** The matched letters aren't highlighted (text spans
   in `SurfaceText` would do it), there's no ordering by recent use, and a `Command.Shortcut` is
   text: nothing binds it. A command registry would bind chords, feed menus and the palette, and

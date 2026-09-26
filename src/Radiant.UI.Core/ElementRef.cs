@@ -35,12 +35,32 @@ public sealed class ElementRef
     /// <summary>Whether the box has keyboard focus.</summary>
     public bool IsFocused => Node is { } node && ReferenceEquals(node.Owner.Root.FocusedNode, node);
 
-    /// <summary>Gives the box keyboard focus (showing the focus ring, as keyboard focus does).</summary>
+    /// <summary>
+    /// Gives the box keyboard focus (showing the focus ring, as keyboard focus does), or, if it
+    /// can't take focus itself, the first box inside it that can: a ref on a wrapper focuses the
+    /// control it wraps.
+    /// </summary>
     public void Focus(bool visible = true)
     {
         if (Node is { } node)
         {
-            node.Owner.Root.Focus(node, visible);
+            node.Owner.Root.Focus(FirstFocusable(node) ?? node, visible);
         }
+    }
+
+    private static RenderNode? FirstFocusable(RenderNode node)
+    {
+        if (node is BoxRenderNode { Element.Focusable: true })
+        {
+            return node;
+        }
+        foreach (var child in node.Children)
+        {
+            if (FirstFocusable(child) is { } found)
+            {
+                return found;
+            }
+        }
+        return null;
     }
 }
