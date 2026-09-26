@@ -34,9 +34,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   but nothing disposes the GPU texture when the source goes. Pictures are also decoded
   synchronously on the UI thread, and there are no mipmaps, so heavy downscaling aliases. Add
   async decoding, an image cache with release, and mipmaps.
-- **Tests reach into internals.** Component tests read the render tree through
-  `InternalsVisibleTo`. `Radiant.Testing` renders and compares images, but has no public way to
-  find elements and read their resolved props and bounds, like Testing Library's queries.
+- **Tests still reach into internals.** `UINode`, selectors and `Radiant.UI.Driver` are now the
+  public way to find elements and read their bounds, visibility and state
+  ([automation.md](automation.md)), but the existing component tests still read the render tree
+  through `InternalsVisibleTo`, and `TemplateHarness` still walks `GetSemantics()` by hand. Move them
+  to the driver as they're touched.
 - **Children lists compare by reference.** A host element whose parent rebuilds always updates,
   even when its children are equal element for element. A structural list comparison, or a
   generated one, would let unchanged subtrees skip.
@@ -76,15 +78,16 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   like `Always`), and the thumb doesn't widen under the pointer, so the 12 px grip is invisible
   until used.
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
+  `RenderNode.RootBounds()` (what `UINode.Bounds` uses) now follows them, and could replace it.
 - **VoiceOver gets a first cut.** The whole tree is converted on every read (fine for hundreds of
   nodes, not tens of thousands; a virtual table's rows are only those built), text fields can't be
   typed into or have their text and selection read through accessibility (`AXSelectedText`,
   `setAccessibilityValue:`), sliders can't be stepped (`accessibilityPerformIncrement`), tables and
   trees don't give rows and columns their structure (`AXRowCount`, `AXDisclosureLevel`), and
   there are no announcements (snackbars, alerts appearing) or live regions.
-- **Semantics act only by press and focus.** `UIRoot.Press` and `UIRoot.FocusNode` act on a
-  node by id; there's no increment or decrement (sliders), setting a value (text fields), scrolling
-  a node into view, or custom actions yet.
+- **Semantics act only by press, focus and scrolling.** `UIRoot.Press`, `FocusNode`,
+  `ScrollIntoView` and `ScrollTo` act on a node by id; there's no increment or decrement (sliders),
+  setting a value (text fields), or custom actions yet, and VoiceOver doesn't use the scrolling.
 - **Three copies of the Objective-C interop.** `Radiant.Platform.MacOS.ObjC` is the full one;
   `Radiant.Host.MacObjc` and a private copy in `RadiantApplication` predate it. They were left
   alone so P7 didn't disturb the host. Point both at one shared interop, either
@@ -436,6 +439,40 @@ Each entry says what's wrong, why it's that way now, and what would be better.
     corners and overlapping contours.
   - Replace it with the runtime MSDF generator and HarfBuzz outlines once they land.
 
+## Automation (`Radiant.UI.Automation`, `radiant-agent`)
+
+- **Screenshots are fresh drawings.** They repaint the tree on a second GPU device, so native window
+  chrome, menus, input method windows and anything drawn outside the tree are missing, and the first
+  one pays for its own glyph atlases. Capturing the window (ScreenCaptureKit) needs the Screen
+  Recording permission; worth it for checking chrome.
+- **Selectors rebuild the semantics tree every frame they wait.** Fine for thousands of nodes; a
+  virtual table with tens of thousands would want the tree kept and patched between frames.
+- **Node ids aren't stable across runs.** `#412` is a process-wide counter: good for the life of a
+  node, useless in a saved test. Tests should use test IDs or roles and labels.
+- **No `state` entries for dialogs.** The log records focus moving; dialogs opening and closing, and
+  alerts appearing, would make a person's session easier to read back.
+- **Hovering is off by default** (`RADIANT_AGENT_LOG_HOVER=1`), and a person's drag is one entry
+  from where it started to where it ended, with nothing in between.
+- **Modal loops stall commands.** While macOS runs its own loop (a live window resize, a native menu
+  open, a native dialog), no frames run, so commands wait and then time out. Headless apps use the
+  headless file dialogs, which can be scripted.
+- **A never-ending `Animation` ticker spins a core** in a headless app on the fixed clock, which runs
+  frames as fast as it can while the UI isn't idle. Components should say `Continuous`; an app's own
+  can be found with `app.idle`'s busy reasons.
+- **Windows.** The socket works on Windows 10 1803 and later, but its permissions aren't set (Unix
+  file modes), and `AgentLauncher` doesn't send the app's output to a file there. File-drop works
+  everywhere.
+- **The host's `tab.*` actions are on files only.** `LiveHost` pumps a dispatcher now, but doesn't
+  serve the socket or write a log.
+- **The gallery's shell doesn't scroll at small heights.** Found by the automation: at 1200×800 the
+  sidebar and the page run past the bottom of the window (the last destinations, "Mail" onwards, are
+  at y > 800), and there's no scroll area to bring them in, so `tap` answers `not_visible`.
+  `SidebarLayout` should scroll its destinations, and the content should fill the window, not its
+  content's height.
+- **Typing is recorded twice where a platform sends both.** Committed text is reported from the text
+  input client and from `UIRoot.TextInput`; macOS sends one or the other, but a platform that sent
+  both would log the text twice.
+
 ## Tooling and process
 
 - **The Write tool writes escapes as characters.** It turns `\uXXXX` escapes in C# strings into
@@ -443,8 +480,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   and write escapes back.
 - **BOMs are inconsistent.** `.editorconfig` asks for UTF-8 with BOM, but newer files have none,
   and some csproj files are CRLF. Settle on one convention and normalise.
-- **No window capture.** Agent sessions can't capture windows, so visual checks render offscreen
-  (`HeadlessGpu` + `OffscreenReadback`) to PNG.
+- **No window capture.** Agent sessions can't capture windows. `ui.screenshot` draws the tree again
+  offscreen (`HeadlessGpu` + `OffscreenReadback`) at the window's pixel scale instead, which misses
+  native chrome, menus and input method windows (see Automation).
 - **GPU tests run on this Mac only**, by design: there is no remote CI.
 - **AOT publishes aren't part of the test run.** The analysers run on every build, but only a
   publish shows that ILC and the linker are happy, and it takes a minute or two. A script that

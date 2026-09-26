@@ -37,4 +37,7 @@ public sealed record AccessibilityNode(int Id, AccessibilityRole Role, string? L
 
     /// <summary>A heading's level, or 0.</summary>
     public int HeadingLevel { get; init; }
+
+    /// <summary>A name for tests to find it by, which is never read out: the macOS accessibility identifier.</summary>
+    public string? Identifier { get; init; }
 }

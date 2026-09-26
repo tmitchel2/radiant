@@ -72,7 +72,7 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
             Place();
             return null;
         });
-        context.UseEffect(() => root.AddTicker(_ => Place()).Dispose, anchor);
+        context.UseEffect(() => root.AddTicker(_ => Place(), TickerKind.Continuous, "anchored placement").Dispose, anchor);
 
         var at = position.Value ?? Vector2.Zero;
         return new Portal(new Box

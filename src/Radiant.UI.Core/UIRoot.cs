@@ -33,7 +33,9 @@ public sealed class UIRoot : IDisposable
     private readonly HashSet<GridRenderNode> _grids = [];
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
-    private readonly List<Func<double, bool>> _tickers = [];
+    private readonly List<TickerEntry> _tickers = [];
+    private readonly System.Threading.Lock _busyLock = new();
+    private readonly List<string> _busy = [];
     // Kept most specific last: by depth, then in the order added.
     private readonly List<(KeyChord Chord, Func<bool> Run, int Depth)> _shortcuts = [];
     private readonly List<BoxRenderNode> _focusTraps = [];
@@ -66,6 +68,128 @@ public sealed class UIRoot : IDisposable
 
     /// <summary>Whether anything is waiting to be rebuilt or run.</summary>
     public bool NeedsUpdate => !_mounted || _dirty.Count > 0 || _effects.Count > 0 || _animating.Count > 0 || _tickers.Count > 0;
+
+    /// <summary>
+    /// Whether the UI has settled: mounted, nothing to rebuild or run, no scroll moving by itself, no
+    /// <see cref="TickerKind.Animation"/> ticker, and no work begun with <see cref="BeginBusy"/> or
+    /// <see cref="TrackBusy"/> unfinished. Spinners (<see cref="TickerKind.Continuous"/>) and waits
+    /// (<see cref="TickerKind.Timer"/>) don't count. Tests and agents act when it's true.
+    /// </summary>
+    public bool IsIdle
+    {
+        get
+        {
+            if (!_mounted || _dirty.Count > 0 || _effects.Count > 0 || _animating.Count > 0)
+            {
+                return false;
+            }
+            foreach (var ticker in _tickers)
+            {
+                if (ticker.Kind == TickerKind.Animation)
+                {
+                    return false;
+                }
+            }
+            lock (_busyLock)
+            {
+                return _busy.Count == 0;
+            }
+        }
+    }
+
+    /// <summary>Why <see cref="IsIdle"/> is false, one reason each; empty when it's true.</summary>
+    public IReadOnlyList<string> BusyReasons()
+    {
+        var reasons = new List<string>();
+        if (!_mounted)
+        {
+            reasons.Add("not mounted yet");
+        }
+        if (_dirty.Count > 0)
+        {
+            reasons.Add($"{_dirty.Count} component(s) to rebuild");
+        }
+        if (_effects.Count > 0)
+        {
+            reasons.Add($"{_effects.Count} effect(s) to run");
+        }
+        foreach (var scroller in _animating)
+        {
+            reasons.Add($"scroll area #{scroller.Id} moving");
+        }
+        foreach (var ticker in _tickers)
+        {
+            if (ticker.Kind == TickerKind.Animation)
+            {
+                reasons.Add("animation: " + ticker.Reason);
+            }
+        }
+        lock (_busyLock)
+        {
+            foreach (var reason in _busy)
+            {
+                reasons.Add("busy: " + reason);
+            }
+        }
+        return reasons;
+    }
+
+    /// <summary>The reasons given for the tickers of <paramref name="kind"/> now running.</summary>
+    public IReadOnlyList<string> RunningTickers(TickerKind kind) =>
+        [.. _tickers.Where(t => t.Kind == kind).Select(t => t.Reason)];
+
+    /// <summary>
+    /// Marks the UI busy (not <see cref="IsIdle"/>) with work outside it, such as a request it's waiting
+    /// on, until the result is disposed. From any thread.
+    /// </summary>
+    public IDisposable BeginBusy(string reason)
+    {
+        ArgumentNullException.ThrowIfNull(reason);
+        lock (_busyLock)
+        {
+            _busy.Add(reason);
+        }
+        return new BusyToken(this, reason);
+    }
+
+    /// <summary>Marks the UI busy until <paramref name="task"/> finishes. From any thread.</summary>
+    public void TrackBusy(System.Threading.Tasks.Task task, string reason)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        var token = BeginBusy(reason);
+        task.ContinueWith(_ => token.Dispose(), System.Threading.CancellationToken.None,
+            System.Threading.Tasks.TaskContinuationOptions.ExecuteSynchronously, System.Threading.Tasks.TaskScheduler.Default);
+    }
+
+    private void EndBusy(string reason)
+    {
+        lock (_busyLock)
+        {
+            _busy.Remove(reason);
+        }
+        // The UI may now be idle, which whoever waits for it should see.
+        FrameRequested?.Invoke();
+    }
+
+    private sealed class BusyToken(UIRoot root, string reason) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                root.EndBusy(reason);
+            }
+        }
+    }
+
+    private sealed record TickerEntry(Action<double> Tick, TickerKind Kind, string Reason);
+
+    /// <summary>
+    /// Raised with each input the root is given, before it's dispatched: for recording what happened.
+    /// </summary>
+    public event Action<UIInputEvent>? InputReceived;
 
     /// <summary>The size of the last layout.</summary>
     public Vector2 Size { get; private set; }
@@ -160,7 +284,7 @@ public sealed class UIRoot : IDisposable
     {
         foreach (var ticker in _tickers.ToArray())
         {
-            ticker(seconds);
+            ticker.Tick(seconds);
         }
         foreach (var scroller in _animating.ToArray())
         {
@@ -559,16 +683,20 @@ public sealed class UIRoot : IDisposable
     /// <summary>
     /// Calls <paramref name="tick"/> with each frame's elapsed seconds (from <see cref="Advance"/>)
     /// until the result is disposed: for things that animate on their own, such as a theme
-    /// transition. Frames keep coming while any ticker is registered, so dispose it when done.
+    /// transition. Frames keep coming while any ticker is registered, so dispose it when done. The
+    /// UI isn't <see cref="IsIdle"/> while it runs; see the overload for spinners and delays.
     /// </summary>
-    public IDisposable AddTicker(Action<double> tick)
+    public IDisposable AddTicker(Action<double> tick) => AddTicker(tick, TickerKind.Animation);
+
+    /// <summary>
+    /// Calls <paramref name="tick"/> with each frame's elapsed seconds until the result is disposed,
+    /// as a <paramref name="kind"/> of ticker, which decides whether it keeps the UI from being
+    /// <see cref="IsIdle"/>. <paramref name="reason"/> names it in <see cref="BusyReasons"/>.
+    /// </summary>
+    public IDisposable AddTicker(Action<double> tick, TickerKind kind, string? reason = null)
     {
         ArgumentNullException.ThrowIfNull(tick);
-        Func<double, bool> entry = seconds =>
-        {
-            tick(seconds);
-            return true;
-        };
+        var entry = new TickerEntry(tick, kind, reason ?? kind.ToString().ToLowerInvariant());
         _tickers.Add(entry);
         FrameRequested?.Invoke();
         return new Ticker(() => _tickers.Remove(entry));
@@ -671,6 +799,7 @@ public sealed class UIRoot : IDisposable
     /// <summary>The pointer moved to <paramref name="position"/> (root coordinates).</summary>
     public void PointerMove(Vector2 position, KeyModifiers modifiers = KeyModifiers.None)
     {
+        Received(UIInputType.PointerMove, position, modifiers: modifiers);
         var path = HitPath(position);
         UpdateHover(path, position, modifiers);
         var args = new PointerEventArgs(position, PointerButton.Left, modifiers);
@@ -680,6 +809,7 @@ public sealed class UIRoot : IDisposable
     /// <summary>A pointer button was pressed at <paramref name="position"/>.</summary>
     public void PointerDown(Vector2 position, PointerButton button = PointerButton.Left, KeyModifiers modifiers = KeyModifiers.None)
     {
+        Received(UIInputType.PointerDown, position, button, modifiers);
         UsingKeyboard = false;
         var path = HitPath(position);
         UpdateHover(path, position, modifiers);
@@ -705,6 +835,7 @@ public sealed class UIRoot : IDisposable
     /// <summary>A pointer button was released at <paramref name="position"/>.</summary>
     public void PointerUp(Vector2 position, PointerButton button = PointerButton.Left, KeyModifiers modifiers = KeyModifiers.None)
     {
+        Received(UIInputType.PointerUp, position, button, modifiers);
         var pressed = _pressed;
         _pressed = null;
         var path = HitPath(position);
@@ -730,6 +861,10 @@ public sealed class UIRoot : IDisposable
     /// <summary>The wheel or trackpad scrolled by <paramref name="delta"/> pixels over <paramref name="position"/>.</summary>
     public void Wheel(Vector2 position, Vector2 delta, KeyModifiers modifiers = KeyModifiers.None)
     {
+        if (InputReceived is { } received)
+        {
+            received(new UIInputEvent(UIInputType.Wheel) { Position = position, Delta = delta, Modifiers = modifiers, TargetId = TopmostId(position) });
+        }
         var args = new PointerEventArgs(position, PointerButton.Left, modifiers, wheelDelta: delta);
         Dispatch(HitPath(position), args, box => null, box => box.OnWheel, (node, e) => node.OnWheel(e));
     }
@@ -741,6 +876,7 @@ public sealed class UIRoot : IDisposable
     /// </summary>
     public void KeyDown(KeyCode key, KeyModifiers modifiers = KeyModifiers.None, bool isRepeat = false)
     {
+        InputReceived?.Invoke(new UIInputEvent(UIInputType.KeyDown) { Key = key, Modifiers = modifiers, IsRepeat = isRepeat, TargetId = FocusedId });
         UsingKeyboard = true;
         var args = new KeyEventArgs(key, modifiers, isRepeat);
         Dispatch(FocusPath(), args, box => box.OnKeyDownCapture, box => box.OnKeyDown);
@@ -758,13 +894,20 @@ public sealed class UIRoot : IDisposable
     }
 
     /// <summary>A key was released.</summary>
-    public void KeyUp(KeyCode key, KeyModifiers modifiers = KeyModifiers.None) =>
+    public void KeyUp(KeyCode key, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        InputReceived?.Invoke(new UIInputEvent(UIInputType.KeyUp) { Key = key, Modifiers = modifiers, TargetId = FocusedId });
         Dispatch(FocusPath(), new KeyEventArgs(key, modifiers, false), box => null, box => box.OnKeyUp);
+    }
 
     /// <summary>Files were dropped on the window at <paramref name="position"/> (the box under it and its ancestors hear it).</summary>
     public void DropFiles(Vector2 position, IReadOnlyList<string> paths)
     {
         ArgumentNullException.ThrowIfNull(paths);
+        if (InputReceived is { } received)
+        {
+            received(new UIInputEvent(UIInputType.FileDrop) { Position = position, Paths = paths, TargetId = TopmostId(position) });
+        }
         Dispatch(HitPath(position), new FileDropEventArgs(position, paths), box => null, box => box.OnFileDrop);
     }
 
@@ -772,7 +915,34 @@ public sealed class UIRoot : IDisposable
     public void TextInput(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
+        ReportText(text);
         Dispatch(FocusPath(), new TextInputEventArgs(text), box => null, box => box.OnTextInput);
+    }
+
+    /// <summary>
+    /// Tells <see cref="InputReceived"/> of text typed: what <see cref="TextInput"/> is given, and what the
+    /// platform commits straight to the focused text input client.
+    /// </summary>
+    internal void ReportText(string text) =>
+        InputReceived?.Invoke(new UIInputEvent(UIInputType.Text) { Text = text, TargetId = FocusedId });
+
+    private void Received(UIInputType type, Vector2 position, PointerButton button = PointerButton.Left, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        if (InputReceived is { } received)
+        {
+            received(new UIInputEvent(type) { Position = position, Button = button, Modifiers = modifiers, TargetId = TopmostId(position) });
+        }
+    }
+
+    private int TopmostId(Vector2 position)
+    {
+        if (!_mounted)
+        {
+            return 0;
+        }
+        var hits = new List<RenderNode>();
+        RootRenderNode.HitTest(position, hits);
+        return hits.Count == 0 ? 0 : hits[0].Id;
     }
 
     /// <summary>
@@ -923,6 +1093,102 @@ public sealed class UIRoot : IDisposable
     /// <summary>The <see cref="SemanticsNode.Id"/> of the focused node, or 0.</summary>
     public int FocusedId => _focused?.Id ?? 0;
 
+    /// <summary>The root of the laid-out tree, or null before the first <see cref="Update"/>.</summary>
+    public UINode? RootNode => _mounted ? new UINode(this, RootRenderNode) : null;
+
+    /// <summary>The laid-out node <paramref name="id"/> names (a <see cref="SemanticsNode.Id"/>), or null.</summary>
+    public UINode? FindNode(int id) => _mounted && Find(id) is { } node ? new UINode(this, node) : null;
+
+    /// <summary>
+    /// The nodes drawn under a point (root coordinates), topmost first, each followed by the node it's
+    /// drawn in, down to the root: what a press there lands on. Empty if nothing is there.
+    /// </summary>
+    public IReadOnlyList<UINode> HitTest(Vector2 position)
+    {
+        if (!_mounted)
+        {
+            return [];
+        }
+        var hits = new List<RenderNode>();
+        RootRenderNode.HitTest(position, hits);
+        return [.. hits.Select(node => new UINode(this, node))];
+    }
+
+    /// <summary>
+    /// Scrolls every scroll area the node <paramref name="id"/> names is in, innermost first, as little
+    /// as brings it into view. False if there's no such node.
+    /// </summary>
+    public bool ScrollIntoView(int id, bool animated = false)
+    {
+        if (Find(id) is not { } node)
+        {
+            return false;
+        }
+        for (var ancestor = node.Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if (ancestor is not ScrollRenderNode scroller)
+            {
+                continue;
+            }
+            // Bounds are worked out again for each area: scrolling an inner one moves nothing outside it.
+            var bounds = node.RootBounds();
+            var area = scroller.RootBounds();
+            var controller = scroller.Controller;
+            var offset = controller.Offset;
+            if (controller.CanScrollVertical)
+            {
+                controller.ScrollIntoView(bounds.Y - area.Y + offset.Y, Math.Min(bounds.Height, controller.ViewportSize.Y), vertical: true, animated);
+            }
+            if (controller.CanScrollHorizontal)
+            {
+                controller.ScrollIntoView(bounds.X - area.X + offset.X, Math.Min(bounds.Width, controller.ViewportSize.X), vertical: false, animated);
+            }
+        }
+        FrameRequested?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Scrolls the scroll area <paramref name="id"/> names to <paramref name="offset"/> (from its content's
+    /// start), within its range. False if it names no scroll area.
+    /// </summary>
+    public bool ScrollTo(int id, Vector2 offset, bool animated = false)
+    {
+        if (Find(id) is not ScrollRenderNode scroller)
+        {
+            return false;
+        }
+        scroller.Controller.ScrollTo(Vector2.Clamp(offset, Vector2.Zero, Vector2.Max(scroller.Controller.MaxOffset, Vector2.Zero)), animated);
+        FrameRequested?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// A node's test ID: its semantics' <see cref="Semantics.TestId"/>, else the outermost
+    /// <see cref="Element.TestId"/> among the element that made it and the components above that
+    /// build nothing but it.
+    /// </summary>
+    internal static string? TestIdOf(RenderNode node)
+    {
+        var declared = node switch
+        {
+            BoxRenderNode box => box.Element.Semantics?.TestId,
+            ScrollRenderNode scroll => scroll.Element.Semantics?.TestId,
+            CanvasRenderNode canvas => canvas.Element.Semantics?.TestId,
+            _ => null,
+        };
+        if (declared is not null || node.Owner is not { } owner)
+        {
+            return declared;
+        }
+        var testId = owner.Element.TestId;
+        for (var above = owner.Parent; above is { RenderNode: null, Children.Count: 1 }; above = above.Parent)
+        {
+            testId = above.Element.TestId ?? testId;
+        }
+        return testId;
+    }
+
     private RenderNode? Find(int id)
     {
         RenderNode? Search(RenderNode node)
@@ -951,8 +1217,8 @@ public sealed class UIRoot : IDisposable
         {
             CollectSemantics(child, children);
         }
-        var position = node.AbsolutePosition;
-        var bounds = new System.Drawing.RectangleF(position.X, position.Y, node.Size.X, node.Size.Y);
+        var bounds = node.RootBounds();
+        var testId = TestIdOf(node);
         switch (node)
         {
             case TextRenderNode { Element.IsDecorative: true }:
@@ -961,23 +1227,28 @@ public sealed class UIRoot : IDisposable
                 var textSemantics = text.Element.HeadingLevel > 0
                     ? new Semantics { Role = SemanticsRole.Heading, HeadingLevel = text.Element.HeadingLevel }
                     : new Semantics { Role = SemanticsRole.Text };
-                into.Add(new SemanticsNode(node.Id, textSemantics, text.Element.AttributedText.Text, bounds, false, false, []));
+                into.Add(new SemanticsNode(node.Id, textSemantics, text.Element.AttributedText.Text, bounds, false, false, [], testId));
                 break;
             case ImageRenderNode { Element.AltText: { } alt }:
-                into.Add(new SemanticsNode(node.Id, new Semantics { Role = SemanticsRole.Image, Label = alt }, alt, bounds, false, false, []));
+                into.Add(new SemanticsNode(node.Id, new Semantics { Role = SemanticsRole.Image, Label = alt }, alt, bounds, false, false, [], testId));
                 break;
             case CanvasRenderNode { Element.Semantics: { } canvasSemantics }:
-                into.Add(new SemanticsNode(node.Id, canvasSemantics, canvasSemantics.Label, bounds, false, false, children));
+                into.Add(new SemanticsNode(node.Id, canvasSemantics, canvasSemantics.Label, bounds, false, false, children, testId));
                 break;
-            case BoxRenderNode { Element: var box } when box.Semantics is not null || box.Focusable:
-                var semantics = box.Semantics ?? new Semantics();
+            case ScrollRenderNode scroll:
+                var scrollSemantics = scroll.Element.Semantics ?? new Semantics { Role = SemanticsRole.ScrollArea };
+                into.Add(new SemanticsNode(node.Id, scrollSemantics, scrollSemantics.Label, bounds, false, false, children, testId));
+                break;
+            case BoxRenderNode { Element: var box } when box.Semantics is not null || box.Focusable || testId is not null:
+                // A box named only for tests has no role: assistive technology passes over it.
+                var semantics = box.Semantics ?? new Semantics { Role = box.Focusable ? SemanticsRole.Group : SemanticsRole.None };
                 // A control named by its text (a button's label) takes it as its own name.
-                var label = semantics.Label ?? JoinText(children);
+                var label = semantics.Label ?? (box.Semantics is null && !box.Focusable ? null : JoinText(children));
                 if (semantics.Label is null && semantics.Role is not (SemanticsRole.Group or SemanticsRole.List or SemanticsRole.None))
                 {
                     children.RemoveAll(c => c.Role == SemanticsRole.Text);
                 }
-                into.Add(new SemanticsNode(node.Id, semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children));
+                into.Add(new SemanticsNode(node.Id, semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children, testId));
                 break;
             default:
                 into.AddRange(children);

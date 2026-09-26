@@ -18,6 +18,11 @@
   <Project Path="Radiant.Text.Tests/Radiant.Text.Tests.csproj" />
   <Project Path="Radiant.UI.Core/Radiant.UI.Core.csproj" />
   <Project Path="Radiant.UI.Core.Tests/Radiant.UI.Core.Tests.csproj" />
+  <Project Path="Radiant.UI.Automation/Radiant.UI.Automation.csproj" />
+  <Project Path="Radiant.UI.Driver/Radiant.UI.Driver.csproj" />
+  <Project Path="Radiant.UI.Driver.MSTest/Radiant.UI.Driver.MSTest.csproj" />
+  <Project Path="Radiant.UI.Automation.Tests/Radiant.UI.Automation.Tests.csproj" />
+  <Project Path="Radiant.AgentCli/Radiant.AgentCli.csproj" />
   <Project Path="Radiant.Generators/Radiant.Generators.csproj" />
   <Project Path="Radiant.Generators.Tests/Radiant.Generators.Tests.csproj" />
   <Project Path="Radiant.Theming/Radiant.Theming.csproj" />

@@ -6,25 +6,29 @@ using Radiant.Platform;
 
 namespace Radiant.UI.Core;
 
-/// <summary>Runs a UI in a window.</summary>
+/// <summary>Runs a UI in a window, or headless.</summary>
 public static class RadiantUI
 {
-    // The longest step animations take in one frame: after the window has waited idle, the first
-    // frame's time since the last would otherwise finish a just-started animation at once.
-    private const double MaxStep = 1.0 / 20;
-
     /// <summary>
     /// Opens a window showing <paramref name="root"/> and runs until it closes: window input is
     /// routed to the tree as events, and each frame the tree is updated, laid out to the window
-    /// and drawn.
+    /// and drawn. With <see cref="UIAppOptions.Headless"/>, runs without a window instead
+    /// (<see cref="RunHeadless"/>).
     /// </summary>
     public static void Run(Element root, UIAppOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         options ??= new UIAppOptions();
+        if (options.Headless)
+        {
+            RunHeadless(root, options);
+            return;
+        }
         using var app = new RadiantApplication();
-        using var ui = new UIRoot(root, options.Fonts);
-        using var platform = new PlatformBinding(ui);
+        using var session = new UIAppSession(root, options);
+        var ui = session.Root;
+        session.WakeUp = app.RequestFrame;
+        session.CloseRequested = app.Close;
 
         // The platform needs the native window, so it's made once the window is open; the tree
         // isn't mounted until the first frame, after this.
@@ -32,12 +36,12 @@ public static class RadiantUI
         {
             var created = options.Platform?.Invoke(new NativeWindow { Cocoa = app.CocoaWindow, Glfw = app.GlfwWindow })
                 ?? new HeadlessPlatform();
-            platform.Attach(created);
-            ui.SetRoot(PlatformContext.Platform.Provide(created, root));
+            UpdateWindow(app, session);
+            session.AttachPlatform(created);
         };
 
-        // Frames are drawn only while the tree has something to do; otherwise the window waits.
-        app.NeedsFrame = () => ui.NeedsUpdate;
+        // Frames are drawn only while the tree (or an extension) has something to do; otherwise the window waits.
+        app.NeedsFrame = () => session.NeedsFrame;
         ui.FrameRequested = app.RequestFrame;
 
         app.PointerMoved += position => ui.PointerMove(position, Modifiers(app.Input));
@@ -52,10 +56,69 @@ public static class RadiantUI
 
         app.Run(options.Title, options.Width, options.Height, Handedness.RightHanded, renderer =>
         {
-            ui.Update(new Vector2(app.WindowWidth, app.WindowHeight));
-            platform.AfterUpdate();
-            ui.Paint(renderer);
-        }, seconds => ui.Advance(Math.Min(seconds, MaxStep)), options.Background);
+            UpdateWindow(app, session);
+            session.EndFrame();
+            session.Paint(renderer);
+        }, seconds => session.BeginFrame(session.NextStep(seconds)), options.Background);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="root"/> with no window, on the calling thread, until
+    /// <see cref="UIAppSession.Exit"/>: frames at <see cref="UIAppOptions.Width"/> ×
+    /// <see cref="UIAppOptions.Height"/> on the headless platform, only while there's something to do.
+    /// On the real clock that's while the tree needs frames (at most 60 a second); on the fixed clock
+    /// it's as fast as frames can be run while it's busy or an extension is waiting, and not at all
+    /// otherwise, so spinners and timers wait where they are until something moves time on.
+    /// </summary>
+    public static void RunHeadless(Element root, UIAppOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        options = (options ?? new UIAppOptions()) with { Headless = true };
+        // Made first so it's disposed last: the session's extensions may still ask for a frame as they go.
+        using var wake = new System.Threading.AutoResetEvent(false);
+        using var session = new UIAppSession(root, options);
+        session.WakeUp = () => wake.Set();
+        session.CloseRequested = () => wake.Set();
+        session.Root.FrameRequested = session.RequestFrame;
+        session.AttachPlatform(new HeadlessPlatform());
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var last = 0.0;
+        while (!session.ExitRequested)
+        {
+            var fixedClock = session.ClockMode == UIClockMode.Fixed;
+            if (fixedClock ? session.HasWork : session.NeedsFrame)
+            {
+                var now = clock.Elapsed.TotalSeconds;
+                session.RunFrame(session.NextStep(now - last));
+                last = now;
+                if (!fixedClock)
+                {
+                    // Sixty frames a second at most, as a display would allow.
+                    var spare = UIAppSession.FixedStep - (clock.Elapsed.TotalSeconds - now);
+                    if (spare > 0)
+                    {
+                        wake.WaitOne(TimeSpan.FromSeconds(spare));
+                    }
+                }
+            }
+            else
+            {
+                wake.WaitOne();
+                // Time spent waiting isn't a frame's step.
+                last = clock.Elapsed.TotalSeconds;
+            }
+        }
+    }
+
+    private static void UpdateWindow(RadiantApplication app, UIAppSession session)
+    {
+        if (app.WindowWidth > 0)
+        {
+            session.Size = new Vector2(app.WindowWidth, app.WindowHeight);
+            session.PixelScale = app.FramebufferWidth / (float)app.WindowWidth;
+        }
+        session.WindowPosition = new Vector2(app.WindowX, app.WindowY);
     }
 
     private static KeyModifiers Modifiers(InputState input)

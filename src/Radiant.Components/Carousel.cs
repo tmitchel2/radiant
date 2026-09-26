@@ -75,7 +75,7 @@ public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
                     index.Set(current);
                 }
                 idle = 0;
-                ticker ??= root.AddTicker(Settle);
+                ticker ??= root.AddTicker(Settle, TickerKind.Animation, "carousel settle");
             }
             void OnExtents(ScrollMetrics metrics) => viewport.Set(metrics.LayoutMeasurement.X);
             scroll.Scroll += OnScroll;

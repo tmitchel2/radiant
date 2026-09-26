@@ -17,4 +17,12 @@ public abstract record Element
     /// element at the same position in its parent's children, if it is of the same type.
     /// </summary>
     public Key? Key { get; init; }
+
+    /// <summary>
+    /// A name for tests and agents to find this element by (<c>@save</c>), which never shows. Set on a
+    /// component, it names what the component draws when that's a single box; the outermost wins, so it
+    /// can be set where a component is used. Assistive technology on macOS sees it as the accessibility
+    /// identifier.
+    /// </summary>
+    public string? TestId { get; init; }
 }

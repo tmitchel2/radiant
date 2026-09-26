@@ -6,9 +6,10 @@ namespace Radiant.UI.Core;
 /// <summary>A node of the accessibility tree built by <see cref="UIRoot.GetSemantics"/>.</summary>
 public sealed class SemanticsNode
 {
-    internal SemanticsNode(int id, Semantics semantics, string? label, RectangleF bounds, bool focusable, bool focused, IReadOnlyList<SemanticsNode> children)
+    internal SemanticsNode(int id, Semantics semantics, string? label, RectangleF bounds, bool focusable, bool focused, IReadOnlyList<SemanticsNode> children, string? testId = null)
     {
         Id = id;
+        TestId = testId;
         Semantics = semantics;
         Label = label;
         Bounds = bounds;
@@ -33,6 +34,9 @@ public sealed class SemanticsNode
     /// <summary>The name: the given label, or the text inside.</summary>
     public string? Label { get; }
 
+    /// <summary>Its test ID (<see cref="Element.TestId"/>, <see cref="Semantics.TestId"/>), if it has one.</summary>
+    public string? TestId { get; }
+
     /// <summary>Where it is, in the root's coordinates.</summary>
     public RectangleF Bounds { get; }
 
@@ -50,7 +54,7 @@ public sealed class SemanticsNode
 
     private string ToString(int depth)
     {
-        var text = $"{new string(' ', depth * 2)}{Role}{(Label is null ? "" : $" \"{Label}\"")}";
+        var text = $"{new string(' ', depth * 2)}{Role}{(Label is null ? "" : $" \"{Label}\"")}{(TestId is null ? "" : $" @{TestId}")}";
         foreach (var child in Children)
         {
             text += "\n" + child.ToString(depth + 1);

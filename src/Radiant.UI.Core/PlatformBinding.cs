@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using Radiant.Platform;
 
@@ -78,8 +79,9 @@ internal sealed class PlatformBinding(UIRoot root) : IDisposable, IAccessibility
     public int FocusedId => root.FocusedId;
 
     private static AccessibilityNode Convert(SemanticsNode node) =>
-        new(node.Id, Role(node.Role), node.Label, node.Bounds, [.. System.Linq.Enumerable.Select(node.Children, Convert)])
+        new(node.Id, Role(node.Role), node.Label, node.Bounds, ConvertChildren(node.Children))
         {
+            Identifier = node.TestId,
             Value = node.Semantics.Value,
             Description = node.Semantics.Description,
             Checked = node.Semantics.Checked,
@@ -91,6 +93,25 @@ internal sealed class PlatformBinding(UIRoot root) : IDisposable, IAccessibility
             HeadingLevel = node.Semantics.HeadingLevel,
         };
 
+    // A box that's there only to be named for tests, with no role or label, isn't shown to assistive
+    // technology: its children take its place.
+    private static List<AccessibilityNode> ConvertChildren(IReadOnlyList<SemanticsNode> children)
+    {
+        var converted = new List<AccessibilityNode>(children.Count);
+        foreach (var child in children)
+        {
+            if (child is { Role: SemanticsRole.None, Label: null })
+            {
+                converted.AddRange(ConvertChildren(child.Children));
+            }
+            else
+            {
+                converted.Add(Convert(child));
+            }
+        }
+        return converted;
+    }
+
     // The platform's roles are the UI's, by name.
     private static AccessibilityRole Role(SemanticsRole role) =>
         Enum.TryParse<AccessibilityRole>(role.ToString(), out var mapped) ? mapped : AccessibilityRole.Group;
@@ -100,7 +121,24 @@ internal sealed class PlatformBinding(UIRoot root) : IDisposable, IAccessibility
     private void OnClientChanged(ITextInputClient? client)
     {
         _caret = client?.CaretRect ?? default;
-        _platform?.TextInput.Focus(client);
+        // Text the platform commits goes straight to the client, not through UIRoot.TextInput, so it's
+        // reported on the way (for the interaction log).
+        _platform?.TextInput.Focus(client is null ? null : new ReportingClient(root, client));
+    }
+
+    private sealed class ReportingClient(UIRoot root, ITextInputClient inner) : ITextInputClient
+    {
+        public RectangleF CaretRect => inner.CaretRect;
+
+        public void InsertText(string text)
+        {
+            root.ReportText(text);
+            inner.InsertText(text);
+        }
+
+        public void SetMarkedText(string text, int selectionStart, int selectionLength) => inner.SetMarkedText(text, selectionStart, selectionLength);
+
+        public void UnmarkText() => inner.UnmarkText();
     }
 
     /// <summary>Stops forwarding and disposes the platform.</summary>

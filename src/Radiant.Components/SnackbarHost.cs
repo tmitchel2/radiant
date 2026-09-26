@@ -45,7 +45,7 @@ public sealed record SnackbarHost(Element? Child) : Component
                     ticker?.Dispose();
                     queue.Dismiss();
                 }
-            });
+            }, TickerKind.Timer, "snackbar timeout");
             return ticker.Dispose;
         }, current);
 

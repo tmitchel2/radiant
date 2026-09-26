@@ -14,6 +14,122 @@ public readonly record struct KeyChord(KeyCode Key, KeyModifiers Modifiers = Key
     /// <summary>The key with the platform's command modifier (⌘K on macOS, Ctrl+K elsewhere).</summary>
     public static KeyChord Command(KeyCode key, KeyModifiers also = KeyModifiers.None) => new(key, CommandModifier | also);
 
+    /// <summary>
+    /// Reads a chord written as modifiers and a key joined by <c>+</c>, ignoring case:
+    /// <c>"Cmd+Shift+S"</c>, <c>"Ctrl+Enter"</c>, <c>"Tab"</c>, <c>"F5"</c>. <c>Cmd</c> (or <c>Mod</c>) is
+    /// the platform's <see cref="CommandModifier"/>; <c>Super</c>, <c>Meta</c> and <c>Win</c> are
+    /// always Super; <c>Option</c> is Alt. A key is a letter, a digit, a character such as <c>/</c>, or a
+    /// <see cref="KeyCode"/> name, with <c>Esc</c>, <c>Return</c>, <c>Del</c>, <c>PgUp</c> and
+    /// <c>PgDn</c> as well.
+    /// </summary>
+    public static bool TryParse(string? text, out KeyChord chord)
+    {
+        chord = default;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+        var parts = text.Trim().Split('+');
+        // "Cmd++" is Cmd and the plus key's character, which is Equal on most layouts.
+        if (text.EndsWith("++", StringComparison.Ordinal))
+        {
+            parts = [.. parts[..^2], "="];
+        }
+        var modifiers = KeyModifiers.None;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            switch (parts[i].Trim().ToUpperInvariant())
+            {
+                case "CMD" or "COMMAND" or "MOD" or "⌘" when OperatingSystem.IsMacOS():
+                    modifiers |= KeyModifiers.Super;
+                    break;
+                case "CMD" or "COMMAND" or "MOD" or "⌘":
+                    modifiers |= CommandModifier;
+                    break;
+                case "CTRL" or "CONTROL" or "⌃":
+                    modifiers |= KeyModifiers.Control;
+                    break;
+                case "ALT" or "OPT" or "OPTION" or "⌥":
+                    modifiers |= KeyModifiers.Alt;
+                    break;
+                case "SHIFT" or "⇧":
+                    modifiers |= KeyModifiers.Shift;
+                    break;
+                case "SUPER" or "META" or "WIN":
+                    modifiers |= KeyModifiers.Super;
+                    break;
+                default:
+                    return false;
+            }
+        }
+        if (!TryParseKey(parts[^1].Trim(), out var key))
+        {
+            return false;
+        }
+        chord = new KeyChord(key, modifiers);
+        return true;
+    }
+
+    private static bool TryParseKey(string name, out KeyCode key)
+    {
+        key = KeyCode.Unknown;
+        if (name.Length == 1)
+        {
+            var c = char.ToUpperInvariant(name[0]);
+            if (c is >= 'A' and <= 'Z' or >= '0' and <= '9' || Enum.IsDefined((KeyCode)c) && c is > ' ' and < 'a')
+            {
+                key = (KeyCode)c;
+                return true;
+            }
+        }
+        switch (name.ToUpperInvariant())
+        {
+            case "ESC":
+                key = KeyCode.Escape;
+                return true;
+            case "RETURN":
+                key = KeyCode.Enter;
+                return true;
+            case "DEL":
+                key = KeyCode.Delete;
+                return true;
+            case "PGUP":
+                key = KeyCode.PageUp;
+                return true;
+            case "PGDN":
+                key = KeyCode.PageDown;
+                return true;
+            case "BACKSPACE" or "BKSP":
+                key = KeyCode.Backspace;
+                return true;
+        }
+        return Enum.TryParse(name, ignoreCase: true, out key) && Enum.IsDefined(key) && key != KeyCode.Unknown;
+    }
+
+    /// <summary>The chord written as <see cref="TryParse"/> reads it, the same on every platform: <c>"Ctrl+Shift+S"</c>.</summary>
+    public string ToInvariantString()
+    {
+        var text = new StringBuilder();
+        if ((Modifiers & KeyModifiers.Control) != 0)
+        {
+            text.Append("Ctrl+");
+        }
+        if ((Modifiers & KeyModifiers.Alt) != 0)
+        {
+            text.Append("Alt+");
+        }
+        if ((Modifiers & KeyModifiers.Shift) != 0)
+        {
+            text.Append("Shift+");
+        }
+        if ((Modifiers & KeyModifiers.Super) != 0)
+        {
+            text.Append("Super+");
+        }
+        text.Append(Key is >= KeyCode.A and <= KeyCode.Z or >= KeyCode.Number0 and <= KeyCode.Number9 ? ((char)Key).ToString() : Key.ToString());
+        return text.ToString();
+    }
+
     /// <summary>Whether a key press is this chord.</summary>
     public bool Matches(KeyCode key, KeyModifiers modifiers) => key == Key && modifiers == Modifiers;
 

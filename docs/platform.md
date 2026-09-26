@@ -128,6 +128,9 @@ class, as the input methods are, to answer with `NSAccessibilityElement`s:
 - Roles map to AppKit's (`AXButton`, `AXCheckBox` with `AXSwitch`, `AXTabGroup`, `AXOutline` …),
   with the label, value (text, checked state, heading level), help, enabled, selected and expanded
   states, and frames in their parent's space.
+- An element's test ID (`Element.TestId`) is its `accessibilityIdentifier`, which XCUITest and
+  Appium find elements by. A box named only for tests (no role, no label) is left out, its children
+  in its place.
 - Pressable roles are a subclass whose `accessibilityPerformPress` presses the node; setting an
   element's focus moves the UI's.
 - A changed tree is announced once as a layout change until VoiceOver reads it again; a focus move
@@ -246,6 +249,10 @@ GLFW's implementations.
 - **It's tied to GLFW 3.4.** The replaced selectors are AppKit's, so they survive GLFW updates,
   but a GLFW that stops calling `interpretKeyEvents:` from `keyDown:` would need revisiting.
   `PlatformCheck --selftest` catches that.
+
+Text the platform commits goes to the focused client through a wrapper that reports it to
+`UIRoot.InputReceived` first, so the interaction log records typing through an input method as well
+as keys.
 
 ## The headless platform
 

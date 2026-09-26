@@ -65,7 +65,8 @@ internal sealed unsafe class LiveHost : IDisposable
     private readonly string _hostName;
     private readonly byte[] _frameScratch = new byte[MaxFrameBytes];
 
-    private CommandReceiver? _receiver;
+    private AgentDispatcher? _dispatcher;
+    private FileDropTransport? _files;
     private SharedFrameBuffer? _activeReader;
     private string? _activeReaderName;
     // One input ring per owned tab, kept for the tab's whole lifetime (created lazily, disposed only
@@ -188,8 +189,8 @@ internal sealed unsafe class LiveHost : IDisposable
         _startHidden = startHidden;
     }
 
-    // Set by the window.focus command handler (CommandReceiver thread), consumed in Update on the run-loop
-    // thread so the actual RadiantApplication.Focus() / app activation happens where the window is owned.
+    // Set by the window.focus command handler (run by the dispatcher in Update), consumed after the commands
+    // in Update, so the actual RadiantApplication.Focus() / app activation happens where the window is owned.
     private volatile bool _focusRequested;
 
     // The active tab name last published to active-tab.txt (for the Dock owner's per-host menu); republished
@@ -206,7 +207,9 @@ internal sealed unsafe class LiveHost : IDisposable
     public void Run()
     {
         RegisterHost();
-        _receiver = new CommandReceiver(_hostName);
+        _dispatcher = new AgentDispatcher();
+        _controller.Register(_dispatcher);
+        _files = new FileDropTransport(_hostName, _dispatcher);
         _controller.Refresh();
         EnsureDragOverlay();
         Console.WriteLine($"Radiant.Host '{_hostName}' starting — {_controller.Tabs.Count} tab(s): {string.Join(", ", _controller.Tabs)}");
@@ -270,6 +273,11 @@ internal sealed unsafe class LiveHost : IDisposable
             WorkingDirectory = Directory.GetCurrentDirectory(),
             Capabilities = ["tab"],
             ProtocolVersion = TabProtocol.Version,
+            AgentProtocolVersion = AgentProtocol.Version,
+            Kind = "host",
+            AppName = RadiantAppIdentity.Current.Name,
+            Transports = ["file"],
+            Ready = true,
         });
     }
 
@@ -295,8 +303,8 @@ internal sealed unsafe class LiveHost : IDisposable
         // thread, so mutating the tab set here is race-free with rendering and input forwarding.
         DrainCommands();
 
-        // A window.focus command (e.g. from the macOS Dock menu) raised this flag on the receiver thread —
-        // do the actual focus here, on the run-loop thread that owns the window.
+        // A window.focus command (e.g. from the macOS Dock menu) raised this flag as it ran — do the actual
+        // focus here, on the run-loop thread that owns the window.
         if (_focusRequested)
         {
             _focusRequested = false;
@@ -1144,17 +1152,7 @@ internal sealed unsafe class LiveHost : IDisposable
 #pragma warning restore CA1031
     }
 
-    private void DrainCommands()
-    {
-        if (_receiver is null)
-        {
-            return;
-        }
-        foreach (var cmd in _receiver.DrainPendingCommands())
-        {
-            _receiver.WriteResponse(_controller.Handle(cmd));
-        }
-    }
+    private void DrainCommands() => _dispatcher?.Pump();
 
     /// <summary>
     /// Forward this frame's window input to the active tab's renderer via its <see cref="InputRing"/>.
@@ -1537,8 +1535,9 @@ internal sealed unsafe class LiveHost : IDisposable
 
     public void Dispose()
     {
-        _receiver?.Dispose();
-        _receiver = null;
+        _files?.Dispose();
+        _files = null;
+        _dispatcher = null;
         DisposeReader();
         DisposeInput();
         DisposeThumbWriter();

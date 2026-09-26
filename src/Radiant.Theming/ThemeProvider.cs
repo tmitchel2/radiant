@@ -40,7 +40,7 @@ public sealed record ThemeProvider(ThemeController Controller, Element? Child) :
                     ticker?.Dispose();
                     ticker = null;
                 }
-            });
+            }, TickerKind.Animation, "theme transition");
             controller.TransitionStarted += Start;
             if (controller.IsAnimating)
             {

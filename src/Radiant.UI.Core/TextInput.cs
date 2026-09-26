@@ -112,7 +112,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
             {
                 elapsed += seconds;
                 blinkOn.Set((int)(elapsed / BlinkSeconds) % 2 == 0);
-            }).Dispose;
+            }, TickerKind.Continuous, "caret blink").Dispose;
         }, (isFocused, State));
 
         // While focused, the input is the platform's text input client: typing and input-method

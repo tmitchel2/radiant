@@ -13,6 +13,7 @@ public sealed class TabControllerTests
     private static readonly string[] s_cab = ["c", "a", "b"];
     private static readonly string[] s_bac = ["b", "a", "c"];
     private static readonly string[] s_bc = ["b", "c"];
+    private static readonly string[] s_hostActions = ["tab.list", "tab.activate", "window.focus", "actions.list"];
 
     private static AgentCommand Cmd(string action, string? paramsJson = null) => new()
     {
@@ -20,6 +21,40 @@ public sealed class TabControllerTests
         Action = action,
         Params = paramsJson is null ? null : JsonDocument.Parse(paramsJson).RootElement,
     };
+
+    [TestMethod]
+    public void TheHostsActionsRunThroughADispatcher()
+    {
+        var controller = new TabController("host", scan: () => ["a", "b"]);
+        var dispatcher = new AgentDispatcher();
+        controller.Register(dispatcher);
+        var connection = new Recorder();
+
+        dispatcher.Enqueue(Cmd("tab.activate", """{"name":"b"}"""), connection);
+        dispatcher.Enqueue(new AgentCommand { Id = "list", Action = "actions.list" }, connection);
+        dispatcher.Pump();
+
+        var activate = connection.Responses.Single(r => r.Id == "test");
+        Assert.AreEqual("ok", activate.Status);
+        Assert.AreEqual("b", activate.Result!.Value.GetProperty("active").GetString());
+        var names = connection.Responses.Single(r => r.Id == "list").Result!.Value.EnumerateArray().Select(a => a.GetProperty("name").GetString()).ToList();
+        CollectionAssert.IsSubsetOf(s_hostActions, names);
+    }
+
+    private sealed class Recorder : IAgentConnection
+    {
+        public List<AgentResponse> Responses { get; } = [];
+
+        public string Client => "test";
+
+        public bool CanStream => false;
+
+        public void Send(AgentResponse response) => Responses.Add(response);
+
+        public void SendEvent(AgentEvent agentEvent)
+        {
+        }
+    }
 
     [TestMethod]
     public void TabListReturnsScannedTabs()

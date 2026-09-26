@@ -118,6 +118,44 @@ internal abstract class RenderNode : IDisposable
         return point;
     }
 
+    /// <summary>A point in this node's own coordinates, in the root's: the inverse of <see cref="ToLocal"/>.</summary>
+    public Vector2 ToRoot(Vector2 localPoint)
+    {
+        var point = LocalTransform is { } transform ? Vector2.Transform(localPoint, transform) : localPoint;
+        point += Position;
+        return Parent is null ? point : Parent.ToRoot(point + Parent.ChildOffset);
+    }
+
+    /// <summary>The box around this node in the root's coordinates, after transforms, as of the last layout.</summary>
+    public System.Drawing.RectangleF RootBounds()
+    {
+        var size = Size;
+        if (LocalTransform is null && !HasTransformedAncestor())
+        {
+            var origin = AbsolutePosition;
+            return new System.Drawing.RectangleF(origin.X, origin.Y, size.X, size.Y);
+        }
+        var a = ToRoot(Vector2.Zero);
+        var b = ToRoot(new Vector2(size.X, 0));
+        var c = ToRoot(new Vector2(0, size.Y));
+        var d = ToRoot(size);
+        var min = Vector2.Min(Vector2.Min(a, b), Vector2.Min(c, d));
+        var max = Vector2.Max(Vector2.Max(a, b), Vector2.Max(c, d));
+        return new System.Drawing.RectangleF(min.X, min.Y, max.X - min.X, max.Y - min.Y);
+    }
+
+    private bool HasTransformedAncestor()
+    {
+        for (var node = Parent; node is not null; node = node.Parent)
+        {
+            if (node.LocalTransform is not null)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// <summary>
     /// The nodes under a point (in the parent's coordinates), topmost first, ending at the root
     /// of this subtree: later siblings are above earlier ones, children above their parent.

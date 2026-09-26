@@ -32,4 +32,7 @@ public sealed record Semantics
 
     /// <summary>For headings: the level, 1 to 6.</summary>
     public int HeadingLevel { get; init; }
+
+    /// <summary>A name for tests to find it by; takes precedence over the element's <see cref="Element.TestId"/>.</summary>
+    public string? TestId { get; init; }
 }

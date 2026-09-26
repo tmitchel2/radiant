@@ -25,7 +25,7 @@ public sealed record Skeleton : Component
         var time = context.UseState(0.0);
         var root = context.Root;
         var reduced = theme.Theme.Motion.Reduced;
-        context.UseEffect(() => reduced ? null : root.AddTicker(seconds => time.Update(t => t + seconds)).Dispose, reduced);
+        context.UseEffect(() => reduced ? null : root.AddTicker(seconds => time.Update(t => t + seconds), TickerKind.Continuous, "skeleton pulse").Dispose, reduced);
         var pulse = reduced ? 1f : 0.7f + 0.3f * MathF.Cos((float)(time.Value * Math.Tau / 1.6));
         var surface = context.UseSurface();
         return new Box
