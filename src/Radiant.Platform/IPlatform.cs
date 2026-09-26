@@ -33,4 +33,7 @@ public interface IPlatform : IDisposable
 
     /// <summary>The window's frame: drawing the app's own title bar, and moving the window from it.</summary>
     IWindowChrome Chrome { get; }
+
+    /// <summary>The platform's own menus.</summary>
+    IMenuService Menus { get; }
 }

@@ -110,6 +110,17 @@ hand, run `PlatformCheck`: its title bar is the app's own. Drag it by its empty 
 move the window, double-click it to zoom, and press its ⓘ button: the status line changes and the
 window doesn't move.
 
+## Menus
+
+`IPlatform.Menus.ShowContextMenu` shows the platform's own context menu at a point and waits for a
+choice. On macOS it's an `NSMenu` popped up in the content view: each item's action goes to a small
+target object that notes its tag, and AppKit's menu loop returns when the user chooses or
+dismisses it. `ContextMenu` uses it wherever it's supported and draws its own menu otherwise.
+
+No test can drive AppKit's menu loop, so check it by hand: run `PlatformCheck` and right-click the
+box under "Context menu". The system's menu appears at the pointer, Paste is greyed out, a
+separator sits before Delete, and choosing Cut shows "Chose Cut." in the status line.
+
 ## Dropped files
 
 Files dropped on the window (from the Finder or another app) arrive through GLFW's drop callback

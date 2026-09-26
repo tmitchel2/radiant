@@ -182,9 +182,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   but every overlay has to know about them. Layout-transparent host elements (a box that passes
   its children straight to its parent's flex layout, like CSS `display: contents`) would remove
   the problem.
-- **Context menus are drawn in the window.** They're Radiant menus at the pointer, not the
-  platform's (NSMenu on macOS), so they can't extend past the window and don't get system
-  services items. A platform menu service (P7's `IMenuService`) would give native ones.
+- **Platform menus are plain.** A native context menu shows titles, separators, enabled and
+  checked states, but not the drawn menu's icons or shortcuts (`keyEquivalent` and its modifier
+  mask would give shortcuts), and there are no submenus. The menu bar (`MenuBar`) is still drawn
+  in the window; the macOS global menu bar comes from `Radiant.Host`'s `MacMainMenu`, which the
+  UI doesn't feed yet.
 - **Toolbars aren't a single Tab stop.** Arrows move within a toolbar, but Tab still visits every
   control in it; a roving tab index (only the last-focused control tabbable) needs `TabIndex` on
   `IconButton` and the other controls, which only `PressableSurface` and `ToggleButton` have.

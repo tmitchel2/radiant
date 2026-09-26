@@ -86,6 +86,14 @@ internal static unsafe class ObjC
     public static nint Send(nint receiver, string selector, nint a, nint b) =>
         ((delegate* unmanaged<nint, nint, nint, nint, nint>)MsgSend)(receiver, Sel(selector), a, b);
 
+    /// <summary><c>[receiver selector:a with:b with:c]</c> returning an object or integer.</summary>
+    public static nint Send(nint receiver, string selector, nint a, nint b, nint c) =>
+        ((delegate* unmanaged<nint, nint, nint, nint, nint, nint>)MsgSend)(receiver, Sel(selector), a, b, c);
+
+    /// <summary><c>[receiver selector:a at:point in:b]</c> returning a <c>BOOL</c>, as <c>popUpMenuPositioningItem:atLocation:inView:</c>.</summary>
+    public static bool GetBool(nint receiver, string selector, nint a, double x, double y, nint b) =>
+        ((delegate* unmanaged<nint, nint, nint, double, double, nint, byte>)MsgSend)(receiver, Sel(selector), a, x, y, b) != 0;
+
     /// <summary><c>[receiver selector:a with:b with:c with:d]</c> returning an object or integer.</summary>
     public static nint Send(nint receiver, string selector, nint a, nint b, nint c, nint d) =>
         ((delegate* unmanaged<nint, nint, nint, nint, nint, nint, nint>)MsgSend)(receiver, Sel(selector), a, b, c, d);

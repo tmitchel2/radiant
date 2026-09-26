@@ -293,6 +293,8 @@ public class PlatformTests
 
         public IWindowChrome Chrome => _inner.Chrome;
 
+        public IMenuService Menus => _inner.Menus;
+
         public void Dispose() => Disposals++;
     }
 }

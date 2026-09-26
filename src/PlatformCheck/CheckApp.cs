@@ -56,6 +56,22 @@ internal sealed record CheckApp(ImeFieldModel Field) : Component
         Element?[] Body() =>
         [
             new SurfaceText($"Radiant platform check ({platform.Name})") { TextType = TextType.HeadlineSmall },
+            Section("Context menu",
+                "Right-click (or Control-click) the box: the menu should be the system's, with a separator before "
+                + "Delete and Paste greyed out. Choosing an item shows it in the status line.",
+                new ContextMenu(new Surface
+                {
+                    SurfaceColor = SurfaceName.SurfaceContainerHighest,
+                    CornerShape = CornerShapeRole.Medium,
+                    Layout = new LayoutStyle { Height = 80, AlignItems = Align.Center, JustifyContent = Justify.Center },
+                    Children = [new SurfaceText("Right-click here") { Legibility = Legibility.Medium }],
+                },
+                [
+                    new MenuItem("Cut", () => status.Set("Chose Cut.")),
+                    new MenuItem("Copy", () => status.Set("Chose Copy.")),
+                    new MenuItem("Paste") { Disabled = true },
+                    new MenuItem("Delete", () => status.Set("Chose Delete.")) { DividerBefore = true },
+                ])),
             Section("Input method",
                 "Switch to a Japanese (Romaji) or Chinese (Pinyin) input source, type in the field, and check the "
                 + "candidate window opens under the underlined text. Space converts, Enter commits, Escape cancels.",
