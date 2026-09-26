@@ -14,7 +14,7 @@ namespace Radiant.Tests.Graphics2D;
 /// </summary>
 internal sealed unsafe class GpuFrame : IDisposable
 {
-    /// <summary>Test category for tests that need a GPU; CI without one can filter them out.</summary>
+    /// <summary>Test category for tests that need a GPU; a machine without one can filter them out.</summary>
     public const string Category = "Gpu";
 
     private readonly OffscreenReadback _target;
