@@ -12,9 +12,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   worked out after layout and applied to the children, then the root lays out again (up to four
   passes, for nested grids). A custom layout node, or Yoga gaining grid, would do it in one. There
   are no column spans, explicit rows or per-cell alignment yet.
-- **Effects ran in an unstable order.** `FlushEffects` sorted children before parents with
-  `Array.Sort`, which isn't stable, so a component's effects could run out of declaration order.
-  It's a stable sort now; nothing had noticed until commands registered in effects.
 - **Physical positions need converting in right-to-left layouts.** `Edges` are logical only, so a
   box placed at a pointer position or measured bounds has to go through `Edges.Physical`, which
   needs the direction passed in. `Left`/`Right` insets in `LayoutStyle` (Yoga has them) would let a
@@ -33,20 +30,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   merged over the target's value by the forwarders instead of replacing it. It's implicit; an
   attribute on the facet property (`[Layered]`) would say so where it's declared. Components that
   don't forward `IHasLayout` still merge by hand (`SurfaceIcon`, `TextField`).
-- **A jump fires `Scroll`.** `ScrollController.ScrollTo(…, animated: false)` now raises `Scroll`,
-  which it didn't, so listeners see jumps. Momentum and bounce raise it from `Update` as before.
-
 - **Image textures are never freed.** `ImageSource` keeps one texture per renderer in a weak table,
   but nothing disposes the GPU texture when the source goes. Pictures are also decoded
   synchronously on the UI thread, and there are no mipmaps, so heavy downscaling aliases. Add
   async decoding, an image cache with release, and mipmaps.
 - **Tests reach into internals.** Component tests read the render tree through
-  `InternalsVisibleTo`. The planned `Radiant.Testing` should offer a public way to find elements
-  and read their resolved props and bounds, like Testing Library's queries.
-
-- **Callbacks make props unequal.** Records compare delegates by reference, so a component
-  given a fresh lambda each build always rebuilds. The P5 generator should emit props equality
-  that ignores delegates, and refresh callbacks in place.
+  `InternalsVisibleTo`. `Radiant.Testing` renders and compares images, but has no public way to
+  find elements and read their resolved props and bounds, like Testing Library's queries.
 - **Children lists compare by reference.** A host element whose parent rebuilds always updates,
   even when its children are equal element for element. A structural list comparison, or a
   generated one, would let unchanged subtrees skip.
@@ -151,36 +141,16 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Components (`Radiant.Components`)
 
-- **No text field yet.** `PlatformCheck`'s input field is a sketch of what a `TextField` needs
-  (a text input client, marked text underlined, the caret at the composition's start). In it, a
-  `TextBlock` sized to its text gave trailing spaces no width, so a composition after "a " sat
-  against the "a"; the real field needs the caret from text layout, spaces included.
-
 - **Goldens don't cover everything.** Components, the templates' blocks (two widths, light, dark
   and compact) and a few scheme variants have goldens. Page-sized templates (the gallery's pages),
   the drawer, the navigation bar, pickers opened as popovers and animation mid-way don't, and
   there's no third width. About 2.8 MB of PNGs so far.
-- **The last golden batch found five more bugs.** A snackbar's action was drawn in its own
-  background colour (content in the surface's own family is its "on" colour, and toggling to the
-  container gave on-container); shortcut labels named punctuation and arrows by their key codes
-  ("⌘Equal"); the colour picker's gamut edge was stepped; success and warning went grey in the
-  monochrome and neutral schemes; and compact density left text fields and check boxes full
-  size, because fixed 56 px icon boxes and a fixed 40 px ring held them there. Templates also
-  used selected filter chips (with a tick) as status labels; they use the new `Tag` now.
 - **A missing golden passes.** `Golden.AssertMatches` writes a golden that isn't there and passes,
   so a forgotten `git add` goes unnoticed; a switch that fails instead (for a pre-commit run)
   would catch it.
 - **Two GPU test helpers.** `Radiant.Tests`' `GpuFrame` (linked into the UI tests) predates
   `Radiant.Testing.GpuCanvas` and does the same with BGRA bytes; the renderer's tests could move
   to the canvas, and `GoldenImageHelper` to `Golden`.
-- **Focus rings showed without the keyboard.** A menu or dialog focuses its first item as it
-  opens, and that always showed the ring, even when opened with a click. `UIRoot.UsingKeyboard`
-  now remembers whether the last input was a key or a press, and `FocusFirst` shows the ring only
-  after a key unless told otherwise (a browser's `:focus-visible` rule). Items that fill a menu,
-  list or row draw their ring inside (`PressableSurface.InsetFocusRing`), where it isn't clipped.
-- **Keyboard focus had no ring.** Found by the state goldens: a focused `PressableSurface` showed
-  only the 10% state layer, the same as pressed. It now draws Material's focus indicator (3 wide,
-  2 outside, in the secondary colour); clipped surfaces (`ClipContent`) clip it.
 - **Absolutely placed boxes are held to their container's width.** Yoga gives an absolute child
   with one horizontal inset its container's width as the most it can be, and a non-wrapping
   `TextBlock` then overflows the box it's in. `Badge` measured "99+" and sized its pill to fit;
@@ -192,16 +162,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   for stepped sliders.
 - **Tabs are primary tabs only.** The indicator spans the whole tab rather than its content,
   secondary tabs are missing, and many tabs don't scroll.
-- **Menus show focus even when opened by pointer.** A menu opened with the pointer focuses its first
-  item with the keyboard focus ring; Material shows it only when opened from the keyboard.
 - **Menus are basic.** No submenus, no type-to-select, no check or radio items.
 - **Tooltips add a box.** `Tooltip` wraps its child in a `Box`, which can change the layout of a
   child that relied on its parent's flex settings. Nothing announces the tip to assistive
   technology yet.
 - **Dialogs have one form.** There's no full-screen variant, and no scrolling body for long
   content.
-- **Only 272 icons are embedded.** They're curated in `tools/icons/icons.txt`, to keep the font
-  at 408 KB rather than 15 MB. An app wanting icons outside the list must register the full font
+- **Only 285 icons are embedded.** They're curated in `tools/icons/icons.txt`, to keep the font
+  at 417 KB rather than 15 MB. An app wanting icons outside the list must register the full font
   itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
@@ -212,8 +180,8 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   which is fine at 100k rows but wants a range representation beyond that.
 - **The colour picker's images are cached for good.** A plane per tone step (51) and a tone
   strip per 3° of hue and 3 of chroma are made once and kept, because image textures aren't
-  freed yet; the gamut's edge is stepped at that resolution. There's no alpha, no eyedropper, no
-  saved swatches, and no contrast readout against a chosen background.
+  freed yet. There's no alpha, no eyedropper, no saved swatches, and no contrast readout against
+  a chosen background.
 - **Dates are single and Gregorian.** No range picking (start and end in one calendar), no
   time picker, no month or year view to jump far (only a month at a time), and only the
   Gregorian calendar (`DateOnly`), though names and the first weekday follow the culture.
@@ -243,11 +211,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   but every overlay has to know about them. Layout-transparent host elements (a box that passes
   its children straight to its parent's flex layout, like CSS `display: contents`) would remove
   the problem.
-- **Platform menus are plain.** A native context menu shows titles, separators, enabled and
-  checked states, but not the drawn menu's icons or shortcuts (`keyEquivalent` and its modifier
-  mask would give shortcuts), and there are no submenus, on context menus or the menu bar.
-  `Radiant.Host`'s `MacMainMenu` still builds its own File menu; a hosted app using
-  `CommandMenuBar` would replace it.
+- **Platform menus are plain.** Native menus show titles, separators, enabled and checked states,
+  and the menu bar gives shortcuts as key equivalents, but there are no icons, no submenus, and a
+  context menu shows no shortcuts. `Radiant.Host`'s `MacMainMenu` still builds its own File menu;
+  a hosted app using `CommandMenuBar` would replace it.
 - **Docked panels start again when they move.** A panel dragged to another area is mounted anew
   there, losing its state (scroll position, a text field's contents), and so is everything when
   an area appears or empties (the splitters around the centre are nested differently). Moving an
@@ -293,15 +260,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Document tabs are basic.** No drag to reorder or to another group, the chosen tab isn't
   scrolled into view, the vertical wheel doesn't scroll the strip, there's no overflow menu, and
   the close button isn't a tab stop (closing from the keyboard wants a command, Ctrl+W).
-- **The slider's track is inset.** The track now sits 10 px (the handle's radius) inside the
-  slider, so the handle stays inside at either end; code measuring a slider by its bounds must
-  allow for it.
-- **Icon buttons in fields were named by their icon.** `TextField`'s trailing button used the
-  icon's name ("visibility") as its label; `TrailingIconLabel` now names it, but it falls back to
-  the icon name when unset. Require a label when there's an `OnTrailingIconPress`, or analyse for it.
+- **Icon buttons in fields can be named by their icon.** `TextField`'s trailing button takes its
+  name from `TrailingIconLabel`, but falls back to the icon's name ("visibility") when that's
+  unset. Require a label when there's an `OnTrailingIconPress`, or analyse for it.
 - **Button heights are fixed.** They are 40 px plus density; Material 3's newer button sizes
   (XS–XL) aren't modelled.
-
 - **`Anchored` checks its anchor every frame.** It runs a ticker while shown, which keeps frames
   coming. Layout-change notifications from the render tree would avoid the polling.
 - **Unplaced content can still be clicked.** Before its first placement, `Anchored` content is
@@ -311,16 +274,12 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Templates (`Radiant.Templates`)
 
-- **Docks are fixed.** `WorkspaceLayout`'s parts can't be dragged to other docks, the panel can't
-  be maximised or closed from its header, editors can't be split into groups, and splitter sizes
-  aren't remembered between runs.
-- **Icons for source control and mail are missing.** The embedded subset lacks `account_tree`,
-  `call_split`, `reply` and `drafts`, so the gallery's workspace and mail use stand-ins. Add them
-  to `tools/icons/icons.txt` and re-subset.
+- **`WorkspaceLayout` doesn't dock.** Its parts are fixed in place: they can't be dragged to other
+  docks, the panel can't be maximised or closed from its header, and editors can't be split into
+  groups. `DockPanel` does the docking; the template could be rebuilt on it.
 - **The gallery frames shells by hand.** A shell previewed in a frame is inset by the outline's
   width, but its corners still cross the frame's rounded outline; clipping children to the shape
   inside the border would fix it generally.
-
 - **Forms take text fields only.** `Form` fields are text with string checks; check boxes, selects,
   dates and numbers keep their own state beside the form, and there are no checks across fields
   (a password confirmation), no checks that wait on a server, and no summary of errors.
@@ -366,18 +325,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   still cut the 2 MB a frame a transition allocates. Under the JIT, the first seconds of
   transitions after launch run unoptimised code and reach 5–8 ms; ReadyToRun (or AOT) removes
   that warm-up.
-- **The bench measured the collector.** `--bench` read each frame back into a new 3 MB array and
-  resolved the colour scheme every frame for the clear colour, which together caused a gen2
-  collection every few frames and swamped the UI's own numbers. It reuses one buffer
-  (`OffscreenReadback.RenderAndRead` into a given array) and resolves once now, and reports
-  update percentiles and allocation per frame. A UI at rest allocates about 140 KB a frame, most
-  of it inside Yoga.Net's layout (`StyleLength` objects) for the one animating progress bar.
 - **Schemes use the Phone platform.** Material's phone and watch are the only platforms upstream;
   check whether a desktop tuning is wanted.
 - **The type scale is sized for phones.** Material 3's body text is 14 px, larger than typical
   desktop UI (13 px on macOS). Consider a desktop `TypeScale`, or density scaling type.
-- **Monochrome custom families are grey.** Custom families take the variant's primary palette, so
-  success, warning and info are grey under Monochrome.
 - **Some role mappings are judgement calls.** Containers use `SurfaceContainer`, and `Inverse`'s
   container is `inversePrimary` with `inverseSurface` content. Revisit when components use them.
 
@@ -417,8 +368,8 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   it in full when another algorithm needs more.
 - **One caret case is untested.** Carets inside a right-to-left ligature: no test font merges
   right-to-left clusters.
-- **Two HarfBuzzSharp gaps.** It lacks `Font.MakeImmutable` (P/Invoked), and `Blob.FromStream`
-  keeps managed memory, which a compacting GC moved (fixed: native copy).
+- **HarfBuzzSharp lacks `Font.MakeImmutable`**, so it's P/Invoked. (Its `Blob.FromStream` kept
+  managed memory a compacting collector could move; fonts are copied to native memory instead.)
 
 ## Animation
 
@@ -441,7 +392,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   larger em.
 - **The MSDF atlas-trim test uses small pages.** It sets internal 128-texel pages, because filling
   real pages under coverage instrumentation took minutes.
-
 - **Slug is costly and soft when small.** It isn't pixel-snapped, so it's a little softer than
   coverage at small sizes. It also costs 3–4× coverage on the GPU: ~3.7 ms for a full 1080p
   screen of 14 px text on an M4 Pro, against ~0.8 ms.
@@ -456,7 +406,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   public domain from 2026-03-17, per Lengyel's post
   (https://terathon.com/blog/decade-slug.html), but Google Patents still shows the patent as
   active. Recheck later.
-
 - **The coverage atlas empties itself.** It clears in full past four pages rather than evicting the
   least-recently-used glyphs. Each glyph is also uploaded on its own; batch the uploads per frame.
 - **Text gamma is a heuristic tuned by eye.** It mixes by the text's luminance. Tune it against

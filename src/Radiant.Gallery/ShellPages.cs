@@ -215,7 +215,7 @@ internal static class ShellPages
             };
 
             return new WorkspaceLayout(
-                [new NavItem("folder", "Explorer"), new NavItem("search", "Search"), new NavItem("bug_report", "Run and debug"), new NavItem("extension", "Extensions")],
+                [new NavItem("folder", "Explorer"), new NavItem("search", "Search"), new NavItem("account_tree", "Source control"), new NavItem("bug_report", "Run and debug"), new NavItem("extension", "Extensions")],
                 activity.Value,
                 i => activity.Set(activity.Value == i ? -1 : i),
                 editor)
@@ -289,7 +289,7 @@ internal static class ShellPages
                     new Box
                     {
                         Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 8 },
-                        Children = [new SurfaceButton("Reply", ButtonVariant.Tonal) { Icon = "send" }, new SurfaceButton("Forward", ButtonVariant.Outlined)],
+                        Children = [new SurfaceButton("Reply", ButtonVariant.Tonal) { Icon = "reply" }, new SurfaceButton("Forward", ButtonVariant.Outlined)],
                     },
                 ],
             })

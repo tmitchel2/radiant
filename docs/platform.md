@@ -37,6 +37,9 @@ the app runs on a `HeadlessPlatform`.
 | `IAppearance` | `IsDark`, `AccentColor` (sRGB ARGB), `IncreaseContrast`, `ReduceMotion`, `Changed` | `NSApp.effectiveAppearance`, `NSColor.controlAccentColor`, `NSWorkspace` accessibility settings |
 | `IFileDialogs` | `OpenAsync`, `SaveAsync` | `NSOpenPanel` and `NSSavePanel`, as sheets |
 | `ITextInput` | `Focus(ITextInputClient?)`, `IsComposing`, `InvalidateCaret` | `NSTextInputClient` on GLFW's content view |
+| `IWindowChrome` | `ExtendIntoTitleBar`, `TitleBarHeight`, `LeadingInset`, `TrailingInset`, `BeginDrag`, `TitleBarDoubleClick` | a full-size content view with a transparent title bar |
+| `IMenuService` | `ShowContextMenu`, `HasMenuBar`, `SetMenuBar` | `NSMenu` pop-ups and the application's main menu |
+| `IAccessibility` | `Attach(IAccessibilityProvider)`, `Changed` | the content view as an accessibility container of `NSAccessibilityElement`s |
 
 A platform belongs to the UI thread (on macOS, the main thread): call it from there, and its
 events and task completions arrive there. Components reach it with `context.UsePlatform()`.
@@ -333,11 +336,43 @@ The window also checks the other services:
 - **Clipboard:** copy and paste the field's text.
 - **Dialogs:** try Open… (multiple selection, images and text) and Save…, as sheets.
 
+## Windows and Linux
+
+Neither has an implementation yet, so apps there run on `HeadlessPlatform`: rendering, layout,
+input through GLFW and dropped files work, while clipboard, cursors beyond GLFW's, input methods,
+dialogs, appearance, chrome, native menus and accessibility don't. Each would be a project beside
+`Radiant.Platform.MacOS`, reached the same way: `UIAppOptions.Platform` gets the window's native
+handle (GLFW's `glfwGetWin32Window`, `glfwGetX11Window` or `glfwGetWaylandWindow`) and returns the
+platform. They can't be built or checked from this Mac, so this is the plan rather than the work.
+
+| Service | Windows (`Radiant.Platform.Windows`) | Linux (`Radiant.Platform.Linux`) |
+|---|---|---|
+| Clipboard | Win32 `OpenClipboard` with `CF_UNICODETEXT` | GLFW's clipboard string for text (X11 selections and Wayland's data device); richer formats need the toolkit-free protocols directly |
+| Cursors | `LoadCursor` system cursors, set on `WM_SETCURSOR` | GLFW's standard cursors, which cover every `CursorShape` Radiant uses; themed names through `wl_cursor` or Xcursor for the rest |
+| Appearance | `AppsUseLightTheme` in the registry and `UISettings.GetColorValue(Accent)`, re-read on `WM_SETTINGCHANGE`; high contrast from `SystemParametersInfo(SPI_GETHIGHCONTRAST)`; animations from `SPI_GETCLIENTAREAANIMATION` | the XDG desktop portal's `org.freedesktop.appearance` settings (`color-scheme`, `accent-color`, `contrast`) over D-Bus, with `SettingChanged` for changes; reduced motion from GNOME's `enable-animations` |
+| File dialogs | `IFileOpenDialog` and `IFileSaveDialog` (COM, through source-generated `ComWrappers` so it stays AOT-safe) | the portal's `FileChooser` (`OpenFile`, `SaveFile`), which works in sandboxes and under any desktop |
+| Text input | the Text Services Framework (`ITfContextOwner` and friends) for composition in place, or IMM32 (`WM_IME_COMPOSITION`, `ImmSetCompositionWindow`) as a simpler first step, by subclassing the window procedure | Wayland's `text-input-v3`, and IBus or Fcitx over D-Bus on X11; the caret rectangle goes to `set_cursor_rectangle` |
+| Window chrome | `DwmExtendFrameIntoClientArea`, `WM_NCCALCSIZE` to take the title bar, and `WM_NCHITTEST` answering `HTCAPTION` over the bar and the caption buttons' areas (so snap layouts still show on hover); `TrailingInset` is the caption buttons' width | client-side decorations, drawn by `TitleBar`, with `xdg_toplevel.move` (Wayland) or `_NET_WM_MOVERESIZE` (X11) for dragging; server-side decorations are kept where the compositor insists (`xdg-decoration`) |
+| Menus | `TrackPopupMenuEx` for context menus; no global menu bar, so `HasMenuBar` is false and `CommandMenuBar` draws one in the window | no global menu bar either (drawn in the window); context menus are drawn too |
+| Accessibility | UI Automation: a provider (`IRawElementProviderSimple`, `IRawElementProviderFragment`) answering `WM_GETOBJECT`, mapping semantics to control types and patterns (Invoke, Value, Toggle, Selection) | AT-SPI over D-Bus: register the application and expose the tree as `Accessible` objects with `Action`, `Text` and `Value` interfaces |
+
+Beyond the services:
+
+- **Fonts:** system fallback for scripts Inter lacks through DirectWrite's `IDWriteFontFallback`
+  and fontconfig.
+- **GPU:** wgpu picks Direct3D 12 or Vulkan; nothing in the renderer is Metal-specific, but the
+  sRGB swapchain format and the goldens need checking on each (goldens are per GPU).
+- **Checking:** `PlatformCheck --selftest` holds checks that call AppKit directly; each platform
+  wants its own equivalents (feed a composition through the window procedure or `text-input-v3`,
+  read the UIA or AT-SPI tree back, extend and restore the chrome), and the manual input method
+  steps need a Windows and a Linux column.
+- **Order:** clipboard, cursors and appearance first (small, and every app notices them), then
+  dialogs and chrome, then text input and accessibility, the two largest.
+
 ## Not yet
 
-- **Other platforms:** Windows and Linux implementations; they run headless until then.
 - **Rich clipboard formats:** images, files and styled text.
 - **Platform input:** key repeat and precise trackpad scrolling still come through Silk and GLFW.
 
-See [improvements.md](improvements.md#platform-radiantplatform) for what is done the second-best
+See [improvements.md](improvements.md) (its UI core section) for what is done the second-best
 way.
