@@ -35,7 +35,7 @@ public sealed class UIRoot : IDisposable
     private readonly List<PortalRenderNode> _portals = [];
     private readonly List<Func<double, bool>> _tickers = [];
     // Kept most specific last: by depth, then in the order added.
-    private readonly List<(KeyChord Chord, Action Run, int Depth)> _shortcuts = [];
+    private readonly List<(KeyChord Chord, Func<bool> Run, int Depth)> _shortcuts = [];
     private readonly List<BoxRenderNode> _focusTraps = [];
     private readonly List<Action<PointerDownObservation>> _pointerDownObservers = [];
     private bool _portalsChanged;
@@ -509,6 +509,22 @@ public sealed class UIRoot : IDisposable
         return new Ticker(() => _tickers.Remove(entry));
     }
 
+    /// <summary>Raised after focus moves (commands that follow focus listen).</summary>
+    internal event Action? FocusChanged;
+
+    /// <summary>Whether focus is on <paramref name="node"/>'s content or inside it.</summary>
+    internal bool FocusWithin(ElementNode node)
+    {
+        for (var at = _focused?.Owner; at is not null; at = at.Parent)
+        {
+            if (ReferenceEquals(at, node))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// <summary>The commands registered in this UI.</summary>
     public CommandRegistry Commands => _commands ??= new CommandRegistry(this);
 
@@ -523,7 +539,20 @@ public sealed class UIRoot : IDisposable
     public IDisposable AddShortcut(KeyChord chord, Action run, int depth = 0)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var entry = (chord, run, depth);
+        return AddShortcut(chord, () =>
+        {
+            run();
+            return true;
+        }, depth);
+    }
+
+    /// <summary>
+    /// A shortcut that may decline: <paramref name="tryRun"/> returns false to let the chord go on
+    /// to the next shortcut (a command that isn't active where focus is).
+    /// </summary>
+    internal IDisposable AddShortcut(KeyChord chord, Func<bool> tryRun, int depth)
+    {
+        var entry = (chord, tryRun, depth);
         var at = _shortcuts.FindLastIndex(s => s.Depth <= depth) + 1;
         _shortcuts.Insert(at, entry);
         return new Ticker(() => _shortcuts.Remove(entry));
@@ -652,9 +681,8 @@ public sealed class UIRoot : IDisposable
         Dispatch(FocusPath(), args, box => box.OnKeyDownCapture, box => box.OnKeyDown);
         for (var i = _shortcuts.Count - 1; i >= 0 && !args.Handled; i--)
         {
-            if (_shortcuts[i].Chord.Matches(key, modifiers))
+            if (_shortcuts[i].Chord.Matches(key, modifiers) && _shortcuts[i].Run())
             {
-                _shortcuts[i].Run();
                 args.Handled = true;
             }
         }
@@ -916,6 +944,7 @@ public sealed class UIRoot : IDisposable
         {
             focus(new FocusEventArgs(visible));
         }
+        FocusChanged?.Invoke();
     }
 
     private int CountClick(Vector2 position, PointerButton button)

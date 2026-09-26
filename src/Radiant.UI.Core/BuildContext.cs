@@ -58,7 +58,7 @@ public sealed class BuildContext
     /// <summary>
     /// Runs <paramref name="run"/> when <paramref name="chord"/> is pressed anywhere in the UI
     /// that doesn't handle it itself, while this component is mounted
-    /// (<see cref="UIRoot.AddShortcut"/>): a component deeper in the tree takes the chord from
+    /// (<see cref="UIRoot.AddShortcut(KeyChord, System.Action, int)"/>): a component deeper in the tree takes the chord from
     /// one above it. The latest <paramref name="run"/> is used each time.
     /// </summary>
     public void UseShortcut(KeyChord chord, Action run)

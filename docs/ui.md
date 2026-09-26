@@ -178,6 +178,14 @@ context.UseCommand(new Command("save", "Save")
   component's in the order it registered them.
 - **Overriding:** where two share an id, the one deeper in the tree is the one listed and run: an
   editor's Copy over the app's, for as long as the editor is mounted.
+- **Following focus:** a command with `FocusScoped` applies only while focus is inside the
+  component that registered it, and gives way to another with its id (or to none) when focus
+  leaves. Its shortcut then lets the key go on to whatever else answers to it, as a disabled
+  command's does.
+- **The Edit menu:** `context.UseStandardEditMenu()` puts Undo, Redo, Cut, Copy, Paste and Select
+  All on the menu bar (`EditCommands` has their ids), greyed until something can take them. Every
+  `TextInput` registers the same ids, focus-scoped, so while a field has focus the menu acts on it
+  (`OffersEditCommands = false` opts a field out: the command palette's own search does).
 - **Running by id:** `UIRoot.Commands.Execute("save")` runs an enabled command.
 
 ## Direction

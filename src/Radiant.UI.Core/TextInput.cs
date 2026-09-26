@@ -57,6 +57,13 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
     /// <summary>Size and placement.</summary>
     public LayoutStyle Layout { get; init; }
 
+    /// <summary>
+    /// Whether the Edit menu's commands act on the input while it has focus (the default). A field
+    /// that's part of a command UI (a palette's search) turns it off, so it doesn't offer itself
+    /// in the list it's searching; its keys still cut, copy and paste.
+    /// </summary>
+    public bool OffersEditCommands { get; init; } = true;
+
     /// <summary>What assistive technology calls the input.</summary>
     public string? Label { get; init; }
 
@@ -141,6 +148,53 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
 
         bool Editable() => !latest.Value.ReadOnly && !latest.Value.Disabled;
 
+        // The edits the keys and the Edit commands share.
+        void SelectAll() => Change(TextEditing.SelectAll(Current()));
+        void Copy()
+        {
+            if (Current() is { Selection.IsCollapsed: false } state)
+            {
+                clipboard.SetText(state.SelectedText);
+            }
+        }
+        void Cut()
+        {
+            if (Current() is { Selection.IsCollapsed: false } state && Editable())
+            {
+                clipboard.SetText(state.SelectedText);
+                Change(TextEditing.Insert(state, ""));
+            }
+        }
+        void Paste()
+        {
+            if (Editable() && clipboard.GetText() is { Length: > 0 } pasted)
+            {
+                Change(TextEditing.Insert(Current(), latest.Value.Multiline ? pasted : pasted.ReplaceLineEndings(" ")));
+            }
+        }
+        void Undo(bool redo)
+        {
+            if (Editable() && (redo ? history.Value.Redo(Current()) : history.Value.Undo(Current())) is { } restored)
+            {
+                Emit(restored);
+            }
+        }
+
+        // While it has focus, the Edit menu's commands act on it.
+        var now = Current();
+        var editable = !ReadOnly && !Disabled;
+        var selected = !now.Selection.IsCollapsed;
+        // Without them, they're still registered (hooks can't be skipped) but never enabled, so
+        // lists leave them out and their keys go on to the input's own handling.
+        var offers = OffersEditCommands;
+        Command Edit(string id, Action run, bool enabled) => EditCommands.Create(id, run, offers && enabled) with { FocusScoped = true };
+        context.UseCommand(Edit(EditCommands.Undo, () => Undo(redo: false), editable && history.Value.CanUndo));
+        context.UseCommand(Edit(EditCommands.Redo, () => Undo(redo: true), editable && history.Value.CanRedo));
+        context.UseCommand(Edit(EditCommands.Cut, Cut, editable && selected));
+        context.UseCommand(Edit(EditCommands.Copy, Copy, selected));
+        context.UseCommand(Edit(EditCommands.Paste, Paste, editable));
+        context.UseCommand(Edit(EditCommands.SelectAll, SelectAll, now.Text.Length > 0));
+
         void OnKey(KeyEventArgs e)
         {
             var props = latest.Value;
@@ -204,32 +258,19 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                     }
                     break;
                 case KeyCode.A when command:
-                    Change(TextEditing.SelectAll(state));
+                    SelectAll();
                     break;
                 case KeyCode.C when command:
-                    if (!state.Selection.IsCollapsed)
-                    {
-                        clipboard.SetText(state.SelectedText);
-                    }
+                    Copy();
                     break;
                 case KeyCode.X when command:
-                    if (!state.Selection.IsCollapsed && Editable())
-                    {
-                        clipboard.SetText(state.SelectedText);
-                        Change(TextEditing.Insert(state, ""));
-                    }
+                    Cut();
                     break;
                 case KeyCode.V when command:
-                    if (Editable() && clipboard.GetText() is { Length: > 0 } pasted)
-                    {
-                        Change(TextEditing.Insert(state, props.Multiline ? pasted : pasted.ReplaceLineEndings(" ")));
-                    }
+                    Paste();
                     break;
                 case KeyCode.Z when command && Editable():
-                    if ((shift ? history.Value.Redo(state) : history.Value.Undo(state)) is { } restored)
-                    {
-                        Emit(restored);
-                    }
+                    Undo(redo: shift);
                     break;
                 default:
                     // Keys that type characters arrive as text input; others aren't ours.
@@ -404,6 +445,10 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         private readonly List<TextEditState> _undo = [];
         private readonly List<TextEditState> _redo = [];
         private bool _coalescing;
+
+        public bool CanUndo => _undo.Count > 0;
+
+        public bool CanRedo => _redo.Count > 0;
 
         public void Record(TextEditState before, bool coalesce)
         {

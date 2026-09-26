@@ -55,6 +55,8 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu, StartWithSheet = StartWithSheet },
         };
         // The app's commands: on the menu bar (macOS's own), in the palette, and on their shortcuts.
+        // The Edit menu acts on whichever text field has focus.
+        context.UseStandardEditMenu();
         var section = (string?)null;
         for (var i = 0; i < items.Length; i++)
         {

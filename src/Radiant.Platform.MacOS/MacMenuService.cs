@@ -76,7 +76,9 @@ internal sealed unsafe class MacMenuService(nint view) : IMenuService
                     ObjC.Send(menu, "addItem:", ObjC.Send(ObjC.Class("NSMenuItem"), "separatorItem"));
                     continue;
                 }
-                var (key, mask) = KeyEquivalent(entry.Shortcut);
+                // A disabled item keeps no key equivalent: AppKit would still take the key for it,
+                // and something in the window (a table's Select All) may answer to it.
+                var (key, mask) = entry.Enabled ? KeyEquivalent(entry.Shortcut) : ("", 0);
                 var item = AddItem(menu, entry.Title, "radiantMenuBarChoose:", s_menuBarTarget, key, mask);
                 ObjC.Send(item, "setTag:", (m << 16) | i);
                 ObjC.SendBool(item, "setEnabled:", entry.Enabled);

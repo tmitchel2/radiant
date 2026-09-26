@@ -135,6 +135,42 @@ public class CommandMenuBarTests
         CollectionAssert.AreEquivalent(new[] { "Zoom in", "Dark theme", "New", "Delete", "Command palette" }, listed);
     }
 
+    [TestMethod]
+    public void TheEditMenuActsOnTheFocusedField()
+    {
+        var platform = new HeadlessPlatform { Menus = { IsSupported = true, HasMenuBar = true } };
+        var text = new Signal<TextEditState>(TextEditState.From("hello"));
+        using var root = Mount(new Host(context =>
+        {
+            context.UseStandardEditMenu();
+            return new Box
+            {
+                Children =
+                [
+                    new TextField("Name") { Value = context.Watch(text), OnChange = v => text.Value = v, Layout = new LayoutStyle { Width = 240 } },
+                    new CommandMenuBar(),
+                ],
+            };
+        }), platform);
+
+        var edit = platform.Menus.MenuBar.Single(m => m.Title == "Edit");
+        Assert.IsTrue(edit.Items.Where(i => !i.IsSeparator).All(i => !i.Enabled), "greyed with nothing focused");
+
+        var field = All(root.GetSemantics()).First(n => n.Role == SemanticsRole.TextField);
+        root.PointerDown(Centre(field));
+        root.PointerUp(Centre(field));
+        Settle(root);
+        edit = platform.Menus.MenuBar.Single(m => m.Title == "Edit");
+        var selectAll = edit.Items.ToList().FindIndex(i => i.Title == "Select All");
+        Assert.IsTrue(edit.Items[selectAll].Enabled);
+        platform.Menus.ChooseFromMenuBar(platform.Menus.MenuBar.ToList().FindIndex(m => m.Title == "Edit"), selectAll);
+        Settle(root);
+        edit = platform.Menus.MenuBar.Single(m => m.Title == "Edit");
+        platform.Menus.ChooseFromMenuBar(platform.Menus.MenuBar.ToList().FindIndex(m => m.Title == "Edit"), edit.Items.ToList().FindIndex(i => i.Title == "Copy"));
+
+        Assert.AreEqual("hello", platform.Clipboard.GetText());
+    }
+
     private sealed record Host(Func<BuildContext, Element?> Body) : Component
     {
         public override Element? Build(BuildContext context) => Body(context);

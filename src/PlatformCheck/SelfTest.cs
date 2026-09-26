@@ -115,6 +115,7 @@ internal static unsafe class SelfTest
         // The app's commands are on the macOS menu bar.
         CheckMenuBar(root, window, events, Check);
         CheckMenuBarReplaced(platform.Menus, Check);
+        CheckDisabledItemLetsItsKeyThrough(platform.Menus, window, root, keyTarget, events, Check);
 
         return failures;
     }
@@ -211,6 +212,29 @@ internal static unsafe class SelfTest
             keyDownType, default, command, 0, ObjC.Send(window, "windowNumber"), 0, j, j, 0, 38);
         ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "sendEvent:", keyEvent);
         check(events.Count(e => e == "command:hello") == 1, $"its shortcut runs it once, through the menu ({string.Join(",", events)})");
+    }
+
+    // A greyed menu item (Copy with nothing to copy) mustn't take its key from the window: whatever
+    // is focused may still answer to it.
+    private static void CheckDisabledItemLetsItsKeyThrough(IMenuService menus, nint window, UIRoot root, ElementRef target, List<string> events, Action<bool, string> check)
+    {
+        using (ObjC.Pool())
+        {
+            menus.SetMenuBar([new PlatformMenu("Test", [new PlatformMenuItem("Greyed") { Enabled = false, Shortcut = new MenuShortcut("k", MenuModifiers.Command) }])], static (_, _) => { });
+        }
+        ObjC.Send(window, "makeKeyAndOrderFront:", 0);
+        target.Focus();
+        root.Update(root.Size);
+        events.Clear();
+        const nuint keyDownType = 10; // NSEventTypeKeyDown
+        const nuint command = 1 << 20; // NSEventModifierFlagCommand
+        var k = ObjC.String("k");
+        var keyEvent = ((delegate* unmanaged<nint, nint, nuint, Point, nuint, double, nint, nint, nint, nint, byte, ushort, nint>)ObjC.MsgSend)(
+            ObjC.Class("NSEvent"),
+            ObjC.Sel("keyEventWithType:location:modifierFlags:timestamp:windowNumber:context:characters:charactersIgnoringModifiers:isARepeat:keyCode:"),
+            keyDownType, default, command, 0, ObjC.Send(window, "windowNumber"), 0, k, k, 0, 40);
+        ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "sendEvent:", keyEvent);
+        check(events.Contains("key:K"), $"a greyed menu item's shortcut still reaches the window ({string.Join(",", events)})");
     }
 
     // Menus are replaced as commands change; the old ones must be freed exactly once. An over-release

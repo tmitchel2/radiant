@@ -194,14 +194,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   offer yet.
 - **Command palettes show matches plainly.** The matched letters aren't highlighted (text spans
   in `SurfaceText` would do it), and there's no ordering by recent use.
-- **Commands don't follow focus.** A command overrides one with the same id by being deeper in
-  the tree while it's mounted, not by having focus: two editors side by side can't each offer
-  Copy for whichever is focused. Scoping commands to a focus scope (as a responder chain does)
-  would.
-- **There's no standard Edit menu.** Registering Copy, Paste or Select All with ⌘C, ⌘V, ⌘A puts
-  them on the macOS menu, which then takes those keys from text fields. Text fields would need to
-  offer their own Edit commands (deeper, so they win while focused) for an app to have an Edit
-  menu that works everywhere.
+- **Greyed menu-bar items hide their shortcut.** AppKit takes a key equivalent's key even when its
+  item is disabled, so a greyed Select All would take ⌘A from a focused table. Disabled items get
+  no key equivalent, and so show none. Letting the window answer first (`performKeyEquivalent:`
+  on the content view, asking the UI whether it handled the key) would let them keep it.
+- **Only text inputs offer Edit commands.** Tables, lists and grids handle ⌘A and ⌘C in their own
+  key handlers, but don't register focus-scoped Select All or Copy, so the Edit menu stays greyed
+  while they have focus.
 - **Menu items are named by all their text.** A drawn menu item's accessible name includes its
   shortcut ("Save ⌘S"); the shortcut would be better as a description or the key-shortcuts
   property.

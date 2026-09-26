@@ -192,6 +192,8 @@ public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Com
                                             active.Set(0);
                                         })
                                         {
+                                            // The palette's own search isn't one of the commands it lists.
+                                            OffersEditCommands = false,
                                             Label = "Search commands",
                                             Placeholder = Placeholder,
                                             Style = theme.Text(TextType.BodyLarge) with { Color = theme.ContentColor(surface) },

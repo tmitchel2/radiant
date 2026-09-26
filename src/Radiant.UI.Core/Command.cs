@@ -36,4 +36,11 @@ public sealed record Command(string Id, string Title)
 
     /// <summary>Whether it's a setting that's on, shown ticked; null for a plain action.</summary>
     public bool? Checked { get; init; }
+
+    /// <summary>
+    /// Whether it applies only while focus is inside the component that registered it: a text
+    /// field's Copy is the Copy while the field has focus, and gives way to any other Copy (or
+    /// none) once it hasn't.
+    /// </summary>
+    public bool FocusScoped { get; init; }
 }
