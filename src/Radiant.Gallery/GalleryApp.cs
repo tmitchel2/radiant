@@ -1,4 +1,6 @@
+using System;
 using Radiant.Components;
+using Radiant.Gallery.ThemeLab;
 using Radiant.Templates;
 using Radiant.Theming;
 using Radiant.UI.Core;
@@ -10,6 +12,9 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
 {
     [TestId<IconButton>] public static partial string Search { get; }
     [TestId<IconButton>] public static partial string Notifications { get; }
+
+    /// <summary>The theme page's index: last, so the other pages keep their numbers and shortcuts.</summary>
+    public const int ThemePageIndex = 14;
 
     public int StartPage { get; init; }
 
@@ -41,11 +46,12 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             new("tune", "Preferences"),
             new("dashboard_customize", "Docking"),
             new("view_in_ar", "Studio"),
+            new("palette", "Theme") { Section = "Theming" },
         ];
         Element content = page.Value switch
         {
             1 => Pages.Dashboard(),
-            2 => Pages.Settings(Themes),
+            2 => Pages.Settings(Themes, () => page.Set(ThemePageIndex)),
             3 => Pages.SignIn(),
             4 => Pages.Empty(),
             5 => new TablePage(),
@@ -57,6 +63,7 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             11 => ShellPages.Preferences(),
             12 => ShellPages.Docking(),
             13 => new StudioPage(),
+            ThemePageIndex => new ThemePage(Themes),
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu, StartWithSheet = StartWithSheet },
         };
         // The app's commands: on the menu bar (macOS's own), in the palette, and on their shortcuts.
@@ -87,20 +94,24 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             Run = () => palette.Set(true),
         });
         var commands = context.UseCommands();
+        var editing = page.Value == ThemePageIndex;
         return new SnackbarHost(new Fragment(new SidebarLayout("Radiant Gallery", items, page.Value, page.Set, content)
         {
+            // The theme page scrolls its editor and preview apart, and uses a wide window's width.
+            FillContent = editing,
+            MaxContentWidth = editing ? 1400 : 1080,
             Actions =
             [
                 new Tooltip($"Search ({KeyChord.Command(KeyCode.K)})", new IconButton("search", "Search") { TestId = Search, OnPress = () => palette.Set(true) }),
-                new ThemePicker(Themes),
+                new ThemePicker(() => page.Set(ThemePageIndex)),
                 new Tooltip("Notifications", new IconButton("notifications", "Notifications") { TestId = Notifications }),
                 new Avatar("Tom Mitchell") { Size = 32 },
             ],
-        }, new CommandPalette(palette.Value, () => palette.Set(false), commands), new ThemeCommands(Themes), new CommandMenuBar { DrawWithoutPlatformMenuBar = false }));
+        }, new CommandPalette(palette.Value, () => palette.Set(false), commands), new ThemeCommands(Themes, () => page.Set(ThemePageIndex)), new CommandMenuBar { DrawWithoutPlatformMenuBar = false }));
     }
 
     /// <summary>The theme's commands: rebuilt with the theme, so the menu ticks what's in force, without rebuilding the gallery.</summary>
-    private sealed record ThemeCommands(ThemeController Themes) : Component
+    private sealed record ThemeCommands(ThemeController Themes, Action OpenEditor) : Component
     {
         public override Element? Build(BuildContext context)
         {
@@ -119,6 +130,14 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
                     Run = () => ThemePicker.Choose(themes, preset),
                 });
             }
+            context.UseCommand(new Command("edit-theme", "Edit theme…")
+            {
+                Menu = "View",
+                Group = "Theme",
+                Icon = "tune",
+                Keywords = "style look appearance customise colour shape type",
+                Run = OpenEditor,
+            });
             context.UseCommand(new Command("dark", "Dark theme")
             {
                 Menu = "View",

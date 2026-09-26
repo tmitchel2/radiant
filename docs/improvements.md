@@ -63,7 +63,8 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   diffing would touch fewer.
 - **Yoga isn't CSS by default.** Its default `flexShrink` is 0 (CSS: 1), so scroll areas force
   shrink 1. Consider Yoga's web-defaults config for every node, so layout matches CSS
-  expectations everywhere.
+  expectations everywhere. It bit again with the gallery's theme page: a pane of a `Splitter`
+  grew to its content, clipping its scroll area, until it was given `FlexShrink = 1`.
 - **Percentage minimums inside nested scroll areas.** Yoga.Net resolves them against the outer
   area. `ScrollArea` fills its viewport with `flexGrow` instead. Worth a minimal repro upstream.
 - **Two kinds of key.** `Key` is an element's identity, so keyboard keys are `KeyCode`, whose
@@ -163,7 +164,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   there's no clock face or list of times to choose from, no seconds, and no time zone.
 - **Property grids take any control.** A `PropertyItem`'s editor is whatever the app gives it, so
   there are no built-in editors by type (a colour swatch, an enum menu), no multi-object editing
-  (showing "mixed"), and no reset-to-default.
+  (showing "mixed"), and no reset-to-default. The gallery's theme editor builds its own
+  (`ChoiceButton`, `ColorSwatchField`); they'd be worth moving into the library.
+- **Select fields always show their label.** `SelectField` is a text field, so in a grid that
+  names each row beside it the label repeats; there's no compact or unlabelled drop-down, which is
+  why the theme editor has its own `ChoiceButton`.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
 - **Sliders are single-valued.** No range slider, no value label while dragging, and no tick marks
@@ -300,6 +305,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `IFormatProvider` or a formatter delegate.
 - **`SidebarLayout` doesn't adapt.** It's always a 260 px drawer; narrow windows want a rail or a
   modal drawer, and the sidebar isn't resizable or collapsible.
+- **A page can't learn the window's size.** Pages sit in the shell's scroll area, and there's no
+  hook for the viewport's size, so a page that wants to fill the window (panes that scroll on
+  their own) needs `SidebarLayout.FillContent`; others fix a height (the Studio and shell pages).
 - **Blocks aren't stateful about their data.** `CartSummary` reports quantity changes but
   doesn't apply them, and `SignInForm` has no busy state while signing in. That's intended (the
   app owns the data) but each app writes the same glue; small controller types would help.
@@ -341,6 +349,21 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Segmented trays and pills are worked out, not roles.** The tray is the surface tinted 6%
   towards its content and the pill white (light) or tinted 14% (dark), so they read on any
   surface. Named roles would let a palette choose them.
+- **Type scales and elevation compare by reference.** `TypeScale` wraps a dictionary and
+  `ElevationScale.Levels` is a list, so two themes with the same type or shadows aren't `==`
+  unless they share the instance. The gallery's theme editor returns the preset's own `TypeScale`
+  when nothing differs, and leaves elevation out when deciding whether a theme is modified. Value
+  equality (or a way to enumerate a scale) would make theme comparison exact.
+- **There's no notion of a derived theme.** An edited theme is recognised only because it keeps
+  its preset's `Name`; nothing records which preset a theme came from or what was changed. A
+  `Theme.Basis`, or a theme diff, would let apps save and describe custom themes.
+- **The gallery's theme editor leaves some parts out.** Elevation levels, easing curves and the
+  fixed colour families (`PrimaryFixed` and so on) can't be edited, and edits last only until the
+  app quits.
+- **Following the system overwrites the edited seed.** A change to the system accent colour, dark
+  mode, contrast or reduced motion re-applies it over the theme, replacing a seed picked in the
+  editor. Right for the user's settings, but an app that lets the user pick a seed may want to
+  stop following the accent once they do.
 - **A preset switch jumps its layout.** Type, density and button padding switch at the start of an
   animated theme change (colours and corners animate), so text reflows once. Fine for a settings
   choice, but a switch that animates layout would need measuring both ends.

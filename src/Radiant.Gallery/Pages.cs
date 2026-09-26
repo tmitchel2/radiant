@@ -13,7 +13,7 @@ internal static partial class Pages
 {
     public static Element Dashboard() => new DashboardPage();
 
-    public static Element Settings(ThemeController themes) => new SettingsPage(themes);
+    public static Element Settings(ThemeController themes, Action editTheme) => new SettingsPage(themes, editTheme);
 
     public static Element SignIn() => new Box
     {
@@ -27,13 +27,14 @@ internal static partial class Pages
 
     public static Element Empty() => new EmptyPage();
 
-    internal sealed partial record SettingsPage(ThemeController Themes) : Component
+    internal sealed partial record SettingsPage(ThemeController Themes, Action EditTheme) : Component
     {
         [TestId<SelectField>] public static partial string Style { get; }
         [TestId<Switch>] public static partial string DarkTheme { get; }
         [TestId<Switch>] public static partial string OwnAccent { get; }
         [TestId<SelectField>] public static partial string Density { get; }
         [TestId<ColorPicker>] public static partial string Accent { get; }
+        [TestId<SurfaceButton>] public static partial string Customise { get; }
         [TestId<Switch>] public static partial string Notifications { get; }
         [TestId<Switch>] public static partial string Digest { get; }
 
@@ -80,6 +81,10 @@ internal static partial class Pages
                         },
                         new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], theme.Theme.Density < 0 ? 1 : 0, i =>
                             themes.Set(themes.Theme with { Density = -i })) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
+                        new SettingsRow("Customise", new SurfaceButton("Edit theme", ButtonVariant.Outlined) { TestId = Customise, Icon = "tune", OnPress = EditTheme })
+                        {
+                            Description = "Every colour, corner, font and component style",
+                        },
                     ]) { Description = "How Radiant looks on this device." },
                     !seeded && !ownAccent ? null : new SettingsSection("Theme colour",
                     [

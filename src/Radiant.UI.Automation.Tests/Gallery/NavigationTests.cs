@@ -21,6 +21,7 @@ public sealed class NavigationTests : GalleryTest
     [DataRow("Preferences")]
     [DataRow("Docking")]
     [DataRow("Studio")]
+    [DataRow("Theme")]
     [DataRow("Components")]
     public async Task EveryDestinationOpensItsPage(string destination)
     {
@@ -105,33 +106,6 @@ public sealed class NavigationTests : GalleryTest
         Assert.IsFalse(Themes.Theme.Colors.IsDark);
 
         await Driver.KeyAsync("Cmd+Shift+D");
-        await Driver.WaitForIdleAsync();
-
-        Assert.IsTrue(Themes.Theme.Colors.IsDark);
-    }
-
-    [TestMethod]
-    [DataRow("Quartz")]
-    [DataRow("Linen")]
-    public async Task TheThemeButtonSwitchesThemeKeepingDarkMode(string preset)
-    {
-        await Driver.KeyAsync("Cmd+Shift+D");
-        await Driver.WaitForIdleAsync();
-
-        await Driver.ThemePicker().Button().TapAsync();
-        await Driver.Menu().Item().WithLabel(preset).TapAsync();
-        await Driver.WaitForIdleAsync();
-
-        Assert.AreEqual(preset, Themes.Theme.Name);
-        Assert.IsTrue(Themes.Theme.Colors.IsDark, "dark mode is kept");
-        Assert.AreSame(ThemePresets.Find(preset)!.Colors.Dark, Themes.Theme.Colors.Dark);
-    }
-
-    [TestMethod]
-    public async Task TheThemeMenuSwapsLightAndDark()
-    {
-        await Driver.ThemePicker().Button().TapAsync();
-        await Driver.Menu().Item().WithLabel("Dark").TapAsync();
         await Driver.WaitForIdleAsync();
 
         Assert.IsTrue(Themes.Theme.Colors.IsDark);

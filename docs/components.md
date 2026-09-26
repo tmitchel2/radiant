@@ -170,8 +170,10 @@ the colour underneath, so the result can be opaque, which is also better for tex
 `Radiant.Gallery` is a `SidebarLayout` app (see [templates.md](templates.md)). Its first page is
 the component catalogue, with a button that shuffles the theme (seed, variant, light or dark,
 corner scale) and animates everything to it; the other pages are the templates. The app bar's
-palette button switches between the theme presets (Tonal, Quartz, Linen) and light and dark, live
-and animated, as do the View menu, the command palette and the Settings page.
+palette button opens the Theme page (14): the presets (Tonal, Quartz, Linen), light and dark, and
+an editor for every part of the theme beside a live preview (see
+[theming.md](theming.md#editing-a-theme-at-runtime)). The View menu, the command palette and the
+Settings page switch presets too.
 
 ```
 dotnet run --project src/Radiant.Gallery                                            # in a window
@@ -185,4 +187,5 @@ The Studio page (13) is a whole design tool built only from stock components: sw
 to see every component's structure change together.
 
 Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 table, 6 landing page,
-7 store, 8 workspace, 9 mail, 10 new project (wizard), 11 preferences, 12 docking, 13 studio.
+7 store, 8 workspace, 9 mail, 10 new project (wizard), 11 preferences, 12 docking, 13 studio,
+14 theme.
