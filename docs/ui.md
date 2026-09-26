@@ -63,6 +63,7 @@ a change of order throws.
 | `UseEffect(effect[, deps])` | Runs after layout, children's before parents'. Its returned cleanup runs before the next run and on unmount |
 | `Use(context)` | The nearest `Provider<T>` value; rebuilt when it changes, even past components that don't rebuild |
 | `Watch(signal)` | A `Signal<T>`'s value; rebuilt when it changes |
+| `UseTransition(target, duration[, easing, initial])` | A value that animates to each new target (floats, or any type with a lerp), rebuilding each frame while it moves |
 
 ## The frame
 
@@ -158,11 +159,20 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
   | RAD006 | A facet member that isn't a `get; init;` property |
   | RAD007 | Forwarding an interface that isn't a facet |
 
+## Animation
+
+- **`UseTransition`** animates a value towards each new target on the root's frames: from where it
+  is, along an `Easing` (Material's curves live in `Radiant.Animation.Easing`).
+- **`Presence(visible, progress => element)`** keeps content mounted while it animates out, then
+  removes it. It animates in when mounted, too.
+- **`UIRoot.AddTicker`** is the general hook for anything that animates itself; theme transitions
+  use it.
+
 ## Not yet
 
 - **Host elements:** `Image`, and a canvas for custom drawing.
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
-- **Commands and animation:** commands and shortcuts, and `Presence` for exit animations.
+- **Commands:** commands and shortcuts.
 - **Accessibility:** the platform bridge for semantics comes with P7.
 - **Theming:** P6.

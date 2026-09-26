@@ -28,6 +28,17 @@ public class ComponentTests
 
     private static Vector2 Centre(RenderNode node) => node.AbsolutePosition + node.Size / 2;
 
+    // Runs frames until state-layer fades and other transitions have finished.
+    private static void Settle(UIRoot root)
+    {
+        root.Update(Viewport);
+        for (var i = 0; i < 60; i++)
+        {
+            root.Advance(1 / 60.0);
+            root.Update(Viewport);
+        }
+    }
+
     [TestMethod]
     public void AFilledButtonIsPrimaryWithOnPrimaryText()
     {
@@ -102,7 +113,7 @@ public class ComponentTests
         var button = FirstBox(root);
 
         root.PointerMove(Centre(button));
-        root.Update(Viewport);
+        Settle(root);
 
         var layer = (BoxRenderNode)FirstBox(root).Children[0];
         var state = SurfaceState.Default.With(new SurfaceChange { Surface = SurfaceName.Primary });
@@ -110,7 +121,7 @@ public class ComponentTests
         Assert.IsFalse(layer.Element.HitTestVisible);
 
         root.PointerMove(new Vector2(590, 390));
-        root.Update(Viewport);
+        Settle(root);
         Assert.IsFalse(FirstBox(root).Children.OfType<BoxRenderNode>().Any(), "the layer goes when the pointer does");
     }
 

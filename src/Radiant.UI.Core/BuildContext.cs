@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Radiant.Animation;
 
 namespace Radiant.UI.Core;
 
@@ -123,6 +124,29 @@ public sealed class BuildContext
         }
         return signal.Value;
     }
+
+    /// <summary>
+    /// A value that animates to <paramref name="target"/> over <paramref name="duration"/> whenever
+    /// the target changes, mixed by <paramref name="lerp"/> along <paramref name="easing"/>
+    /// (Material's standard curve by default). The component is rebuilt each frame while it moves.
+    /// It starts at the first target, without animating.
+    /// </summary>
+    public T UseTransition<T>(T target, TimeSpan duration, Func<T, T, float, T> lerp, Easing? easing = null) =>
+        UseTransition(target, target, duration, lerp, easing);
+
+    /// <summary>A value that starts at <paramref name="initial"/> and animates to each new target; see the other overload.</summary>
+    public T UseTransition<T>(T target, T initial, TimeSpan duration, Func<T, T, float, T> lerp, Easing? easing = null)
+    {
+        ArgumentNullException.ThrowIfNull(lerp);
+        var node = Node;
+        var hook = Hook(() => new TransitionHook<T>(node, initial));
+        hook.Retarget(target, duration, easing ?? Easing.Standard, lerp);
+        return hook.Current;
+    }
+
+    /// <summary>A number that animates to <paramref name="target"/>, from <paramref name="initial"/> if given.</summary>
+    public float UseTransition(float target, TimeSpan duration, Easing? easing = null, float? initial = null) =>
+        UseTransition(target, initial ?? target, duration, static (a, b, t) => a + (b - a) * t, easing);
 
     internal void BeginBuild() => _next = 0;
 

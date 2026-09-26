@@ -36,11 +36,13 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         var onPress = OnPress;
 
         var layers = theme.Theme.StateLayers;
-        var opacity = disabled ? 0f
+        var target = disabled ? 0f
             : pressed.Value ? layers.Pressed
             : focusRing.Value ? layers.Focus
             : hovered.Value ? layers.Hover
             : 0f;
+        var motion = theme.Theme.Motion;
+        var opacity = context.UseTransition(target, motion.Reduced ? TimeSpan.Zero : motion.ShortDuration, motion.Standard);
         // The layer is opaque (mixed in sRGB with the surface it covers), so it sits inside any
         // outline rather than over it.
         var border = ShowOutline == true ? OutlineWidth ?? 1f : 0f;

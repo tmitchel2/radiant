@@ -51,8 +51,8 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **No golden images yet.** The plan's matrix (variants × enabled, hover, focus, pressed,
   disabled × light and dark) doesn't exist yet. The gallery's `--snapshot` renders offscreen to
   PNG, so it could start from there.
-- **Presses don't animate.** There's no press scale and no ripple, and state layers appear and
-  disappear rather than fading. This needs the P4 `UseAnimation` or `Presence`.
+- **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
+  press scale and no ripple.
 - **No icons.** Material Symbols isn't embedded yet, so buttons have no icon slot.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
@@ -114,6 +114,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   right-to-left clusters.
 - **Two HarfBuzzSharp gaps.** It lacks `Font.MakeImmutable` (P/Invoked), and `Blob.FromStream`
   keeps managed memory, which a compacting GC moved (fixed: native copy).
+
+## Animation
+
+- **Transitions rebuild each frame.** `UseTransition` rebuilds its component every frame while it
+  moves. That's fine for small components; large animated subtrees want paint-time animated
+  properties (opacity or transform on the render node) that skip the rebuild.
+- **No springs yet.** Transitions are duration and easing only. Material 3's newer motion is
+  spring-based; add a spring driver (Radiant has `SmoothDamp`, and `Decay` for momentum).
 
 ## Rendering (`Radiant.Graphics2D`)
 

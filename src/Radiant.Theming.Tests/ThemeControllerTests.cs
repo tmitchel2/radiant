@@ -1,6 +1,7 @@
-using System;
 using System.Numerics;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Animation;
 using Radiant.UI.Core;
 
 namespace Radiant.Theming.Tests;

@@ -1,6 +1,6 @@
 using System;
 
-namespace Radiant.Theming;
+namespace Radiant.Animation;
 
 /// <summary>
 /// A timing curve: a CSS-style cubic Bézier from (0, 0) to (1, 1) through two control points.

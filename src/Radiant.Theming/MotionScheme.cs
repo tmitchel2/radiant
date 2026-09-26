@@ -1,4 +1,5 @@
 using System;
+using Radiant.Animation;
 
 namespace Radiant.Theming;
 
