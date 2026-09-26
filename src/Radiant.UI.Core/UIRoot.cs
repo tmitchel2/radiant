@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Text;
@@ -27,6 +28,8 @@ public sealed class UIRoot : IDisposable
     private readonly ElementNode _root;
     private readonly HashSet<ElementNode> _dirty = [];
     private readonly List<EffectHook> _effects = [];
+    private readonly HashSet<ScrollRenderNode> _scrollers = [];
+    private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private List<RenderNode> _hovered = [];
     private List<RenderNode>? _pressed;
@@ -52,7 +55,7 @@ public sealed class UIRoot : IDisposable
     public Action? FrameRequested { get; set; }
 
     /// <summary>Whether anything is waiting to be rebuilt or run.</summary>
-    public bool NeedsUpdate => !_mounted || _dirty.Count > 0 || _effects.Count > 0;
+    public bool NeedsUpdate => !_mounted || _dirty.Count > 0 || _effects.Count > 0 || _animating.Count > 0;
 
     /// <summary>The size of the last layout.</summary>
     public Vector2 Size { get; private set; }
@@ -102,6 +105,25 @@ public sealed class UIRoot : IDisposable
                 throw new InvalidOperationException("Effects kept changing state: an update loop.");
             }
             FlushEffects();
+        }
+    }
+
+    /// <summary>
+    /// Advances what moves by itself (scroll momentum and bounce) by <paramref name="seconds"/>.
+    /// Call once a frame, before <see cref="Update"/>.
+    /// </summary>
+    public void Advance(double seconds)
+    {
+        foreach (var scroller in _animating.ToArray())
+        {
+            if (!scroller.Advance(seconds))
+            {
+                _animating.Remove(scroller);
+            }
+        }
+        if (_animating.Count > 0)
+        {
+            FrameRequested?.Invoke();
         }
     }
 
@@ -376,6 +398,26 @@ public sealed class UIRoot : IDisposable
         }
         // Yoga redoes only the subtrees marked dirty by style or text changes since the last layout.
         YGNodeCalculateLayout(yoga, size.X, size.Y, Facebook.Yoga.YGDirection.LTR);
+        foreach (var scroller in _scrollers)
+        {
+            scroller.SyncExtents();
+        }
+    }
+
+    internal void AddScroller(ScrollRenderNode scroller) => _scrollers.Add(scroller);
+
+    internal void RemoveScroller(ScrollRenderNode scroller)
+    {
+        _scrollers.Remove(scroller);
+        _animating.Remove(scroller);
+    }
+
+    internal void StartAnimating(ScrollRenderNode scroller)
+    {
+        if (_animating.Add(scroller))
+        {
+            FrameRequested?.Invoke();
+        }
     }
 
     // ------------------------------------------------------------------ input
@@ -433,7 +475,7 @@ public sealed class UIRoot : IDisposable
     public void Wheel(Vector2 position, Vector2 delta, KeyModifiers modifiers = KeyModifiers.None)
     {
         var args = new PointerEventArgs(position, PointerButton.Left, modifiers, wheelDelta: delta);
-        Dispatch(HitPath(position), args, box => null, box => box.OnWheel);
+        Dispatch(HitPath(position), args, box => null, box => box.OnWheel, (node, e) => node.OnWheel(e));
     }
 
     /// <summary>A key was pressed. Unhandled, Tab and Shift+Tab move focus.</summary>
@@ -565,7 +607,8 @@ public sealed class UIRoot : IDisposable
 
     /// <summary>Sends an event down a path (capture handlers) and back up (the others) until handled.</summary>
     private static void Dispatch<TArgs>(List<RenderNode> path, TArgs args,
-        Func<Box, Action<TArgs>?> capture, Func<Box, Action<TArgs>?> bubble) where TArgs : UIEventArgs
+        Func<Box, Action<TArgs>?> capture, Func<Box, Action<TArgs>?> bubble,
+        Action<RenderNode, TArgs>? defaultAction = null) where TArgs : UIEventArgs
     {
         for (var i = 0; i < path.Count && !args.Handled; i++)
         {
@@ -574,6 +617,11 @@ public sealed class UIRoot : IDisposable
         for (var i = path.Count - 1; i >= 0 && !args.Handled; i--)
         {
             Invoke(path[i], bubble);
+            // What the node itself does with an event its handlers left alone (a scroll area scrolls).
+            if (!args.Handled && defaultAction is not null)
+            {
+                defaultAction(path[i], args);
+            }
         }
 
         void Invoke(RenderNode node, Func<Box, Action<TArgs>?> select)

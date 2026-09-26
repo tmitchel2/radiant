@@ -29,6 +29,6 @@ public sealed class PointerEventArgs : UIEventArgs
     /// <summary>For clicks and presses: 1 for a single click, 2 for a double click, and so on.</summary>
     public int ClickCount { get; }
 
-    /// <summary>For wheel events: how far to scroll, in pixels.</summary>
+    /// <summary>For wheel events: how far to scroll, in pixels; positive scrolls towards the content's end (down, right).</summary>
     public Vector2 WheelDelta { get; }
 }

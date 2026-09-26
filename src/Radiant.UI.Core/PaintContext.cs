@@ -17,6 +17,17 @@ public sealed class PaintContext
     /// <summary>The top left of the node being painted, in the root's coordinates.</summary>
     public Vector2 Origin { get; private set; }
 
+    internal void PaintChildren(RenderNode node)
+    {
+        var saved = Origin;
+        Origin = saved + node.ChildOffset;
+        foreach (var child in node.Children)
+        {
+            Paint(child);
+        }
+        Origin = saved;
+    }
+
     internal void Paint(RenderNode node)
     {
         var saved = Origin;

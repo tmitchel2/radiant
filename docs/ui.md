@@ -33,7 +33,7 @@ RadiantUI.Run(new Counter("Clicks"), new UIAppOptions { Title = "Counter" });
 
 - **Components** (`Component`, a record with `Build`) describe UI in terms of other elements. They
   leave nothing in the render tree.
-- **Host elements** are what gets laid out and drawn: `Box` and `TextBlock` for now.
+- **Host elements** are what gets laid out and drawn: `Box`, `TextBlock` and `ScrollArea` for now.
 - **Structure:** `Fragment` groups elements, and `Provider<T>` passes a context value down.
 
 ## Reconciliation
@@ -93,10 +93,22 @@ a change of order throws.
   tree order (with a ring: `IsFocusVisible`). Key and text events go to the focused box and
   bubble up.
 
+## Scrolling
+
+`ScrollArea` is a viewport onto content that can be larger than it.
+- **Layout:** the content is laid out in a node inside the viewport, and Yoga's scroll overflow
+  leaves it unconstrained along the scrolling axes. It grows to fill the viewport when shorter.
+  As in CSS, the area shrinks to fit rather than growing to its content.
+- **Scrolling:** the wheel scrolls through `ScrollController` (Radiant's scroll physics: bounce,
+  momentum, snapping, animated `ScrollTo`). `UIRoot.Advance(seconds)` moves it each frame.
+- **Nesting:** an area passes the wheel to the one enclosing it when it can't scroll further
+  that way.
+- **Position:** the scroll position survives rebuilds; pass a `Controller` to set or read it.
+
 ## Not yet
 
-- **Host elements:** `ScrollArea`, `Portal` and overlays, `Image`, and a canvas for custom
-  drawing.
+- **Host elements:** `Portal` and overlays, `Image`, and a canvas for custom drawing.
+- **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
 - **Semantics and commands:** a semantics tree for accessibility, commands and shortcuts, and
   `Presence` for exit animations.
 - **Styling and theming:** the style facets and generated forwarders (P5), and theming (P6).

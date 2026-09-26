@@ -35,6 +35,15 @@ internal abstract class RenderNode : IDisposable
     /// <summary>A transform of this node and its children about its own top left, or null.</summary>
     public virtual Matrix3x2? LocalTransform => null;
 
+    /// <summary>
+    /// Where the children's coordinates start, relative to this node's top left: a scroll area
+    /// moves its content by its scroll offset.
+    /// </summary>
+    public virtual Vector2 ChildOffset => Vector2.Zero;
+
+    /// <summary>The Yoga node children are laid out in: this node's own, or one inside it.</summary>
+    protected virtual Node ChildContainer => Yoga;
+
     /// <summary>Whether children are cut to this node's bounds (and so can't be hit outside them).</summary>
     public virtual bool ClipsChildren => false;
 
@@ -47,13 +56,7 @@ internal abstract class RenderNode : IDisposable
     /// <summary>Draws the node and its children, with its top left at <see cref="PaintContext.Origin"/>.</summary>
     public virtual void Paint(PaintContext context) => PaintChildren(context);
 
-    protected void PaintChildren(PaintContext context)
-    {
-        foreach (var child in _children)
-        {
-            context.Paint(child);
-        }
-    }
+    protected void PaintChildren(PaintContext context) => context.PaintChildren(this);
 
     /// <summary>Replaces the children, in order, keeping the Yoga tree in step. Does nothing if unchanged.</summary>
     public void SetChildren(List<RenderNode> children)
@@ -82,13 +85,13 @@ internal abstract class RenderNode : IDisposable
             children[i].Parent = this;
             nodes[i] = children[i].Yoga;
         }
-        YGNodeSetChildren(Yoga, nodes);
+        YGNodeSetChildren(ChildContainer, nodes);
     }
 
     /// <summary>A point in the root's coordinates, in this node's own (its top left at the origin).</summary>
     public Vector2 ToLocal(Vector2 rootPoint)
     {
-        var point = (Parent?.ToLocal(rootPoint) ?? rootPoint) - Position;
+        var point = (Parent is null ? rootPoint : Parent.ToLocal(rootPoint) - Parent.ChildOffset) - Position;
         if (LocalTransform is { } transform && Matrix3x2.Invert(transform, out var inverse))
         {
             point = Vector2.Transform(point, inverse);
@@ -117,9 +120,10 @@ internal abstract class RenderNode : IDisposable
         {
             return false;
         }
+        var childPoint = point - ChildOffset;
         for (var i = _children.Count - 1; i >= 0; i--)
         {
-            if (_children[i].HitTest(point, path))
+            if (_children[i].HitTest(childPoint, path))
             {
                 path.Add(this);
                 return true;
@@ -131,6 +135,11 @@ internal abstract class RenderNode : IDisposable
             return true;
         }
         return false;
+    }
+
+    /// <summary>What the node does with a wheel event nothing handled: a scroll area scrolls.</summary>
+    public virtual void OnWheel(PointerEventArgs args)
+    {
     }
 
     public virtual void Dispose()

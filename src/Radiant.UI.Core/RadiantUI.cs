@@ -23,6 +23,7 @@ public static class RadiantUI
         app.PointerMoved += position => ui.PointerMove(position, Modifiers(app.Input));
         app.PointerPressed += button => ui.PointerDown(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
         app.PointerReleased += button => ui.PointerUp(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
+        // The platform reports wheel notches, up and left positive; the UI takes pixels towards the content's end.
         app.Scrolled += offset => ui.Wheel(app.Input.MousePosition, -offset * options.WheelStep, Modifiers(app.Input));
         app.KeyPressed += key => ui.KeyDown((KeyCode)(int)key, Modifiers(app.Input));
         app.KeyReleased += key => ui.KeyUp((KeyCode)(int)key, Modifiers(app.Input));
@@ -32,7 +33,7 @@ public static class RadiantUI
         {
             ui.Update(new Vector2(app.WindowWidth, app.WindowHeight));
             ui.Paint(renderer);
-        }, updateCallback: null, options.Background);
+        }, ui.Advance, options.Background);
     }
 
     private static KeyModifiers Modifiers(InputState input)
