@@ -31,6 +31,7 @@ public sealed class UIRoot : IDisposable
     private readonly HashSet<ScrollRenderNode> _scrollers = [];
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
+    private readonly List<Func<double, bool>> _tickers = [];
     private bool _portalsChanged;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private List<RenderNode> _hovered = [];
@@ -57,7 +58,7 @@ public sealed class UIRoot : IDisposable
     public Action? FrameRequested { get; set; }
 
     /// <summary>Whether anything is waiting to be rebuilt or run.</summary>
-    public bool NeedsUpdate => !_mounted || _dirty.Count > 0 || _effects.Count > 0 || _animating.Count > 0;
+    public bool NeedsUpdate => !_mounted || _dirty.Count > 0 || _effects.Count > 0 || _animating.Count > 0 || _tickers.Count > 0;
 
     /// <summary>The size of the last layout.</summary>
     public Vector2 Size { get; private set; }
@@ -116,6 +117,10 @@ public sealed class UIRoot : IDisposable
     /// </summary>
     public void Advance(double seconds)
     {
+        foreach (var ticker in _tickers.ToArray())
+        {
+            ticker(seconds);
+        }
         foreach (var scroller in _animating.ToArray())
         {
             if (!scroller.Advance(seconds))
@@ -418,6 +423,35 @@ public sealed class UIRoot : IDisposable
         foreach (var scroller in _scrollers)
         {
             scroller.SyncExtents();
+        }
+    }
+
+    /// <summary>
+    /// Calls <paramref name="tick"/> with each frame's elapsed seconds (from <see cref="Advance"/>)
+    /// until the result is disposed: for things that animate on their own, such as a theme
+    /// transition. Frames keep coming while any ticker is registered, so dispose it when done.
+    /// </summary>
+    public IDisposable AddTicker(Action<double> tick)
+    {
+        ArgumentNullException.ThrowIfNull(tick);
+        Func<double, bool> entry = seconds =>
+        {
+            tick(seconds);
+            return true;
+        };
+        _tickers.Add(entry);
+        FrameRequested?.Invoke();
+        return new Ticker(() => _tickers.Remove(entry));
+    }
+
+    private sealed class Ticker(Action remove) : IDisposable
+    {
+        private Action? _remove = remove;
+
+        public void Dispose()
+        {
+            _remove?.Invoke();
+            _remove = null;
         }
     }
 
