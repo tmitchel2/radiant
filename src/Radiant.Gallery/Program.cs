@@ -11,7 +11,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-11] [--dialog] [--menu] [--palette] [--sheet] [--rtl]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-12] [--dialog] [--menu] [--palette] [--sheet] [--rtl]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;

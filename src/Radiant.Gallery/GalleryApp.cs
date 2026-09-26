@@ -36,6 +36,7 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             new("mail", "Mail"),
             new("rocket_launch", "New project"),
             new("tune", "Preferences"),
+            new("dashboard_customize", "Docking"),
         ];
         Element content = page.Value switch
         {
@@ -50,6 +51,7 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             9 => ShellPages.Mail(),
             10 => ShellPages.NewProject(),
             11 => ShellPages.Preferences(),
+            12 => ShellPages.Docking(),
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu, StartWithSheet = StartWithSheet },
         };
         // The app's commands: on the menu bar (macOS's own), in the palette, and on their shortcuts.

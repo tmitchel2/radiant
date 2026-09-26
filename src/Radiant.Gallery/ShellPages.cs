@@ -21,6 +21,8 @@ internal static class ShellPages
 
     public static Element Preferences() => Frame(new PreferencesPage(), 600);
 
+    public static Element Docking() => Frame(new DockingPage());
+
     // A window-sized preview: outlined, rounded and clipped, at a fixed height.
     private static Surface Frame(Element shell, float height = 640) => new()
     {
@@ -392,6 +394,39 @@ internal static class ShellPages
                 _ => new EmptyState(categories[category.Value].Icon, $"{categories[category.Value].Label} settings") { Description = "Nothing to set here yet." },
             };
             return new PreferencesLayout(categories, category.Value, category.Set, content);
+        }
+    }
+
+    /// <summary>A docked workspace: drag a tab to another area, or move it with its context menu.</summary>
+    private sealed record DockingPage : Component
+    {
+        private static readonly DockLayout s_initial = new()
+        {
+            Left = new DockGroup(["files", "outline"]),
+            Center = new DockGroup(["program", "readme"]),
+            Bottom = new DockGroup(["terminal", "problems"], Size: 180),
+            Right = new DockGroup(["properties"], Size: 240),
+        };
+
+        public override Element? Build(BuildContext context)
+        {
+            var layout = context.UseState(s_initial);
+            static Element Lines(params string[] lines) => new Box
+            {
+                Layout = new LayoutStyle { Padding = Edges.All(12), RowGap = 6 },
+                Children = [.. lines.Select(l => (Element?)new SurfaceText(l) { TextType = TextType.BodyMedium })],
+            };
+            DockItem[] items =
+            [
+                new("files", "Files", Lines("Program.cs", "Counter.cs", "README.md", "Hello.csproj")) { Icon = "folder", Closable = false },
+                new("outline", "Outline", Lines("Counter", "  Build(BuildContext)")) { Icon = "account_tree" },
+                new("program", "Counter.cs", new CodeView(s_program)) { Icon = "code" },
+                new("readme", "README.md", Lines("# Hello", "A counter, built with Radiant.")) { Icon = "description" },
+                new("terminal", "Terminal", new CodeView(s_terminal, Numbers: false)) { Icon = "terminal" },
+                new("problems", "Problems", Lines("No problems.")) { Icon = "error" },
+                new("properties", "Properties", Lines("Name: Counter", "Kind: record", "Base: Component")) { Icon = "tune" },
+            ];
+            return new DockPanel(layout.Value, layout.Set, items);
         }
     }
 }

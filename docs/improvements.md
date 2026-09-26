@@ -221,6 +221,16 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   mask would give shortcuts), and there are no submenus, on context menus or the menu bar.
   `Radiant.Host`'s `MacMainMenu` still builds its own File menu; a hosted app using
   `CommandMenuBar` would replace it.
+- **Docked panels start again when they move.** A panel dragged to another area is mounted anew
+  there, losing its state (scroll position, a text field's contents), and so is everything when
+  an area appears or empties (the splitters around the centre are nested differently). Moving an
+  element between parents while keeping its state (a keyed reparent, or panels rendered once and
+  placed through portals) would fix both. There's also no reordering within a tab strip, no
+  floating panels, and a strip with too many tabs overflows instead of scrolling.
+- **The icon subset is hand-kept.** Icons outside `tools/icons/icons.txt` show as their names, and
+  nothing warns: `navigate_next` and `navigate_before` are only aliases in Material Symbols, so
+  they can't be added and don't mirror with the embedded font. A debug-build check that an icon
+  name has a glyph, or an analyzer over string literals given to `SurfaceIcon`, would catch it.
 - **Toolbars aren't a single Tab stop.** Arrows move within a toolbar, but Tab still visits every
   control in it; a roving tab index (only the last-focused control tabbable) needs `TabIndex` on
   `IconButton` and the other controls, which only `PressableSurface` and `ToggleButton` have.
