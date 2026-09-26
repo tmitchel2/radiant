@@ -53,6 +53,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   PNG, so it could start from there.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
+- **Menus show focus even when opened by pointer.** A menu opened with the pointer focuses its first
+  item with the keyboard focus ring; Material shows it only when opened from the keyboard.
+- **Menus are basic.** No submenus, no type-to-select, no check or radio items.
+- **Tooltips add a box.** `Tooltip` wraps its child in a `Box`, which can change the layout of a
+  child that relied on its parent's flex settings. Nothing announces the tip to assistive
+  technology yet.
+- **Dialogs have one form.** There's no full-screen variant, and no scrolling body for long
+  content.
 - **Only 272 icons are embedded.** They're curated in `tools/icons/icons.txt`, to keep the font
   at 408 KB rather than 15 MB. An app wanting icons outside the list must register the full font
   itself; a build-time subset of the icons an app actually uses would be better.

@@ -39,6 +39,12 @@ turns a filled button red.
 | `Switch` | Controlled switch; the handle slides and grows (bigger still while pressed) |
 | `Radio` | Controlled radio button; selecting calls `OnSelect`, and the dot grows in |
 
+| `Divider` | A thin outline-variant line, across or down, optionally inset |
+| `ListItem` | One-, two- or three-line rows with leading and trailing icon or text; pressable and selectable |
+| `Menu` | Drops from an anchor: arrow keys and Tab move, a choice closes it, as do Escape and an outside press; icons, shortcuts, dividers, disabled items |
+| `Dialog` | Modal: scrim, focus trap, Escape and scrim close (unless it must be answered), focus restored, fade and scale |
+| `Tooltip` | After the pointer rests 600 ms, a small inverse-surface label beside its child |
+
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
 React's: they show the value they're given and report presses with the value they should become.
 The whole row, label included, presses and takes focus, and the state layer is a 40 px circle

@@ -15,6 +15,9 @@ public sealed record DismissableLayer(Element? Child, Action OnDismiss) : Compon
     /// <summary>Whether a press outside dismisses (true) or only Escape does.</summary>
     public bool DismissOnOutsidePress { get; init; } = true;
 
+    /// <summary>Whether Escape dismisses.</summary>
+    public bool DismissOnEscape { get; init; } = true;
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -24,6 +27,7 @@ public sealed record DismissableLayer(Element? Child, Action OnDismiss) : Compon
         latest.Value = OnDismiss;
         var root = context.Root;
         var outside = DismissOnOutsidePress;
+        var escape = DismissOnEscape;
         context.UseEffect(() => outside
             ? root.ObservePointerDown(press =>
             {
@@ -39,7 +43,7 @@ public sealed record DismissableLayer(Element? Child, Action OnDismiss) : Compon
             HitTestVisible = false,
             OnKeyDown = e =>
             {
-                if (e.Key == KeyCode.Escape)
+                if (escape && e.Key == KeyCode.Escape)
                 {
                     e.Handled = true;
                     latest.Value();

@@ -10,10 +10,12 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--dialog] [--menu]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
+var startWithDialog = false;
+var startWithMenu = false;
 var scale = 1f;
 for (var i = 0; i < args.Length; i++)
 {
@@ -23,13 +25,15 @@ for (var i = 0; i < args.Length; i++)
         case "--dark": theme = theme with { Colors = theme.Colors with { IsDark = true } }; break;
         case "--seed": theme = theme with { Colors = theme.Colors with { Seed = Radiant.Graphics2D.Color.Parse(args[++i]) } }; break;
         case "--variant": theme = theme with { Colors = theme.Colors with { Variant = Enum.Parse<Variant>(args[++i]) } }; break;
+        case "--dialog": startWithDialog = true; break;
+        case "--menu": startWithMenu = true; break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         default: break;
     }
 }
 
 var themes = new ThemeController(theme);
-var app = new ThemeProvider(themes, new VerticalSlice(themes));
+var app = new ThemeProvider(themes, new VerticalSlice(themes) { StartWithDialog = startWithDialog, StartWithMenu = startWithMenu });
 
 if (snapshot is null)
 {
@@ -49,6 +53,12 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
     using var target = new OffscreenReadback(gpu, pixelWidth, pixelHeight);
     using var ui = new UIRoot(app);
     ui.Update(new Vector2(width, height));
+    // Let entrance animations finish.
+    for (var frame = 0; frame < 60; frame++)
+    {
+        ui.Advance(1 / 60.0);
+        ui.Update(new Vector2(width, height));
+    }
     var pixels = target.RenderAndRead(Vector4.One, pass =>
     {
         renderer.BeginFrame((uint)pixelWidth, (uint)pixelHeight, scale);
