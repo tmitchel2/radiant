@@ -29,6 +29,9 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
     /// <summary>How it lines up with the anchor.</summary>
     public SideAlign Align { get; init; } = SideAlign.Start;
 
+    /// <summary>Whether it's at least as wide as the anchor (a select's options).</summary>
+    public bool MatchAnchorWidth { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -37,7 +40,7 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
         var root = context.Root;
         var close = OnClose;
         var items = Items;
-        var (anchor, side, align) = (Anchor, Side, Align);
+        var (anchor, side, align, matchWidth) = (Anchor, Side, Align, MatchAnchorWidth);
         return new Presence(Open, progress =>
         {
             var rows = new List<Element?>();
@@ -80,7 +83,7 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
                 Elevation = ElevationLevel.Level2,
                 ClipContent = true,
                 Semantics = new Semantics { Role = SemanticsRole.Menu },
-                Layout = new LayoutStyle { MinWidth = 112, MaxWidth = 280, Padding = Edges.Symmetric(0, 8) },
+                Layout = new LayoutStyle { MinWidth = matchWidth ? anchor.Bounds.Width : 112, MaxWidth = matchWidth ? 560 : 280, Padding = Edges.Symmetric(0, 8) },
                 Children =
                 [
                     new Box
@@ -99,7 +102,7 @@ public sealed record Menu(ElementRef Anchor, bool Open, Action OnClose, IReadOnl
                         Children = rows,
                     },
                 ],
-            }), close)) { Side = side, Align = align };
+            }), close)) { Side = side, Align = align, MatchAnchorWidth = matchWidth };
         }) { Duration = TimeSpan.FromMilliseconds(150) };
     }
 }

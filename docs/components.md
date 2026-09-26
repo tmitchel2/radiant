@@ -50,6 +50,14 @@ turns a filled button red.
 | `CircularProgress` | A ring filling clockwise from the top, or a spinner whose arc turns as it grows and shrinks |
 | `Slider` | Continuous or stepped; drag, press the track, or use arrows, Page Up/Down, Home and End |
 | `Tabs` | Tabs with optional icons and an indicator that slides to the chosen tab; Left and Right choose neighbours |
+| `TopAppBar` | Navigation button, title and actions; the container colour when content scrolls under it |
+| `NavigationRail` | A desktop side rail: icons in pills that fill when current, labels, badges |
+| `NavigationDrawer` | A sidebar: heading, sections, rows with counts, the current one in a filled pill |
+| `SegmentedButton` | Joined outlined segments, single or multi choice, ticked when chosen |
+| `SelectField` | A read-only field that drops a menu (as wide as itself) of options, the chosen one ticked |
+| `SnackbarHost`, `Snackbars` | Brief messages at the bottom: queued, timed, with an optional action; `context.UseSnackbars().Show(…)` |
+| `Avatar` | Initials on a container colour chosen stably from the name, or a person icon |
+| `Skeleton` | A gently pulsing placeholder in the shape of content still loading |
 | `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
