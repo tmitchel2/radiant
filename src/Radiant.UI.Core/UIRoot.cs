@@ -179,12 +179,17 @@ public sealed class UIRoot : IDisposable
     /// Draws the tree. The renderer's frame must have been begun with its attachment size
     /// (<see cref="Renderer2D.BeginFrame(uint, uint, float)"/>), which clips and opacity need.
     /// </summary>
+    /// <summary>How many nodes the last <see cref="Paint"/> drew: nodes out of view aren't.</summary>
+    internal int LastPainted { get; private set; }
+
     public void Paint(Renderer2D renderer)
     {
         ArgumentNullException.ThrowIfNull(renderer);
         if (_mounted)
         {
-            new PaintContext(renderer).Paint(RootRenderNode);
+            var context = new PaintContext(renderer, Size);
+            context.Paint(RootRenderNode);
+            LastPainted = context.Painted;
         }
     }
 

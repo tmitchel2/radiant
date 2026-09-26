@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Radiant.Graphics2D;
@@ -31,6 +32,30 @@ public class PaintGpuTests
         Width = w,
         Height = h,
     };
+
+    [TestMethod]
+    public void NodesOutOfViewAreNotPainted()
+    {
+        using var frame = GpuFrame.CreateOrSkip(64, 64);
+        var controller = new Radiant.Scrolling.ScrollController(new Radiant.Scrolling.ScrollBehaviour());
+        using var root = new UIRoot(new ScrollArea
+        {
+            Controller = controller,
+            Layout = new LayoutStyle { FlexGrow = 1 },
+            Children = [.. System.Linq.Enumerable.Range(0, 200).Select(i => (Element?)new Box { Layout = new LayoutStyle { Height = 20 }, Background = i % 2 == 0 ? Red : Blue })],
+        });
+        root.Update(new Vector2(64, 64));
+        frame.Render(White, root.Paint);
+        var top = root.LastPainted;
+        controller.ScrollTo(new Vector2(0, 2000), animated: false);
+        root.Update(new Vector2(64, 64));
+        var pixels = frame.Render(White, root.Paint);
+
+        // 64 px of 20 px rows shows four, and a 32 px margin either side adds a few more.
+        Assert.IsTrue(top < 15, $"{top} nodes painted of 200 rows");
+        Assert.IsTrue(root.LastPainted < 15, $"{root.LastPainted} painted scrolled");
+        Assert.AreEqual((255, 0, 0), Rgb(frame.PixelAt(pixels, 30, 5)), "row 100 (red) shows at the top");
+    }
 
     [TestMethod]
     public void AGradientIsInTheBoxsOwnCoordinates()

@@ -147,6 +147,7 @@ corner scale) and animates everything to it; the other pages are the templates.
 dotnet run --project src/Radiant.Gallery                                            # in a window
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2     # to a PNG
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --page 6 --height 900  # one page
+dotnet run -c Release --project src/Radiant.Gallery -- --snapshot out.png --page 0 --bench 120  # frame timings
 ```
 
 Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 table, 6 landing page,

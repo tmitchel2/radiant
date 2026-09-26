@@ -33,11 +33,17 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Children lists compare by reference.** A host element whose parent rebuilds always updates,
   even when its children are equal element for element. A structural list comparison, or a
   generated one, would let unchanged subtrees skip.
-- **Animations redraw everything.** `RadiantUI.Run` now draws only while `UIRoot.NeedsUpdate` (an
+- **Animations redraw everything.** `RadiantUI.Run` draws only while `UIRoot.NeedsUpdate` (an
   idle window waits for input and uses no CPU), but anything animating, a spinner included,
-  rebuilds its component and redraws the whole window every frame: about 37% of a core for the
-  gallery's components page in a Debug build. Paint-time animation and damage regions (P11)
-  would make a spinner cost a spinner.
+  rebuilds its component and redraws the whole window every frame. Nodes out of view are no longer
+  painted, and `Radiant.Gallery --bench N` times frames: in Release the components page takes about
+  0.3 ms to update and 0.35 ms to paint, yet a window of it on a 120 Hz display still uses about 25%
+  of a core, mostly in the frame loop, wgpu and the driver. Paint-time animation (no rebuild),
+  cached display lists for still subtrees, and presenting only damaged rects (P11) would make a
+  spinner cost a spinner.
+- **Culling trusts a margin.** A node is skipped when its bounds widened by 32 px miss the visible
+  area; a descendant drawn further outside its ancestor (an absolutely placed child far away)
+  can disappear with it. Portals are separate, so menus and tooltips are safe.
 - **Idle waiting is only in `RadiantUI.Run`.** The tab host (`Radiant.Host`) still draws every
   frame; `RadiantApplication.NeedsFrame` is there for it to use.
 - **Effect order is approximate.** Effects run deepest first. That runs children before parents,

@@ -18,6 +18,7 @@ string? snapshot = null;
 var startWithDialog = false;
 var startWithPalette = false;
 var startWithSheet = false;
+var bench = 0;
 var startWithMenu = false;
 var startPage = 0;
 var followSystem = true;
@@ -35,6 +36,7 @@ for (var i = 0; i < args.Length; i++)
         case "--dialog": startWithDialog = true; break;
         case "--palette": startWithPalette = true; break;
         case "--sheet": startWithSheet = true; break;
+        case "--bench": bench = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--menu": startWithMenu = true; break;
         case "--page": startPage = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
@@ -54,9 +56,9 @@ if (snapshot is null)
     return;
 }
 
-Snapshot(app, snapshot, 1200, height, scale, theme);
+Snapshot(app, snapshot, 1200, height, scale, theme, bench);
 
-static unsafe void Snapshot(Element app, string path, int width, int height, float scale, Theme theme)
+static unsafe void Snapshot(Element app, string path, int width, int height, float scale, Theme theme, int bench)
 {
     var pixelWidth = (int)(width * scale);
     var pixelHeight = (int)(height * scale);
@@ -72,6 +74,10 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
         ui.Advance(1 / 60.0);
         ui.Update(new Vector2(width, height));
     }
+    if (bench > 0)
+    {
+        Bench(ui, renderer, target, width, height, pixelWidth, pixelHeight, scale, theme, bench);
+    }
     var pixels = target.RenderAndRead(ResolvedTheme.Resolve(theme).Background, pass =>
     {
         renderer.BeginFrame((uint)pixelWidth, (uint)pixelHeight, scale);
@@ -81,4 +87,37 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
     using var image = SixLabors.ImageSharp.Image.LoadPixelData<Bgra32>(pixels, pixelWidth, pixelHeight);
     image.SaveAsPng(path);
     Console.WriteLine($"wrote {path}");
+}
+
+// Times frames as the window loop runs them: advance and update (rebuild, layout), paint
+// (recording the draws), end frame (building and uploading the batches), and the rest: the
+// offscreen pass's setup, the GPU and the readback, which a window doesn't have in the same form.
+static unsafe void Bench(UIRoot ui, Renderer2D renderer, OffscreenReadback target, int width, int height, int pixelWidth, int pixelHeight, float scale, Theme theme, int frames)
+{
+    var clock = System.Diagnostics.Stopwatch.StartNew();
+    double update = 0, paint = 0, end = 0, total = 0;
+    for (var frame = 0; frame < frames; frame++)
+    {
+        var start = clock.Elapsed.TotalMilliseconds;
+        ui.Advance(1 / 60.0);
+        ui.Update(new Vector2(width, height));
+        var updated = clock.Elapsed.TotalMilliseconds;
+        double began = 0, painted = 0, ended = 0;
+        target.RenderAndRead(ResolvedTheme.Resolve(theme).Background, pass =>
+        {
+            began = clock.Elapsed.TotalMilliseconds;
+            renderer.BeginFrame((uint)pixelWidth, (uint)pixelHeight, scale);
+            ui.Paint(renderer);
+            painted = clock.Elapsed.TotalMilliseconds;
+            renderer.EndFrame((Silk.NET.WebGPU.RenderPassEncoder*)pass);
+            ended = clock.Elapsed.TotalMilliseconds;
+        });
+        var done = clock.Elapsed.TotalMilliseconds;
+        update += updated - start;
+        paint += painted - began;
+        end += ended - painted;
+        total += done - start;
+    }
+    Console.WriteLine($"{frames} frames: update {update / frames:0.00} ms, paint {paint / frames:0.00} ms, end frame {end / frames:0.00} ms, "
+        + $"GPU, readback and the rest {(total - update - paint - end) / frames:0.00} ms, total {total / frames:0.00} ms");
 }
