@@ -12,6 +12,8 @@
   <Project Path="Radiant.Host.Ipc.Tests/Radiant.Host.Ipc.Tests.csproj" />
   <Project Path="Radiant.Host.AgentControlProtocol/Radiant.Host.AgentControlProtocol.csproj" />
   <Project Path="Radiant.Host.AgentControlProtocol.Tests/Radiant.Host.AgentControlProtocol.Tests.csproj" />
+  <Project Path="Radiant.MaterialColor/Radiant.MaterialColor.csproj" />
+  <Project Path="Radiant.MaterialColor.Tests/Radiant.MaterialColor.Tests.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>
