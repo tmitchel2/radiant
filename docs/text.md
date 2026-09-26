@@ -1,9 +1,9 @@
 # Radiant Text: fonts, shaping, Unicode and paragraph layout
 
 `Radiant.Text` turns styled text into positioned glyphs, and answers the questions a text view and
-an editor ask about them. It also rasterizes glyphs to coverage bitmaps (`GlyphRasterizer`), but
-it doesn't touch the GPU: `Renderer2D.DrawParagraph` draws a paragraph from a coverage atlas (see
-[rendering.md](rendering.md)).
+an editor ask about them. It also rasterizes glyphs to coverage bitmaps (`GlyphRasterizer`) and
+prepares them for Slug (`Radiant.Text.Slug`), but it doesn't touch the GPU: `Renderer2D.DrawParagraph`
+draws a paragraph from a coverage atlas or with Slug (see [rendering.md](rendering.md)).
 
 ```
 AttributedText ─┐
@@ -128,6 +128,27 @@ inside the outline. It uses the signed-area accumulation of font-rs (see `THIRD-
 - **Positioning:** `offset` places the pen within its pixel, which is how the atlas makes its
   quarter-pixel positions.
 
+## Preparing glyphs for Slug
+
+Slug (Eric Lengyel, JCGT 2017) draws a glyph by working out each pixel's coverage from the
+outline itself, on the GPU. `SlugGlyphBuilder.Build(outline, unitsPerEm)` prepares an outline for
+it, once per glyph and for every size, as a `SlugGlyph` of flat arrays ready to upload:
+- **Curves** are quadratics in em units. Lines become quadratics with the control point on the
+  end, and cubics are split into quadratics within 1/4096 em. Each contour's curves share their
+  end points.
+- **Bands:** the glyph is cut into up to 16 horizontal and 16 vertical bands. Each band lists the
+  curves a ray through it can cross, sorted so the ray can stop at the first curve behind the
+  pixel. The count in each direction is the one that leaves the fewest curves in the fullest band.
+  Inter averages about 21 curves a glyph and 7 in its fullest band.
+- **Speed:** about 15 µs a glyph (Release, Apple M4 Pro).
+
+`SlugCoverage.Evaluate` is the shader's coverage calculation on the CPU, step for step. The tests
+use it to check Slug against `GlyphRasterizer` on every printable ASCII glyph of Inter, regular
+and black (whose contours overlap), at 11 to 96 px: the mean difference is about 0.005 of a pixel's
+coverage, and total ink agrees within 0.2%. The differences come from Slug sampling one ray each
+way through the pixel centre rather than the pixel's area. They are largest on features narrower
+than two pixels, such as a period at 11 px.
+
 ## Performance
 
 Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
@@ -143,7 +164,7 @@ Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
 ## Not yet
 
 - **More ways to draw glyph runs:** MSDF generated at runtime (for large, rotating or zooming
-  text, and the hybrid of coverage below a size and MSDF above it), and Slug.
+  text, and the hybrid of coverage below a size and MSDF above it).
   `Renderer2D.DrawText` still draws from the baked MSDF atlases.
 - **Line layout:**
   - tab stops, with tabs positioned by where they fall on the line

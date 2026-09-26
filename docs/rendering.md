@@ -83,6 +83,7 @@ Every kind of draw follows a transform exactly:
 - SDF shapes move their quad but are evaluated in their own frame, so a rotated rounded rectangle
   stays exact, and anti-aliasing (from screen-space derivatives) stays one pixel wide at any scale.
 - MSDF text works out its edge sharpness per pixel, so rotated or scaled text stays crisp.
+- Slug text is worked out from the glyph outlines per pixel, so it is exact at any scale or angle.
 
 Clips are not transformed; they are always in window coordinates.
 
@@ -150,7 +151,8 @@ SDF shape's vertices, so a gradient needs no texture and batches with plain shap
 ## Text
 
 Shaping, Unicode and paragraph layout live in `Radiant.Text`; see [text.md](text.md). The
-renderer draws text two ways.
+renderer draws laid-out text as `TextRendering` says (a coverage atlas by default, or Slug), and
+also draws text from baked MSDF atlases.
 
 ### Coverage text (laid-out paragraphs)
 
@@ -170,6 +172,45 @@ renderer draws text two ways.
   unsnapped and softer; turning or zooming text is what MSDF is for.
 
 It is a sixth batch kind (`Coverage`), so it keeps its place in draw order like everything else.
+
+### Slug text
+
+With `TextRendering = TextRendering.Slug`, `DrawParagraph` and `DrawGlyphRun` draw each glyph from
+its outline, using Eric Lengyel's Slug method. The patent is dedicated to the public domain, and
+the reference shaders are MIT; see `src/Radiant.Text/THIRD-PARTY-NOTICES.md`.
+
+- **Evaluating:** each glyph is one quad. For every pixel, the fragment shader casts one ray right
+  and one up through the glyph's curves. It sums the fraction of the pixel before each crossing
+  that counts, deciding which count from the signs of the control points alone. That gives
+  anti-aliased coverage along both axes, blended by how close each ray's crossings are.
+- **Fill rule:** non-zero, so the overlapping contours of variable fonts fill without seams.
+- **Data:** glyphs are prepared once per font instance and glyph, whatever the size, by
+  `Radiant.Text.Slug`. They are kept in two storage buffers (`SlugGlyphCache`) that the fragment
+  shader reads. Only newly prepared glyphs are uploaded at the end of a frame. Past 32 MB the cache
+  is emptied at the next frame.
+- **Dilation:** each quad is grown so every pixel with any coverage is shaded. On screen, each
+  edge moves out by as far as a pixel square reaches across it: half a pixel when upright, up to
+  0.71 at 45°. Transforms are affine and known at draw time, so this is a closed form. It is also
+  exactly where the shader's anti-aliasing ends.
+- **Transforms:** quads are made in local coordinates and moved at `PopTransform`, with their em
+  coordinates unchanged. Scaled, rotated and zoomed text is therefore exact, and an 8× zoom keeps
+  edges one pixel wide.
+- **Colour:** the tint is straight alpha and premultiplied in the shader. Edges get the same
+  `TextGamma` correction as coverage text, so the two modes have the same weight.
+- **Batching:** it is a seventh batch kind (`Slug`).
+- **Accuracy:** a GPU test checks that the shader matches `SlugCoverage`, the CPU reference, to
+  within one 255th on every pixel of a turned and scaled glyph.
+- **Cost** (Apple M4 Pro, 1920 × 1080, Release):
+
+  | Text | Coverage | Slug |
+  |---|---|---|
+  | 6,000 glyphs at 14 px | ~0.45 ms | ~1.4 ms |
+  | A full screen at 14 px (18,000 glyphs) | ~0.8 ms | ~3.7 ms |
+  | 1,800 glyphs at 32 px | ~0.1 ms | ~0.9 ms |
+
+  These are GPU and upload times. Building the quads on the CPU takes about 0.2 µs a glyph in
+  either mode. Coverage is cheaper per pixel and sharper at small sizes, since it snaps to the
+  pixel grid. Slug has no bitmaps to make or store, and stays exact when text turns or zooms.
 
 ### MSDF text
 
