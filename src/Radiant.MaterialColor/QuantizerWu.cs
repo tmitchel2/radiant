@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+﻿// Copyright 2021 Google LLC
 // Licensed under the Apache License, Version 2.0 (see LICENSE in this directory).
 // Ported to C# from material-color-utilities (see README.md).
 

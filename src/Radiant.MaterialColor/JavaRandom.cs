@@ -1,4 +1,4 @@
-// Part of the C# port of material-color-utilities (see README.md). Not upstream code: reproduces
+﻿// Part of the C# port of material-color-utilities (see README.md). Not upstream code: reproduces
 // java.util.Random, as its documentation specifies the algorithm, because upstream's Java quantizer
 // draws from it.
 
