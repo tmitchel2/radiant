@@ -16,6 +16,8 @@
   <Project Path="Radiant.ColorSystem.Tests/Radiant.ColorSystem.Tests.csproj" />
   <Project Path="Radiant.Text/Radiant.Text.csproj" />
   <Project Path="Radiant.Text.Tests/Radiant.Text.Tests.csproj" />
+  <Project Path="Radiant.UI.Core/Radiant.UI.Core.csproj" />
+  <Project Path="Radiant.UI.Core.Tests/Radiant.UI.Core.Tests.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>

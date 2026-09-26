@@ -35,6 +35,29 @@ namespace Radiant
         /// <summary>Gets the current input state.</summary>
         public InputState Input => _inputState;
 
+        // Input as it happens, for UI that routes events rather than polling InputState each frame.
+
+        /// <summary>The pointer moved, to a position in logical window coordinates.</summary>
+        public event Action<Vector2>? PointerMoved;
+
+        /// <summary>A mouse button was pressed.</summary>
+        public event Action<MouseButton>? PointerPressed;
+
+        /// <summary>A mouse button was released.</summary>
+        public event Action<MouseButton>? PointerReleased;
+
+        /// <summary>The wheel or trackpad scrolled, by the platform's offsets.</summary>
+        public event Action<Vector2>? Scrolled;
+
+        /// <summary>A key was pressed.</summary>
+        public event Action<Key>? KeyPressed;
+
+        /// <summary>A key was released.</summary>
+        public event Action<Key>? KeyReleased;
+
+        /// <summary>A character was typed.</summary>
+        public event Action<char>? CharacterTyped;
+
         /// <summary>Gets the window width in logical pixels.</summary>
         public int WindowWidth => _window?.Size.X ?? 0;
 
@@ -437,36 +460,43 @@ namespace Radiant
             var delta = position - _inputState.MousePosition;
             _inputState.MousePosition = position;
             _inputState.MouseDelta = delta;
+            PointerMoved?.Invoke(position);
         }
 
         private void OnMouseDown(IMouse mouse, MouseButton button)
         {
             _inputState.SetMouseButton(button, true);
+            PointerPressed?.Invoke(button);
         }
 
         private void OnMouseUp(IMouse mouse, MouseButton button)
         {
             _inputState.SetMouseButton(button, false);
+            PointerReleased?.Invoke(button);
         }
 
         private void OnMouseScroll(IMouse mouse, ScrollWheel wheel)
         {
             _inputState.ScrollDelta = new Vector2(wheel.X, wheel.Y);
+            Scrolled?.Invoke(new Vector2(wheel.X, wheel.Y));
         }
 
         private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
         {
             _inputState.SetKey(key, true);
+            KeyPressed?.Invoke(key);
         }
 
         private void OnKeyUp(IKeyboard keyboard, Key key, int scancode)
         {
             _inputState.SetKey(key, false);
+            KeyReleased?.Invoke(key);
         }
 
         private void OnKeyChar(IKeyboard keyboard, char character)
         {
             _inputState.LastCharacter = character;
+            CharacterTyped?.Invoke(character);
         }
 
         private void OnUpdate(double delta)
