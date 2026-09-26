@@ -409,11 +409,22 @@ fn luma(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
+// Signed distance to the segment from a to b: a line of zero width (subtract half its width for a
+// stroke with round ends).
+fn sd_segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+    let pa = p - a;
+    let ba = b - a;
+    let h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-8), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let half_size = input.misc.xy;
-    let border_width = input.misc.z;
     let shape_kind = input.misc.w;
+    // A segment's misc.z is its half width, not a border.
+    let is_segment = shape_kind > 3.5;
+    let border_width = select(input.misc.z, 0.0, is_segment);
     let is_shadow = shape_kind > 1.5 && shape_kind < 2.5;
 
     // Every branch only computes values: fwidth below must run in uniform control flow, so no
@@ -424,6 +435,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         dist = sd_round_box(input.localPos, half_size, input.params);
     } else if (shape_kind < 1.5) {
         dist = sd_annulus(input.localPos, input.params.x, input.params.y);
+    } else if (is_segment) {
+        dist = sd_segment(input.localPos, input.params.xy, input.params.zw) - input.misc.z;
     } else if (shape_kind > 2.5) {
         dist = sd_arc(input.localPos, input.params);
     } else {

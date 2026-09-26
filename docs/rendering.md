@@ -141,6 +141,14 @@ Layers need the attachment size, so they need the clip-aware `BeginFrame(width, 
 Each costs a full-size texture and pass, so keep them for groups that actually overlap. A lone
 shape can simply use a translucent color.
 
+## Segments
+
+`DrawSegment` strokes a line of any width at any angle with round ends, anti-aliased by its
+distance field (SDF kind 4), and `DrawSmoothPolyline` chains them, so joins come out round. It's
+for charts and connectors; `DrawThickLine` and `DrawThickPolyline` are geometry on the filled
+pipeline, with hard edges but proper miter joins. Segments overlap where they meet, which only
+shows with a translucent colour.
+
 ## Arcs
 
 `DrawArc(centre, radius, thickness, start, sweep, colour)` strokes part of a circle with round ends.

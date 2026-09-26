@@ -1638,6 +1638,35 @@ namespace Radiant.Graphics2D
             => EmitCircle(center, outerRadius, MathF.Max(0f, innerRadius), 0f, color, color);
 
         /// <summary>
+        /// Draws an anti-aliased line from <paramref name="a"/> to <paramref name="b"/>,
+        /// <paramref name="width"/> wide with round ends, at any angle: for charts and connectors.
+        /// Unlike <see cref="DrawThickLine"/>, its edges are smooth.
+        /// </summary>
+        public void DrawSegment(Vector2 a, Vector2 b, float width, Vector4 color)
+        {
+            if (width <= 0f) return;
+            var center = (a + b) * 0.5f;
+            var half = width * 0.5f;
+            var extent = Vector2.Abs(b - a) * 0.5f + new Vector2(half, half);
+            var from = a - center;
+            var to = b - center;
+            EmitShape(center, extent, half, SdfShapeKind.Segment, new Vector4(from.X, from.Y, to.X, to.Y), color, color);
+        }
+
+        /// <summary>
+        /// Draws an anti-aliased polyline as round-ended segments, so its joins are round. Opaque
+        /// colours only: where segments meet they overlap, which a translucent colour would show.
+        /// </summary>
+        public void DrawSmoothPolyline(IReadOnlyList<Vector2> points, float width, Vector4 color)
+        {
+            ArgumentNullException.ThrowIfNull(points);
+            for (var i = 1; i < points.Count; i++)
+            {
+                DrawSegment(points[i - 1], points[i], width, color);
+            }
+        }
+
+        /// <summary>
         /// Draws an arc: a stroke along a circle of <paramref name="radius"/>, <paramref name="thickness"/>
         /// wide with round ends, from <paramref name="startAngle"/> through <paramref name="sweepAngle"/>
         /// (radians, clockwise from the positive x axis, as the screen's y points down). A sweep of

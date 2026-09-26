@@ -17,5 +17,8 @@ namespace Radiant.Graphics2D
 
         /// <summary>A stroked arc with round ends: params = (radius, half thickness, start angle, sweep), radians clockwise from +x.</summary>
         Arc = 3,
+
+        /// <summary>A stroked segment with round ends: params = (a, b) from the centre, misc.z = half its width.</summary>
+        Segment = 4,
     }
 }
