@@ -70,14 +70,14 @@ family, and components read it instead of constants. Two sets are built in:
 | Tracks | Secondary container | The highest surface container (a neutral grey) |
 | Chosen items | Secondary container (list rows, table and tree rows, menu bar, master–detail, preferences, wizard steps) | The same, which is a neutral grey in the Hairline presets |
 | Showcase | Tinted primary-container hero and call to action, tertiary feature tiles, a raised featured plan, a disc behind an empty state's icon | A quiet outlined hero, a dark (inverse) call to action, accent-filled feature tiles, the featured plan ringed in the accent, an outlined tile behind an empty state's icon |
-| Icons | 24 px, weight 400, chosen ones filled | 20 px, weight 300, never filled |
+| Icons | Material Symbols, 24 px, weight 400, chosen ones filled | Outline icons (Lucide), 20 px, never filled |
 | Focus ring | 3 px, 2 out, secondary | 2 px, 2 out, primary |
 | Hover and press | The content colour laid over the control | A shade (black on light, white on dark), so filled controls darken too; buttons shrink to 98% while pressed |
 
 The records:
 
 - `InteractionStyle`: the focus ring (width, gap, colour family), the `DisabledLook`, the `StateLayerLook` (content colour or shade) and how far buttons shrink when pressed.
-- `IconStyle`: default size, stroke weight, and whether chosen icons fill.
+- `IconStyle`: the `IconSet` (Material Symbols or outline icons), default size, Material Symbols' weight, and whether chosen icons fill.
 - `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, a `SurfaceLook` per variant, the toggle's on look, and the floating action button's corners and elevation (pagination buttons are 4 px smaller than icon buttons).
 - `ChipStyle`: chips' and tags' sizes, corners and looks.
 - `CardStyle`: corners, padding and a look per variant.

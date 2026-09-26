@@ -336,9 +336,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   accent line), `StatusBar`, and `DataTable`'s header and row heights draw the same in every
   preset: they're neutral already, but a theme can't size or recolour them beyond the colour
   roles. Their chosen rows do follow `ListStyle.Selected`.
-- **Fine icons are an approximation.** Hairline draws Material Symbols at weight 300 and 20 px,
-  close to a thin outline set but not the same drawing. Another icon font would need a map from
-  names to its characters, since icons are drawn by ligature name.
+- **Outline icons only cover the embedded names.** `outline-map.txt` pairs the embedded Material
+  Symbols names with Lucide icons; an app that registers the full Material Symbols font gets
+  Material icons for any other name, even in an outline theme. A few pairs are approximate
+  (`groups`, `insights`, `fit_screen`), and outline icons can't be filled, so a chosen item's
+  icon looks the same as the rest.
 - **Component styles change by subtree, not by instance.** `ThemeScope` restyles everything below
   it; a single component can't take another look except by wrapping it in one. A per-instance
   `Look` prop would be the next step if apps need it. Templates in the full sense (a style

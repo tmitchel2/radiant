@@ -66,7 +66,7 @@ public sealed record ComponentStyles
             StateLayer = StateLayerLook.Shade,
             PressScale = 0.98f,
         },
-        Icons = new IconStyle { Size = 20f, Weight = 300f, FillChosen = false },
+        Icons = new IconStyle { Set = IconSet.Outline, Size = 20f, Weight = 300f, FillChosen = false },
         Button = new ButtonStyle
         {
             Height = 40f,

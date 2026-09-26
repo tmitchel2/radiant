@@ -136,6 +136,12 @@ are variable (`TextStyle.Variations`).
 - **Embedded set:** Radiant embeds 295 common icons (445 KB). The list is `tools/icons/icons.txt`;
   `tools/icons/subset.sh` rebuilds the font from a pinned upstream commit.
 - **All icons:** register the full font under `FontLibrary.Icons` for the rest.
+- **Outline icons:** a theme whose `IconStyle.Set` is `IconSet.Outline` (the Hairline presets)
+  draws Lucide's outline icons (ISC) instead, by the same names: `OutlineIcons.Glyph(name)` gives
+  the character in `FontLibrary.OutlineIconFont`. `tools/icons/outline-map.txt` pairs each name
+  with its Lucide icon, and `tools/icons/outline.sh` cuts the font (90 KB) and writes the map
+  from a pinned release. An icon with no pair is drawn from Material Symbols; outline icons
+  don't fill.
 
 ## Primitives (`Radiant.Components.Primitives`)
 

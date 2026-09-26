@@ -17,9 +17,12 @@
     <InternalsVisibleTo Include="Radiant.Text.Tests" />
   </ItemGroup>
 
-  <!-- Variable Inter, JetBrains Mono and Source Serif 4 (SIL Open Font License; licences alongside). -->
+  <!-- Variable Inter, JetBrains Mono and Source Serif 4 (SIL Open Font License), Material Symbols
+       (Apache-2.0) and Lucide's outline icons (ISC), with the map from icon names to Lucide's glyphs;
+       licences alongside. -->
   <ItemGroup>
     <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Radiant.Text.Fonts.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Fonts\OutlineIcons.map" LogicalName="Radiant.Text.Fonts.OutlineIcons.map" />
   </ItemGroup>
 
   <ItemGroup>

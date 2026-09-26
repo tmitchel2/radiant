@@ -15,10 +15,41 @@ public class FontTests
     {
         var library = FontLibrary.Default;
 
-        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono, FontLibrary.SourceSerif, FontLibrary.Icons }, library.Families.ToArray());
+        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono, FontLibrary.SourceSerif, FontLibrary.Icons, FontLibrary.OutlineIconFont }, library.Families.ToArray());
         Assert.IsTrue(library.FindFace(FontLibrary.Inter, italic: true)!.IsItalic);
         Assert.IsTrue(library.FindFace(FontLibrary.JetBrainsMono, italic: true)!.IsItalic);
         Assert.IsTrue(library.FindFace(FontLibrary.SourceSerif, italic: true)!.IsItalic);
+    }
+
+    [TestMethod]
+    public void EveryOutlineIconIsInTheOutlineFont()
+    {
+        var face = FontLibrary.Default.FindFace(FontLibrary.OutlineIconFont)!;
+        var names = File.ReadAllLines(Path.Combine(Repo(), "tools", "icons", "outline-map.txt"))
+            .Where(l => l.Length > 0 && l[0] != '#')
+            .Select(l => l.Split(' ')[0])
+            .ToList();
+
+        Assert.IsTrue(names.Count > 250);
+        foreach (var name in names)
+        {
+            var glyph = OutlineIcons.Glyph(name);
+            Assert.IsNotNull(glyph, name);
+            Assert.IsTrue(face.HasGlyph(char.ConvertToUtf32(glyph, 0)), name);
+        }
+        Assert.IsNull(OutlineIcons.Glyph("no_such_icon"));
+    }
+
+    private static string Repo()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (Directory.Exists(Path.Combine(directory.FullName, "tools", "icons")))
+            {
+                return directory.FullName;
+            }
+        }
+        throw new InvalidOperationException("No repository above the test's directory.");
     }
 
     [TestMethod]

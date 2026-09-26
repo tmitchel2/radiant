@@ -261,6 +261,7 @@ public class ThemePresetsTests
             Assert.AreEqual(SwitchLook.Compact, components.Selection.Switch, preset.Name);
             Assert.AreEqual(DisabledLook.Fade, components.Interaction.Disabled, preset.Name);
             Assert.IsFalse(components.Selection.Halo, preset.Name);
+            Assert.AreEqual(IconSet.Outline, components.Icons.Set, preset.Name);
             Assert.IsNull(components.Button.Text.Content, $"{preset.Name}: text buttons are neutral");
         }
         Assert.AreEqual(SurfaceName.Info, ThemePresets.Linen.Components.Interaction.FocusRingColor);

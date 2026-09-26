@@ -28,6 +28,12 @@ public sealed class FontLibrary : IDisposable
     /// </summary>
     public const string Icons = "Material Symbols Rounded";
 
+    /// <summary>
+    /// Lucide's outline icons, drawn with a fine even stroke: set <see cref="OutlineIcons.Glyph"/>'s
+    /// character for an icon's name. Radiant embeds the icons it has names for (tools/icons/outline-map.txt).
+    /// </summary>
+    public const string OutlineIconFont = "Lucide";
+
     private static readonly Lazy<FontLibrary> s_default = new(CreateDefault);
 
     private readonly Dictionary<string, (FontFace? Upright, FontFace? Italic)> _families = new(StringComparer.OrdinalIgnoreCase);
@@ -160,6 +166,7 @@ public sealed class FontLibrary : IDisposable
         library.Register(Embedded("SourceSerif4Variable-Italic.ttf", SourceSerif, italic: true));
         // Icons are only ever asked for by name: they must never stand in for missing letters.
         library.Register(Embedded("MaterialSymbolsRounded.ttf", Icons, italic: false), fallback: false);
+        library.Register(Embedded("LucideIcons.ttf", OutlineIconFont, italic: false), fallback: false);
         return library;
     }
 
