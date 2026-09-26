@@ -26,6 +26,10 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             new("inbox", "Empty state"),
             new("rocket_launch", "Landing page") { Section = "Marketing" },
             new("storefront", "Store") { Section = "Ecommerce", Badge = 3 },
+            new("code", "Workspace") { Section = "Desktop shells" },
+            new("mail", "Mail"),
+            new("rocket_launch", "New project"),
+            new("tune", "Preferences"),
         ];
         Element content = page.Value switch
         {
@@ -35,6 +39,10 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             4 => Pages.Empty(),
             5 => Pages.Marketing(),
             6 => Pages.Store(),
+            7 => ShellPages.Workspace(),
+            8 => ShellPages.Mail(),
+            9 => ShellPages.NewProject(),
+            10 => ShellPages.Preferences(),
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu },
         };
         return new SnackbarHost(new SidebarLayout("Radiant Gallery", items, page.Value, page.Set, content)

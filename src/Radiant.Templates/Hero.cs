@@ -41,7 +41,7 @@ public sealed record Hero(string Headline) : Component
                 Children =
                 [
                     Eyebrow is null ? null : new SurfaceText(Eyebrow) { TextType = TextType.LabelLarge },
-                    new SurfaceText(Headline) { TextType = TextType.DisplaySmall },
+                    new SurfaceText(Headline) { TextType = TextType.DisplaySmall, HeadingLevel = 1 },
                     Text is null ? null : new SurfaceText(Text) { TextType = TextType.BodyLarge, Legibility = Legibility.Medium },
                     new Box { Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 12, Margin = new Edges(0, 8, 0, 0) }, Children = Actions },
                 ],

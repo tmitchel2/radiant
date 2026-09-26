@@ -43,7 +43,7 @@ public sealed record FeatureGrid(string Title, IReadOnlyList<Feature> Features) 
             Layout = new LayoutStyle { RowGap = 24, Padding = Edges.Symmetric(0, 16) },
             Children =
             [
-                new SurfaceText(Title) { TextType = TextType.HeadlineMedium },
+                new SurfaceText(Title) { TextType = TextType.HeadlineMedium, HeadingLevel = 2 },
                 Subtitle is null ? null : new SurfaceText(Subtitle) { TextType = TextType.BodyLarge, Legibility = Legibility.Medium },
                 new Grid { MinColumnWidth = 220, MaxColumns = 3, ColumnGap = 32, RowGap = 32, Children = items },
             ],

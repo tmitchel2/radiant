@@ -39,7 +39,7 @@ public sealed record SettingsSection(string Title, IReadOnlyList<Element?> Rows)
                     Layout = new LayoutStyle { FlexBasis = 240, FlexGrow = 1, RowGap = 4 },
                     Children =
                     [
-                        new SurfaceText(Title) { TextType = TextType.TitleMedium },
+                        new SurfaceText(Title) { TextType = TextType.TitleMedium, HeadingLevel = 2 },
                         Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium },
                     ],
                 },

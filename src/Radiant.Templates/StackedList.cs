@@ -23,7 +23,7 @@ public sealed record StackedList(IReadOnlyList<ListEntry> Entries) : Component
         var rows = new List<Element?>();
         if (Title is not null)
         {
-            rows.Add(new SurfaceText(Title) { TextType = TextType.TitleMedium, Layout = new LayoutStyle { Padding = new Edges(20, 16, 20, 8) } });
+            rows.Add(new SurfaceText(Title) { TextType = TextType.TitleMedium, HeadingLevel = 2, Layout = new LayoutStyle { Padding = new Edges(20, 16, 20, 8) } });
         }
         for (var i = 0; i < Entries.Count; i++)
         {

@@ -30,7 +30,7 @@ public sealed record CartSummary(IReadOnlyList<CartLine> Lines) : Component
     {
         string Money(decimal amount) => Currency + amount.ToString("0.00", CultureInfo.InvariantCulture);
         var subtotal = Lines.Sum(l => l.UnitPrice * l.Quantity);
-        var rows = new List<Element?> { new SurfaceText("Your cart") { TextType = TextType.TitleLarge } };
+        var rows = new List<Element?> { new SurfaceText("Your cart") { TextType = TextType.TitleLarge, HeadingLevel = 2 } };
         for (var i = 0; i < Lines.Count; i++)
         {
             var index = i;

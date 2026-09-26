@@ -140,6 +140,17 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
+- **Splitter handles overlap panes by tree order.** The divider's grip reaches 4 px into both
+  panes; it's placed inside the second pane's wrapper so it's later in the tree and above both.
+  That's why the second pane clips through an inner box. A z-index or an overlay layer for
+  handles would be cleaner, and would let a splitter collapse a pane (snap shut below its
+  minimum), which it can't yet.
+- **Document tabs are basic.** No drag to reorder or to another group, the chosen tab isn't
+  scrolled into view, the vertical wheel doesn't scroll the strip, there's no overflow menu, and
+  the close button isn't a tab stop (closing from the keyboard wants a command, Ctrl+W).
+- **The slider's track is inset.** The track now sits 10 px (the handle's radius) inside the
+  slider, so the handle stays inside at either end; code measuring a slider by its bounds must
+  allow for it.
 - **Icon buttons in fields were named by their icon.** `TextField`'s trailing button used the
   icon's name ("visibility") as its label; `TrailingIconLabel` now names it, but it falls back to
   the icon name when unset. Require a label when there's an `OnTrailingIconPress`, or analyse for it.
@@ -154,6 +165,18 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   it; Radix listens on the document. Add a root key observer if layers without focus need it.
 
 ## Templates (`Radiant.Templates`)
+
+- **Docks are fixed.** `WorkspaceLayout`'s parts can't be dragged to other docks, the panel can't
+  be maximised or closed from its header, editors can't be split into groups, and splitter sizes
+  aren't remembered between runs.
+- **Search fields are full-size text fields.** `MasterDetail` uses a 56 px outlined `TextField`
+  for search; lists want a compact search field (32–36 px, a clear button).
+- **Icons for source control and mail are missing.** The embedded subset lacks `account_tree`,
+  `call_split`, `reply` and `drafts`, so the gallery's workspace and mail use stand-ins. Add them
+  to `tools/icons/icons.txt` and re-subset.
+- **The gallery frames shells by hand.** A shell previewed in a frame is inset by the outline's
+  width, but its corners still cross the frame's rounded outline; clipping children to the shape
+  inside the border would fix it generally.
 
 - **The password field is masked by the form.** `TextField` has no password mode, so
   `SignInForm` shows a dot per character and maps edits on the dots back onto the real text. That

@@ -36,6 +36,18 @@ state beyond what the block itself needs (a form's field values).
 | `ProductCard(product)` | One of those cards. |
 | `CartSummary(lines)` / `CartLine` | Each line with its picture, quantity buttons and amount, then subtotal, shipping (or "Free"), total and checkout. Quantity changes are reported, not applied: the app owns the cart. |
 
+## Desktop shells
+
+These are whole windows. The gallery shows each one in a framed preview.
+
+| Block | What it is |
+|---|---|
+| `WorkspaceLayout(activities, activity, onActivity, editor)` | An IDE-style docked workspace: an activity bar choosing the side bar's content, the side bar, the editor with a panel under it and an inspector beside it, each behind a `Splitter`, and a status bar. Any part left null goes, with its splitter. |
+| `MasterDetail(items, selected, onSelect, detail)` | A searchable list beside the chosen item's detail (mail, notes). Up and Down move through the list; searching keeps indices in the full list. With nothing chosen the detail shows an empty state. |
+| `InspectorSection(title, rows)` / `PropertyRow(label, control)` | An inspector's collapsible property groups, names in a fixed column. |
+| `Wizard(steps, current, onStep)` / `WizardStep` | A step-by-step flow: steps listed on the left (done ones ticked and revisitable), the current step's title and content, and Cancel, Back and Next or Finish. A step with `CanContinue = false` holds Next. |
+| `PreferencesLayout(categories, selected, onSelect, content)` | A preferences window: a compact category list with section headings, and the chosen category's settings under its name. |
+
 ## Layout
 
 Blocks that lay out repeated cards use `Grid` (see [ui.md](ui.md#grids)), so columns stay even
@@ -51,8 +63,7 @@ gallery renders every block as a page, light and dark, to PNG (see
 
 ## Still to come
 
-- **Desktop shells:** docked IDE workspace, master-detail, inspector, wizard, preferences window
-  and document tabs. These need a `Splitter` and `DocumentTabs` first.
+- **More desktop shells:** onboarding, and a document editor with split editor groups.
 - **More Application UI:** tables, description lists, calendars, feeds, command palette and
   notifications, as the P9 components (`DataTable`, `CommandPalette` and others) land.
 - **More Marketing:** bento grid, testimonials, team, FAQ, logo cloud, newsletter, contact, footer

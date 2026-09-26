@@ -27,7 +27,7 @@ public sealed record PageHeading(string Title) : Component
                 Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, MinWidth = 200, RowGap = 4 },
                 Children =
                 [
-                    new SurfaceText(Title) { TextType = TextType.HeadlineSmall },
+                    new SurfaceText(Title) { TextType = TextType.HeadlineSmall, HeadingLevel = 1 },
                     Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium },
                 ],
             },
