@@ -1,8 +1,8 @@
 namespace Radiant.Layout;
 
 /// <summary>
-/// Flexbox + box-model layout inputs for a <see cref="Radiant.UI.UIElement"/>, mapped onto a Yoga
-/// node by <see cref="YogaLayoutEngine"/>. Every property is "unset" by default (nullable enums and
+/// Flexbox + box-model layout inputs for an element, mapped onto its render node's Yoga node (in
+/// <c>Radiant.UI.Core</c>). Every property is "unset" by default (nullable enums and
 /// <see cref="Dimension.Undefined"/> lengths), so <c>default(LayoutStyle)</c> applies no overrides
 /// and the node keeps Yoga's defaults. Build with object/<c>with</c> initialisers:
 /// <code>new LayoutStyle { FlexDirection = FlexDirection.Row, FlexGrow = 1f, Padding = Edges.All(8f) }</code>
@@ -71,4 +71,41 @@ public readonly record struct LayoutStyle
 
     /// <summary>Width-to-height aspect ratio constraint.</summary>
     public float? AspectRatio { get; init; }
+
+    /// <summary>
+    /// Which way this node and its descendants lay out: rows run from the start side and edges'
+    /// starts are on it (left for left-to-right). Inherited when null.
+    /// </summary>
+    public Radiant.Text.TextDirection? Direction { get; init; }
+
+    /// <summary>
+    /// This style with everything <paramref name="over"/> sets replacing this one's, edge by edge
+    /// for margin, padding and inset: how a component's own layout takes a caller's additions
+    /// (a button told to stretch keeps its padding).
+    /// </summary>
+    public LayoutStyle Merge(LayoutStyle over) => new()
+    {
+        FlexDirection = over.FlexDirection ?? FlexDirection,
+        JustifyContent = over.JustifyContent ?? JustifyContent,
+        AlignItems = over.AlignItems ?? AlignItems,
+        AlignSelf = over.AlignSelf ?? AlignSelf,
+        FlexWrap = over.FlexWrap ?? FlexWrap,
+        Position = over.Position ?? Position,
+        FlexGrow = over.FlexGrow ?? FlexGrow,
+        FlexShrink = over.FlexShrink ?? FlexShrink,
+        FlexBasis = over.FlexBasis.IsSet ? over.FlexBasis : FlexBasis,
+        Width = over.Width.IsSet ? over.Width : Width,
+        Height = over.Height.IsSet ? over.Height : Height,
+        MinWidth = over.MinWidth.IsSet ? over.MinWidth : MinWidth,
+        MinHeight = over.MinHeight.IsSet ? over.MinHeight : MinHeight,
+        MaxWidth = over.MaxWidth.IsSet ? over.MaxWidth : MaxWidth,
+        MaxHeight = over.MaxHeight.IsSet ? over.MaxHeight : MaxHeight,
+        Margin = Margin.Merge(over.Margin),
+        Padding = Padding.Merge(over.Padding),
+        Inset = Inset.Merge(over.Inset),
+        RowGap = over.RowGap.IsSet ? over.RowGap : RowGap,
+        ColumnGap = over.ColumnGap.IsSet ? over.ColumnGap : ColumnGap,
+        AspectRatio = over.AspectRatio ?? AspectRatio,
+        Direction = over.Direction ?? Direction,
+    };
 }

@@ -1,0 +1,14 @@
+# A ring of quadratics: a clockwise outer contour and an anticlockwise hole, as in a TrueType 'o'.
+0.140625 6
+M 0 100
+Q 0 200 100 200
+Q 200 200 200 100
+Q 200 0 100 0
+Q 0 0 0 100
+Z
+M 50 100
+Q 50 50 100 50
+Q 150 50 150 100
+Q 150 150 100 150
+Q 50 150 50 100
+Z

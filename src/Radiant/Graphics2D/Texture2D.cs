@@ -20,6 +20,7 @@ namespace Radiant.Graphics2D
         private readonly Queue* _queue;
         private readonly BindGroupLayout* _layout;
         private readonly TextureFormat _format;
+        private readonly bool _renderTarget;
 
         private Texture* _texture;
         private TextureView* _view;
@@ -33,13 +34,23 @@ namespace Radiant.Graphics2D
         /// <summary>Group-1 bind group (sampler @0 + texture @1) for the image pipeline.</summary>
         internal BindGroup* BindGroup => _bindGroup;
 
-        private Texture2D(Renderer2D renderer, int width, int height, TextureFormat format)
+        /// <summary>The texture's view, to render into when it is a render target.</summary>
+        internal TextureView* View => _view;
+
+        /// <summary>
+        /// A texture the renderer can draw into and then draw: an opacity layer's offscreen target.
+        /// </summary>
+        internal static Texture2D CreateRenderTarget(Renderer2D renderer, int width, int height, TextureFormat format) =>
+            new(renderer, width, height, format, renderTarget: true);
+
+        private Texture2D(Renderer2D renderer, int width, int height, TextureFormat format, bool renderTarget = false)
         {
             _wgpu = renderer.Wgpu;
             _device = renderer.Device;
             _queue = renderer.Queue;
             _layout = renderer.ImageBindGroupLayout;
             _format = format;
+            _renderTarget = renderTarget;
             CreateSampler();
             Allocate(width, height);
         }
@@ -61,6 +72,11 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Upload <paramref name="pixels"/> (tightly packed, 4 bytes/pixel, matching this texture's
         /// format and current <see cref="Width"/>×<see cref="Height"/>) to the GPU.
+        /// <para>
+        /// The pixels must be <b>premultiplied alpha</b>, as a frame rendered by
+        /// <see cref="Renderer2D"/> already is. Straight-alpha image data (as most image files decode
+        /// to) must be premultiplied first, or its translucent pixels draw too bright.
+        /// </para>
         /// </summary>
         public void Update(ReadOnlySpan<byte> pixels)
         {
@@ -109,7 +125,8 @@ namespace Radiant.Graphics2D
                 SampleCount = 1,
                 Dimension = TextureDimension.Dimension2D,
                 Format = _format,
-                Usage = TextureUsage.TextureBinding | TextureUsage.CopyDst,
+                Usage = TextureUsage.TextureBinding | TextureUsage.CopyDst
+                    | (_renderTarget ? TextureUsage.RenderAttachment : TextureUsage.None),
             };
             _texture = _wgpu.DeviceCreateTexture(_device, in desc);
 

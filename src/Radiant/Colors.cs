@@ -1,5 +1,5 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
+using Radiant.Graphics2D;
 
 namespace Radiant
 {
@@ -300,19 +300,14 @@ namespace Radiant
         public static readonly Vector3 Rose950 = FromHex("#4c0519");
 
         /// <summary>
-        /// Converts a hex color string to a Vector3 with normalized RGB values (0-1).
+        /// Converts a gamma-encoded hex colour (<c>#rrggbb</c>, or any form <see cref="Color.Parse"/>
+        /// accepts) to linear-light RGB — the space the renderer draws in.
         /// </summary>
         public static Vector3 FromHex(string hex)
         {
-            hex = hex.TrimStart('#');
-            var r = int.Parse(hex.AsSpan(0, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
-            var g = int.Parse(hex.AsSpan(2, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
-            var b = int.Parse(hex.AsSpan(4, 2), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) / 255f;
-            return new Vector3(SrgbToLinear(r), SrgbToLinear(g), SrgbToLinear(b));
+            var color = Color.Parse(hex);
+            return new Vector3(color.R, color.G, color.B);
         }
-
-        private static float SrgbToLinear(float c) =>
-            c <= 0.04045f ? c / 12.92f : MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
     }
 
     public static class ColorExtensions

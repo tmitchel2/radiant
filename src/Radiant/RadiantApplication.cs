@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 ﻿using System;
 using System.Diagnostics;
 using System.Numerics;
@@ -23,6 +24,11 @@ namespace Radiant
         private Action<double>? _updateCallback;
         private bool _disposed;
         private bool _resizing; // re-entrancy guard for the live-resize render driven from OnFramebufferResize
+        private volatile bool _frameRequested;
+        // While a frame holds the surface's texture, a resize can't reconfigure the surface: one that
+        // arrives then (code in the frame resizing the window) waits here until the frame is presented.
+        private bool _holdingSurface;
+        private Vector2D<int>? _deferredResize;
         private Handedness _handedness;
         private Vector4 _backgroundColor;
         private RadiantWindowStyle _style = RadiantWindowStyle.Default;
@@ -34,6 +40,61 @@ namespace Radiant
 
         /// <summary>Gets the current input state.</summary>
         public InputState Input => _inputState;
+
+        // Input as it happens, for UI that routes events rather than polling InputState each frame.
+
+        /// <summary>The pointer moved, to a position in logical window coordinates.</summary>
+        /// <summary>
+        /// When set, frames are drawn only while this returns true or after <see cref="RequestFrame"/>;
+        /// otherwise the window waits for input rather than drawing the same frame again, so an idle
+        /// app uses no CPU or GPU. Null draws every frame.
+        /// </summary>
+        public Func<bool>? NeedsFrame { get; set; }
+
+        /// <summary>
+        /// Asks for a frame to be drawn, waking the window if it's waiting for input: for a change
+        /// that input didn't cause (an animation starting, a timer, a platform notification).
+        /// </summary>
+        public void RequestFrame()
+        {
+            _frameRequested = true;
+            _window?.ContinueEvents();
+        }
+
+        /// <summary>Raised with the paths of files (or folders) dropped on the window, from the Finder or another app.</summary>
+        public event Action<IReadOnlyList<string>>? FilesDropped;
+
+        public event Action<Vector2>? PointerMoved;
+
+        /// <summary>A mouse button was pressed.</summary>
+        public event Action<MouseButton>? PointerPressed;
+
+        /// <summary>A mouse button was released.</summary>
+        public event Action<MouseButton>? PointerReleased;
+
+        /// <summary>The wheel or trackpad scrolled, by the platform's offsets.</summary>
+        public event Action<Vector2>? Scrolled;
+
+        /// <summary>A key was pressed.</summary>
+        public event Action<Key>? KeyPressed;
+
+        /// <summary>A key was released.</summary>
+        public event Action<Key>? KeyReleased;
+
+        /// <summary>A character was typed.</summary>
+        public event Action<char>? CharacterTyped;
+
+        /// <summary>
+        /// The window is open and rendering is set up: raised once, before the first frame. The
+        /// place to attach anything that needs the native window, such as the platform services.
+        /// </summary>
+        public event Action? Loaded;
+
+        /// <summary>The window's <c>NSWindow*</c> on macOS; zero elsewhere, or before it opens.</summary>
+        public nint CocoaWindow => _window?.Native?.Cocoa ?? 0;
+
+        /// <summary>The window's <c>GLFWwindow*</c>; zero before it opens.</summary>
+        public nint GlfwWindow => _window?.Native?.Glfw ?? 0;
 
         /// <summary>Gets the window width in logical pixels.</summary>
         public int WindowWidth => _window?.Size.X ?? 0;
@@ -234,6 +295,10 @@ namespace Radiant
             options.WindowBorder = _style.Decorated ? WindowBorder.Resizable : WindowBorder.Hidden;
             options.ShouldSwapAutomatically = false;
 
+            // Silk.NET finds its platforms by reflection, which ahead-of-time compilation trims away:
+            // registering GLFW by hand works either way.
+            Silk.NET.Windowing.Glfw.GlfwWindowing.RegisterPlatform();
+            Silk.NET.Input.Glfw.GlfwInput.RegisterPlatform();
             _window = Window.Create(options);
 
             _window.Load += OnLoad;
@@ -249,7 +314,7 @@ namespace Radiant
         {
             if (_window == null) return;
 
-            _engineState = InitializeEngine(_window);
+            _engineState = InitializeEngine(_window, _style.Transparent);
             _camera = new Camera2D(_window.Size.X, _window.Size.Y, _handedness);
             _renderer = new Renderer2D();
             _renderer.Initialize(_engineState, _camera);
@@ -257,6 +322,7 @@ namespace Radiant
             // Initialize input
             _inputContext = _window.CreateInput();
             InitializeInput();
+            _window.FileDrop += paths => FilesDropped?.Invoke(paths);
 
             if (_style.MousePassthrough)
             {
@@ -269,6 +335,8 @@ namespace Radiant
             }
 
             TryPinLayerTopLeft();
+
+            Loaded?.Invoke();
         }
 
         // The CAMetalLayer's default contentsGravity (`resize`) SCALES the rendered drawable to fill the
@@ -437,42 +505,54 @@ namespace Radiant
             var delta = position - _inputState.MousePosition;
             _inputState.MousePosition = position;
             _inputState.MouseDelta = delta;
+            PointerMoved?.Invoke(position);
         }
 
         private void OnMouseDown(IMouse mouse, MouseButton button)
         {
             _inputState.SetMouseButton(button, true);
+            PointerPressed?.Invoke(button);
         }
 
         private void OnMouseUp(IMouse mouse, MouseButton button)
         {
             _inputState.SetMouseButton(button, false);
+            PointerReleased?.Invoke(button);
         }
 
         private void OnMouseScroll(IMouse mouse, ScrollWheel wheel)
         {
             _inputState.ScrollDelta = new Vector2(wheel.X, wheel.Y);
+            Scrolled?.Invoke(new Vector2(wheel.X, wheel.Y));
         }
 
         private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
         {
             _inputState.SetKey(key, true);
+            KeyPressed?.Invoke(key);
         }
 
         private void OnKeyUp(IKeyboard keyboard, Key key, int scancode)
         {
             _inputState.SetKey(key, false);
+            KeyReleased?.Invoke(key);
         }
 
         private void OnKeyChar(IKeyboard keyboard, char character)
         {
             _inputState.LastCharacter = character;
+            CharacterTyped?.Invoke(character);
         }
 
         private void OnUpdate(double delta)
         {
             _updateCallback?.Invoke(delta);
             _inputState.EndFrame();
+            // With nothing to draw, the loop waits for the next event instead of spinning.
+            if (NeedsFrame is { } needsFrame && _window is { } window)
+            {
+                window.IsEventDriven = !_frameRequested && !needsFrame();
+            }
         }
 
         private void OnClosing()
@@ -483,11 +563,16 @@ namespace Radiant
         private void OnFramebufferResize(Vector2D<int> size)
         {
             if (_disposed || _engineState == null || _camera == null || _window == null) return;
+            if (_holdingSurface)
+            {
+                _deferredResize = size;
+                return;
+            }
 
             // The event delivers the PHYSICAL framebuffer size (used to resize the swapchain). The 2D camera
             // is in LOGICAL units (created from _window.Size at load; OnRender applies pixelScale =
             // framebuffer / logical separately), so keep the camera viewport logical here.
-            CreateSwapchain(_engineState);
+            CreateSwapchain(_engineState, _style.Transparent);
             _camera.SetViewportSize(_window.Size.X, _window.Size.Y);
 
             // Render live during the resize. On macOS, Cocoa runs a modal event-tracking loop while a window
@@ -515,17 +600,41 @@ namespace Radiant
         private void OnRender(double delta)
         {
             if (_disposed || _engineState == null || _renderer == null) return;
+            if (NeedsFrame is { } needsFrame && !_resizing && !_frameRequested && !needsFrame())
+            {
+                return;
+            }
+            _frameRequested = false;
 
             SurfaceTexture surfaceTexture;
             _engineState._wgpu.SurfaceGetCurrentTexture(_engineState._surface, &surfaceTexture);
+            _holdingSurface = true;
+            try
+            {
+                RenderInto(surfaceTexture);
+            }
+            finally
+            {
+                _holdingSurface = false;
+            }
+            if (_deferredResize is { } resize)
+            {
+                _deferredResize = null;
+                OnFramebufferResize(resize);
+            }
+        }
 
+        // Draws the frame into the surface's current texture and presents it.
+        private void RenderInto(SurfaceTexture surfaceTexture)
+        {
+            if (_engineState == null || _renderer == null) return;
             switch (surfaceTexture.Status)
             {
                 case SurfaceGetCurrentTextureStatus.Timeout:
                 case SurfaceGetCurrentTextureStatus.Outdated:
                 case SurfaceGetCurrentTextureStatus.Lost:
                     _engineState._wgpu.TextureRelease(surfaceTexture.Texture);
-                    CreateSwapchain(_engineState);
+                    CreateSwapchain(_engineState, _style.Transparent);
                     return;
                 case SurfaceGetCurrentTextureStatus.OutOfMemory:
                 case SurfaceGetCurrentTextureStatus.DeviceLost:
@@ -542,7 +651,7 @@ namespace Radiant
                 ResolveTarget = null,
                 LoadOp = LoadOp.Clear,
                 StoreOp = StoreOp.Store,
-                ClearValue = new Color { R = _backgroundColor.X, G = _backgroundColor.Y, B = _backgroundColor.Z, A = _backgroundColor.W }
+                ClearValue = ClearColor.FromStraightAlpha(_backgroundColor),
             };
 
             var renderPassDescriptor = new RenderPassDescriptor
@@ -589,7 +698,7 @@ namespace Radiant
             _engineState._wgpu.TextureRelease(surfaceTexture.Texture);
         }
 
-        private static Engine2State InitializeEngine(IWindow window)
+        private static Engine2State InitializeEngine(IWindow window, bool transparent)
         {
             var state = new Engine2State { _window = window };
             state._wgpu = WebGPU.GetApi();
@@ -648,17 +757,21 @@ namespace Radiant
 
             state._wgpu.SurfaceGetCapabilities(state._surface, state._adapter, ref state._surfaceCapabilities);
 
-            CreateSwapchain(state);
+            ReportIfNotSrgb(state);
+            CreateSwapchain(state, transparent);
 
             return state;
         }
 
-        private static void CreateSwapchain(Engine2State state)
+        // The format and alpha mode come from SurfaceFormats, which Renderer2D also asks when it
+        // builds its pipelines, so the swapchain and the pipelines cannot disagree about the target.
+        private static void CreateSwapchain(Engine2State state, bool transparent)
         {
             state._surfaceConfiguration = new SurfaceConfiguration
             {
                 Usage = TextureUsage.RenderAttachment,
-                Format = state._surfaceCapabilities.Formats[0],
+                Format = SurfaceFormats.ChooseColorFormat(state._surfaceCapabilities),
+                AlphaMode = SurfaceFormats.ChooseAlphaMode(state._surfaceCapabilities, transparent),
                 PresentMode = PresentMode.Fifo,
                 Device = state._device,
                 Width = (uint)state._window.FramebufferSize.X,
@@ -666,6 +779,18 @@ namespace Radiant
             };
 
             state._wgpu.SurfaceConfigure(state._surface, in state._surfaceConfiguration);
+        }
+
+        // A surface with no sRGB format would show every colour too dark (linear values written
+        // without encoding). Metal offers Bgra8UnormSrgb; say so loudly if some surface ever does not.
+        private static void ReportIfNotSrgb(Engine2State state)
+        {
+            var format = SurfaceFormats.ChooseColorFormat(state._surfaceCapabilities);
+            if (!SurfaceFormats.IsSrgb(format))
+            {
+                Console.WriteLine(
+                    $"[surface] No sRGB swapchain format available; rendering into {format}. Colours will be too dark.");
+            }
         }
 
         private static void CleanupEngine(Engine2State state)

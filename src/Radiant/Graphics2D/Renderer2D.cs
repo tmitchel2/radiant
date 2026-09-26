@@ -43,7 +43,6 @@ namespace Radiant.Graphics2D
         private BindGroupLayout* _msdfAtlasBindGroupLayout;
         private PipelineLayout* _msdfPipelineLayout;
         private readonly List<MsdfVertex2D> _msdfVertices = [];
-        private readonly List<MsdfDrawRange> _msdfRanges = [];
         private readonly List<MsdfFont> _ownedFonts = [];
 
         // Batched SDF-shape pipeline (rounded rect / disc / ring). Reuses the group-0 uniform layout,
@@ -51,7 +50,6 @@ namespace Radiant.Graphics2D
         private RenderPipeline* _sdfShapePipeline;
         private ShaderModule* _sdfShapeShader;
         private readonly List<SdfShapeVertex2D> _sdfShapeVertices = [];
-        private readonly List<SdfShapeDrawRange> _sdfShapeRanges = [];
 
         internal IReadOnlyList<Vertex2D> FilledVertices => _filledVertices;
         internal IReadOnlyList<Vertex2D> LineVertices => _lineVertices;
@@ -59,25 +57,82 @@ namespace Radiant.Graphics2D
         internal IReadOnlyList<SdfShapeVertex2D> SdfShapeVertices => _sdfShapeVertices;
         private TextureFormat _surfaceFormat;
 
+        // EVERY PIPELINE BLENDS PREMULTIPLIED ALPHA. The shaders multiply RGB by alpha before they
+        // return, so "source over" is One / OneMinusSrcAlpha for colour and alpha alike. Two things
+        // follow that straight alpha gets wrong:
+        //  - the target's alpha accumulates correctly (two 50% layers cover 75%), which is what a
+        //    transparent window or an offscreen frame composited later needs;
+        //  - mixing colours inside a shader (an SDF border over its fill, a texel with its
+        //    neighbour) stays right when one side is transparent, instead of pulling towards black.
+        // Colours passed in stay straight alpha; premultiplying is the shader's job, not the caller's.
+        private static readonly BlendState PremultipliedAlphaBlend = new()
+        {
+            Color = new BlendComponent
+            {
+                SrcFactor = BlendFactor.One,
+                DstFactor = BlendFactor.OneMinusSrcAlpha,
+                Operation = BlendOperation.Add,
+            },
+            Alpha = new BlendComponent
+            {
+                SrcFactor = BlendFactor.One,
+                DstFactor = BlendFactor.OneMinusSrcAlpha,
+                Operation = BlendOperation.Add,
+            },
+        };
+
         // HOW MANY SAMPLES EVERY PIPELINE IS BUILT FOR. A pipeline's sample count must match the
         // attachment it draws into, so this is decided once at Initialize and is the same for all
         // four -- a mismatch is a validation error at draw time rather than a soft failure.
         private uint _sampleCount = 1;
-        private readonly List<IntPtr> _frameBuffers = [];
+        // One vertex buffer per batch kind, kept across frames and grown (to the next power of two)
+        // when a frame needs more. Rewriting a buffer the previous frame drew from is safe: the queue
+        // runs writeBuffer after work already submitted.
+        private readonly IntPtr[] _vertexBuffers = new IntPtr[7];
+        private readonly ulong[] _vertexBufferCapacities = new ulong[7];
 
         // Clip/scissor state
-        private readonly Stack<ClipRect> _clipStack = new();
-        private readonly List<DrawRange> _ranges = [];
+        private readonly Stack<ClipState> _clipStack = new();
 
-        // Scroll-offset state: a translate applied to emitted geometry (not the clip).
-        // Markers record the vertex counts at push time; PopScrollOffset shifts everything
-        // appended since by the delta, so nested pushes compose cumulatively while the clip
-        // viewport stays fixed in window space.
-        private readonly Stack<ScrollOffsetMarker> _scrollOffsetStack = new();
+        // EVERY DRAW, IN THE ORDER IT WAS MADE. Each primitive kind keeps its own vertex list (and
+        // pipeline), but what gets drawn when is decided here: a batch is a run of one kind's
+        // vertices with one clip and one texture, and EndFrame replays the batches in order,
+        // switching pipeline only where the kind changes. So a popup's background drawn after some
+        // text covers that text, whatever pipelines the two use. Consecutive compatible draws extend
+        // the last batch, so a frame of many rects is still one draw call.
+        private readonly List<DrawBatch> _batches = [];
 
-        private readonly record struct ScrollOffsetMarker(
-            Vector2 Delta, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart);
-        private DrawRange _currentRange;
+        // OPACITY LAYERS. Draws between PushLayer and PopLayer go to the layer's own batch list and
+        // are rendered into an offscreen texture before the frame; the parent list holds, where the
+        // layer was pushed, one batch that composites that texture at the layer's opacity. So a
+        // group fades as one image: its overlapping parts don't show through each other.
+        private sealed class Layer
+        {
+            public float Opacity;
+            public List<DrawBatch> Batches = [];
+            public List<DrawBatch> Parent = [];
+            public int CompositeIndex;
+        }
+
+        private readonly List<Layer> _layers = [];           // in PushLayer order; batches refer to them by index
+        private readonly List<Layer> _layerRenderOrder = []; // in PopLayer order: inner layers first
+        private readonly Stack<Layer> _layerStack = new();
+        private List<DrawBatch>? _currentBatchesOrNull;
+        private List<DrawBatch> _currentBatches => _currentBatchesOrNull ?? _batches;
+        private readonly List<Texture2D> _layerTargets = [];  // pooled across frames, one per layer
+        private readonly List<IntPtr> _layerSampleTextures = []; // multisampled attachments, when _sampleCount > 1
+        private readonly List<IntPtr> _layerSampleViews = [];
+
+        // Transform state: a matrix applied to emitted geometry (not the clip). Markers record the
+        // vertex counts at push time; PopTransform transforms everything appended since. Inner
+        // pushes pop first, so nested transforms compose inner-then-outer, as a scene graph does,
+        // while clip rectangles stay in window space. Scroll offsets are translations on the same
+        // stack.
+        private readonly Stack<TransformMarker> _transformStack = new();
+
+        private readonly record struct TransformMarker(
+            Matrix3x2 Transform, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart,
+            int CoverageStart, int SlugStart);
         private bool _clipEnabled;
         private uint _attachmentWidth;
         private uint _attachmentHeight;
@@ -100,29 +155,41 @@ namespace Radiant.Graphics2D
             }
         }
 
-        private struct DrawRange
+        // A rounded clip in logical window coordinates: its rectangle and corner radii.
+        private readonly record struct RoundedClip(Vector4 Rect, Vector4 Radii);
+
+        // The clip in force: the scissor rectangle, and the innermost rounded clip if there is one.
+        private readonly record struct ClipState(ClipRect Rect, RoundedClip? Rounded);
+
+        // Which pipeline (and vertex list) a batch draws with.
+        private enum BatchKind
         {
-            public ClipRect? Clip;
-            public int FilledStart;
-            public int FilledCount;
-            public int LineStart;
-            public int LineCount;
+            Filled,
+            Line,
+            SdfShape,
+            Image,
+            Msdf,
+            Coverage,
+            Slug,
         }
 
-        private struct MsdfDrawRange
+        // A run of consecutive vertices of one kind sharing a clip and a group-1 bind group (the
+        // font atlas or image; zero for kinds that have none).
+        private struct DrawBatch
         {
-            public MsdfFont Font;
+            public BatchKind Kind;
+            public int Start;
+            public int Count;
             public ClipRect? Clip;
-            public int VertexStart;
-            public int VertexCount;
+            public RoundedClip? Rounded;
+            public IntPtr BindGroup;
+
+            // For a layer's composite: the index of the layer it draws, or -1.
+            public int Layer;
         }
 
-        private struct SdfShapeDrawRange
-        {
-            public ClipRect? Clip;
-            public int VertexStart;
-            public int VertexCount;
-        }
+        /// <summary>Number of draw batches recorded this frame. For tests.</summary>
+        internal int BatchCount => _batches.Count;
 
         /// <summary>Builds the pipelines for a target of a given sample count.</summary>
         /// <param name="engineState">The device to build on.</param>
@@ -146,7 +213,7 @@ namespace Radiant.Graphics2D
             _device = engineState._device;
             _queue = _wgpu.DeviceGetQueue(_device);
             _camera = camera;
-            _surfaceFormat = engineState._surfaceCapabilities.Formats[0];
+            _surfaceFormat = SurfaceFormats.ChooseColorFormat(engineState._surfaceCapabilities);
 
             CreateUniformBuffer();
             CreateBindGroupLayout();
@@ -155,15 +222,26 @@ namespace Radiant.Graphics2D
             CreatePipelines();
             CreateBindGroup();
             CreateMsdfPipeline();
+            CreateCoveragePipeline();
+            CreateSlugPipeline();
             CreateSdfShapePipeline();
             CreateImagePipeline();
         }
 
-        private void CreateUniformBuffer()
+        // THE UNIFORMS ARE AN ARRAY OF SLOTS, ONE PER CLIP STATE IN THE FRAME. Every slot holds the
+        // projection and one rounded clip (slot 0: none), and a batch selects its slot with a
+        // dynamic offset on group 0, so a rounded clip costs no vertex data and no pipeline change.
+        // Slots are 256 bytes apart because that is WebGPU's minimum uniform offset alignment.
+        private const int UniformBlockSize = 112; // mat4x4 + clip rect + radii + flags
+        private const int UniformSlotSize = 256;
+        private int _uniformSlotCapacity;
+
+        private void CreateUniformBuffer(int slots = 16)
         {
+            _uniformSlotCapacity = slots;
             var bufferDescriptor = new BufferDescriptor
             {
-                Size = 64, // 4x4 matrix = 64 bytes
+                Size = (ulong)(slots * UniformSlotSize),
                 Usage = BufferUsage.Uniform | BufferUsage.CopyDst,
                 MappedAtCreation = false
             };
@@ -176,11 +254,12 @@ namespace Radiant.Graphics2D
             var entry = new BindGroupLayoutEntry
             {
                 Binding = 0,
-                Visibility = ShaderStage.Vertex,
+                Visibility = ShaderStage.Vertex | ShaderStage.Fragment,
                 Buffer = new BufferBindingLayout
                 {
                     Type = BufferBindingType.Uniform,
-                    MinBindingSize = 64
+                    HasDynamicOffset = true,
+                    MinBindingSize = UniformBlockSize
                 }
             };
 
@@ -262,21 +341,7 @@ namespace Radiant.Graphics2D
             };
 
             // Blend state
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.Zero,
-                    Operation = BlendOperation.Add
-                }
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -327,8 +392,8 @@ namespace Radiant.Graphics2D
 
         private void CreateMsdfPipeline()
         {
-            // Bind group 1: sampler + texture (per-font).
-            var entries = stackalloc BindGroupLayoutEntry[2];
+            // Bind group 1 (per font): sampler, atlas texture, and the atlas parameters uniform.
+            var entries = stackalloc BindGroupLayoutEntry[3];
             entries[0] = new BindGroupLayoutEntry
             {
                 Binding = 0,
@@ -346,9 +411,19 @@ namespace Radiant.Graphics2D
                     Multisampled = false,
                 },
             };
+            entries[2] = new BindGroupLayoutEntry
+            {
+                Binding = 2,
+                Visibility = ShaderStage.Fragment,
+                Buffer = new BufferBindingLayout
+                {
+                    Type = BufferBindingType.Uniform,
+                    MinBindingSize = MsdfFont.AtlasParamsSize,
+                },
+            };
             var layoutDesc = new BindGroupLayoutDescriptor
             {
-                EntryCount = 2,
+                EntryCount = 3,
                 Entries = entries,
             };
             _msdfAtlasBindGroupLayout = _wgpu.DeviceCreateBindGroupLayout(_device, in layoutDesc);
@@ -364,7 +439,13 @@ namespace Radiant.Graphics2D
             _msdfPipelineLayout = _wgpu.DeviceCreatePipelineLayout(_device, in pipelineLayoutDesc);
 
             _msdfShader = CreateShaderModule(ShaderLibrary.MsdfTextShader);
+            _msdfPipeline = CreateAtlasTextPipeline(_msdfShader);
+        }
 
+        // A pipeline for text drawn from an atlas: MsdfVertex2D quads, the group-0 uniforms and a
+        // group-1 atlas (sampler, texture, parameters). MSDF and coverage text differ only in shader.
+        private RenderPipeline* CreateAtlasTextPipeline(ShaderModule* shader)
+        {
             var vertexAttributes = stackalloc VertexAttribute[3];
             vertexAttributes[0] = new VertexAttribute
             {
@@ -393,21 +474,7 @@ namespace Radiant.Graphics2D
                 Attributes = vertexAttributes,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -418,7 +485,7 @@ namespace Radiant.Graphics2D
 
             var fragmentState = new FragmentState
             {
-                Module = _msdfShader,
+                Module = shader,
                 TargetCount = 1,
                 Targets = &colorTargetState,
                 EntryPoint = (byte*)SilkMarshal.StringToPtr("fs_main"),
@@ -429,7 +496,7 @@ namespace Radiant.Graphics2D
                 Layout = _msdfPipelineLayout,
                 Vertex = new VertexState
                 {
-                    Module = _msdfShader,
+                    Module = shader,
                     EntryPoint = (byte*)SilkMarshal.StringToPtr("vs_main"),
                     BufferCount = 1,
                     Buffers = &vertexBufferLayout,
@@ -453,45 +520,36 @@ namespace Radiant.Graphics2D
                 DepthStencil = null,
             };
 
-            _msdfPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+            return _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
         }
 
         private void CreateSdfShapePipeline()
         {
             _sdfShapeShader = CreateShaderModule(ShaderLibrary.SdfShapeShader);
 
-            // Layout matches SdfShapeVertex2D: position, localPos, color, borderColor, misc, params.
-            var vertexAttributes = stackalloc VertexAttribute[6];
+            // Layout matches SdfShapeVertex2D: position, localPos, color, borderColor, misc, params,
+            // then the gradient: colors 1-3, stop offsets, geometry, info.
+            var vertexAttributes = stackalloc VertexAttribute[12];
             vertexAttributes[0] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 0, ShaderLocation = 0 };
             vertexAttributes[1] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 8, ShaderLocation = 1 };
             vertexAttributes[2] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 16, ShaderLocation = 2 };
             vertexAttributes[3] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 32, ShaderLocation = 3 };
             vertexAttributes[4] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 48, ShaderLocation = 4 };
             vertexAttributes[5] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 64, ShaderLocation = 5 };
+            for (var i = 6; i < 12; i++)
+            {
+                vertexAttributes[i] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = (ulong)(80 + (i - 6) * 16), ShaderLocation = (uint)i };
+            }
 
             var vertexBufferLayout = new VertexBufferLayout
             {
                 ArrayStride = (ulong)sizeof(SdfShapeVertex2D),
                 StepMode = VertexStepMode.Vertex,
-                AttributeCount = 6,
+                AttributeCount = 12,
                 Attributes = vertexAttributes,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -544,7 +602,8 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Register an MSDF font with this renderer. The renderer takes
         /// ownership of the font's GPU resources and disposes them with the
-        /// renderer. Must be called after Initialize.
+        /// renderer. Must be called after Initialize. Optional: DrawText
+        /// registers a font it has not seen on first use.
         /// </summary>
         public void RegisterMsdfFont(MsdfFont font)
         {
@@ -568,7 +627,7 @@ namespace Radiant.Graphics2D
                 Binding = 0,
                 Buffer = _uniformBuffer,
                 Offset = 0,
-                Size = 64
+                Size = UniformBlockSize
             };
 
             var descriptor = new BindGroupDescriptor
@@ -589,35 +648,31 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Starts a new frame with clipping support enabled. Pass the render
         /// attachment size in physical pixels and the logical-to-physical
-        /// pixel scale so <see cref="PushClip"/> rectangles can be translated
+        /// pixel scale so <see cref="PushClip(float, float, float, float)"/> rectangles can be translated
         /// to a WebGPU scissor rectangle.
         /// </summary>
         public void BeginFrame(uint attachmentWidth, uint attachmentHeight, float pixelScale)
         {
-            // Release buffers from previous frame
-            foreach (var bufferPtr in _frameBuffers)
-            {
-                _wgpu.BufferRelease((Buffer*)bufferPtr);
-            }
-            _frameBuffers.Clear();
-
             _filledVertices.Clear();
             _lineVertices.Clear();
             _msdfVertices.Clear();
-            _msdfRanges.Clear();
             _sdfShapeVertices.Clear();
-            _sdfShapeRanges.Clear();
             _imageVertices.Clear();
-            _imageRanges.Clear();
+            _coverageVertices.Clear();
+            _glyphAtlas?.TrimIfFull();
+            BeginSlugFrame();
+            _msdfGlyphAtlas?.TrimIfFull();
+            _batches.Clear();
+            _layers.Clear();
+            _layerRenderOrder.Clear();
+            _layerStack.Clear();
+            _currentBatchesOrNull = null;
             _clipStack.Clear();
-            _scrollOffsetStack.Clear();
-            _ranges.Clear();
-            _currentRange = new DrawRange { FilledStart = 0, LineStart = 0 };
+            _transformStack.Clear();
             _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
             _attachmentWidth = attachmentWidth;
             _attachmentHeight = attachmentHeight;
             _pixelScale = pixelScale;
-            UpdateUniformBuffer();
         }
 
         /// <summary>
@@ -627,26 +682,53 @@ namespace Radiant.Graphics2D
         /// Requires the frame to have been started with the clipping-aware
         /// <see cref="BeginFrame(uint,uint,float)"/> overload.
         /// </summary>
-        public void PushClip(float x, float y, float width, float height)
+        public void PushClip(float x, float y, float width, float height) =>
+            PushClip(x, y, width, height, default(CornerRadii));
+
+        /// <summary>
+        /// Pushes a rounded clip: like <see cref="PushClip(float, float, float, float)"/>, but
+        /// content is also cut to the rounded corners, with an anti-aliased edge. The rectangle
+        /// part intersects any enclosing clip; the rounding is the innermost rounded clip's (an
+        /// enclosing rounded clip's corners are not also applied).
+        /// </summary>
+        public void PushClip(float x, float y, float width, float height, CornerRadii radii)
         {
             if (!_clipEnabled) return;
-            var newClip = new ClipRect(
+            var newRect = new ClipRect(
                 (int)MathF.Floor(x),
                 (int)MathF.Floor(y),
                 (int)MathF.Ceiling(width),
                 (int)MathF.Ceiling(height));
+            RoundedClip? rounded = null;
             if (_clipStack.Count > 0)
-                newClip = _clipStack.Peek().Intersect(newClip);
-            CloseCurrentRange();
-            _clipStack.Push(newClip);
+            {
+                var outer = _clipStack.Peek();
+                newRect = outer.Rect.Intersect(newRect);
+                rounded = outer.Rounded;
+            }
+            if (radii.TopLeft > 0f || radii.TopRight > 0f || radii.BottomRight > 0f || radii.BottomLeft > 0f)
+            {
+                var maxR = MathF.Min(width, height) * 0.5f;
+                rounded = new RoundedClip(
+                    new Vector4(x, y, x + width, y + height),
+                    new Vector4(
+                        Math.Clamp(radii.TopLeft, 0f, maxR),
+                        Math.Clamp(radii.TopRight, 0f, maxR),
+                        Math.Clamp(radii.BottomRight, 0f, maxR),
+                        Math.Clamp(radii.BottomLeft, 0f, maxR)));
+            }
+            _clipStack.Push(new ClipState(newRect, rounded));
         }
+
+        /// <summary>A rounded clip with one corner radius; see the per-corner overload.</summary>
+        public void PushClip(float x, float y, float width, float height, float radius) =>
+            PushClip(x, y, width, height, CornerRadii.All(radius));
 
         /// <summary>Pops the most recent clip rectangle.</summary>
         public void PopClip()
         {
             if (!_clipEnabled) return;
             if (_clipStack.Count == 0) return;
-            CloseCurrentRange();
             _clipStack.Pop();
         }
 
@@ -656,66 +738,198 @@ namespace Radiant.Graphics2D
         /// clip stack stays in window space (the viewport does not move). Nested pushes
         /// compose cumulatively. Typical use: <c>PushScrollOffset(-controller.Offset)</c>.
         /// </summary>
-        public void PushScrollOffset(Vector2 delta) =>
-            _scrollOffsetStack.Push(new ScrollOffsetMarker(
-                delta,
+        public void PushScrollOffset(Vector2 delta) => PushTransform(Matrix3x2.CreateTranslation(delta));
+
+        /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
+        public void PopScrollOffset() => PopTransform();
+
+        /// <summary>
+        /// Pushes a 2D transform. Everything drawn until the matching <see cref="PopTransform"/> is
+        /// transformed by <paramref name="transform"/> (in the row-vector convention of
+        /// <see cref="Matrix3x2"/>: <c>CreateScale(2) * CreateTranslation(10, 0)</c> scales, then
+        /// moves). Nested transforms apply inner first. Every kind of draw follows the transform
+        /// exactly: SDF shapes are evaluated in their own coordinates, so a rotated rounded rectangle
+        /// stays exact, and text keeps its edge sharpness at any scale. Clip rectangles are not
+        /// transformed; they stay in window coordinates.
+        /// </summary>
+        public void PushTransform(Matrix3x2 transform) =>
+            _transformStack.Push(new TransformMarker(
+                transform,
                 _filledVertices.Count,
                 _lineVertices.Count,
                 _msdfVertices.Count,
-                _sdfShapeVertices.Count));
+                _sdfShapeVertices.Count,
+                _imageVertices.Count,
+                _coverageVertices.Count,
+                _slugVertices.Count));
 
-        /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
-        public void PopScrollOffset()
+        /// <summary>Pops the most recent transform, applying it to everything drawn since the matching push.</summary>
+        public void PopTransform()
         {
-            if (_scrollOffsetStack.Count == 0) return;
-            var m = _scrollOffsetStack.Pop();
-            if (m.Delta == Vector2.Zero) return;
+            if (_transformStack.Count == 0) return;
+            var m = _transformStack.Pop();
+            if (m.Transform.IsIdentity) return;
 
+            var t = m.Transform;
             for (var i = m.FilledStart; i < _filledVertices.Count; i++)
             {
                 var v = _filledVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _filledVertices[i] = v;
             }
             for (var i = m.LineStart; i < _lineVertices.Count; i++)
             {
                 var v = _lineVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _lineVertices[i] = v;
             }
             for (var i = m.MsdfStart; i < _msdfVertices.Count; i++)
             {
                 var v = _msdfVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _msdfVertices[i] = v;
             }
             for (var i = m.SdfShapeStart; i < _sdfShapeVertices.Count; i++)
             {
+                // Only the quad moves; LocalPos stays in the shape's own frame, so the SDF is
+                // evaluated exactly as before and a rotation or scale is exact.
                 var v = _sdfShapeVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _sdfShapeVertices[i] = v;
             }
-        }
-
-        private void CloseCurrentRange()
-        {
-            _currentRange.FilledCount = _filledVertices.Count - _currentRange.FilledStart;
-            _currentRange.LineCount = _lineVertices.Count - _currentRange.LineStart;
-            _currentRange.Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null;
-            _ranges.Add(_currentRange);
-            _currentRange = new DrawRange
+            for (var i = m.ImageStart; i < _imageVertices.Count; i++)
             {
-                FilledStart = _filledVertices.Count,
-                LineStart = _lineVertices.Count,
-            };
+                var v = _imageVertices[i];
+                v.Position = Vector2.Transform(v.Position, t);
+                _imageVertices[i] = v;
+            }
+            for (var i = m.CoverageStart; i < _coverageVertices.Count; i++)
+            {
+                var v = _coverageVertices[i];
+                v.Position = Vector2.Transform(v.Position, t);
+                _coverageVertices[i] = v;
+            }
+            TransformSlugVertices(m.SlugStart, t);
         }
 
-        private void UpdateUniformBuffer()
+        /// <summary>
+        /// Starts an opacity layer: everything drawn until the matching <see cref="PopLayer"/> is
+        /// rendered on its own and then composited at <paramref name="opacity"/>, so the group
+        /// fades as one image (where two of its shapes overlap, the one below does not show
+        /// through). Layers nest. Clips and transforms in force apply to the content as usual.
+        /// Needs the clip-aware <see cref="BeginFrame(uint, uint, float)"/>, which gives the layers
+        /// their size.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">The frame was begun without an attachment size.</exception>
+        public void PushLayer(float opacity)
         {
-            var matrix = _camera.GetProjectionMatrix();
-            var matrixData = stackalloc float[16];
-            SerializeMatrixForGpu(matrix, new Span<float>(matrixData, 16));
-            _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, matrixData, 64);
+            if (!_clipEnabled)
+            {
+                throw new InvalidOperationException(
+                    "Opacity layers need the attachment size: begin the frame with BeginFrame(width, height, pixelScale).");
+            }
+            var parent = _currentBatches;
+            var layer = new Layer { Opacity = Math.Clamp(opacity, 0f, 1f), Parent = parent, CompositeIndex = parent.Count };
+            // The composite's place in the parent is fixed now; its quad and texture are filled in
+            // at EndFrame (so no enclosing transform moves the quad).
+            parent.Add(new DrawBatch { Kind = BatchKind.Image, Start = 0, Count = 6, Layer = _layers.Count });
+            _layers.Add(layer);
+            _layerStack.Push(layer);
+            _currentBatchesOrNull = layer.Batches;
+        }
+
+        /// <summary>Ends the most recent opacity layer.</summary>
+        public void PopLayer()
+        {
+            if (_layerStack.Count == 0) return;
+            var layer = _layerStack.Pop();
+            _layerRenderOrder.Add(layer);
+            _currentBatchesOrNull = _layerStack.Count > 0 ? _layerStack.Peek().Batches : null;
+        }
+
+        private void AddFilled(Vertex2D vertex)
+        {
+            AppendToBatch(BatchKind.Filled, _filledVertices.Count, 1, IntPtr.Zero);
+            _filledVertices.Add(vertex);
+        }
+
+        private void AddLine(Vertex2D vertex)
+        {
+            AppendToBatch(BatchKind.Line, _lineVertices.Count, 1, IntPtr.Zero);
+            _lineVertices.Add(vertex);
+        }
+
+        // Records that `count` vertices starting at `start` of `kind`'s list are drawn next: they
+        // extend the last batch if it is the same kind, clip and bind group and they follow on from
+        // it, and start a new batch otherwise.
+        private void AppendToBatch(BatchKind kind, int start, int count, IntPtr bindGroup)
+        {
+            ClipRect? clip = _clipStack.Count > 0 ? _clipStack.Peek().Rect : null;
+            RoundedClip? rounded = _clipStack.Count > 0 ? _clipStack.Peek().Rounded : null;
+            var batches = _currentBatches;
+            if (batches.Count > 0)
+            {
+                var last = batches[^1];
+                if (last.Kind == kind && last.Layer < 0 && last.BindGroup == bindGroup && last.Clip == clip && last.Rounded == rounded
+                    && last.Start + last.Count == start)
+                {
+                    last.Count += count;
+                    batches[^1] = last;
+                    return;
+                }
+            }
+            batches.Add(new DrawBatch
+            {
+                Kind = kind, Start = start, Count = count, Clip = clip, Rounded = rounded, BindGroup = bindGroup, Layer = -1,
+            });
+        }
+
+        // Assigns every distinct rounded clip in the frame a uniform slot (slot 0 is "none") and
+        // writes the slots: each is the projection followed by that clip in device pixels.
+        private Dictionary<RoundedClip, int> WriteUniformSlots()
+        {
+            var slots = new Dictionary<RoundedClip, int>();
+            foreach (var list in AllBatchLists())
+            {
+                foreach (var batch in list)
+                {
+                    if (batch.Rounded is { } rounded && !slots.ContainsKey(rounded))
+                    {
+                        slots[rounded] = slots.Count + 1;
+                    }
+                }
+            }
+
+            if (slots.Count + 1 > _uniformSlotCapacity)
+            {
+                // Grow, and rebuild the bind group that points at the old buffer.
+                _wgpu.BufferRelease(_uniformBuffer);
+                _wgpu.BindGroupRelease(_bindGroup);
+                CreateUniformBuffer(Math.Max(_uniformSlotCapacity * 2, slots.Count + 1));
+                CreateBindGroup();
+            }
+
+            var block = stackalloc float[UniformSlotSize / sizeof(float)];
+            var span = new Span<float>(block, UniformSlotSize / sizeof(float));
+            span.Clear();
+            SerializeMatrixForGpu(_camera.GetProjectionMatrix(), span[..16]);
+            span[25] = SrgbEdges ? 1f : 0f;
+            _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, block, UniformBlockSize);
+            foreach (var (clip, slot) in slots)
+            {
+                var s = _pixelScale;
+                span[16] = clip.Rect.X * s;
+                span[17] = clip.Rect.Y * s;
+                span[18] = clip.Rect.Z * s;
+                span[19] = clip.Rect.W * s;
+                span[20] = clip.Radii.X * s;
+                span[21] = clip.Radii.Y * s;
+                span[22] = clip.Radii.Z * s;
+                span[23] = clip.Radii.W * s;
+                span[24] = 1f;
+                _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, (ulong)(slot * UniformSlotSize), block, UniformBlockSize);
+            }
+            return slots;
         }
 
         /// <summary>
@@ -739,13 +953,13 @@ namespace Radiant.Graphics2D
             var v2 = new Vertex2D(new Vector2(x + width, y + height), color);
             var v3 = new Vertex2D(new Vector2(x, y + height), color);
 
-            _filledVertices.Add(v0);
-            _filledVertices.Add(v1);
-            _filledVertices.Add(v2);
+            AddFilled(v0);
+            AddFilled(v1);
+            AddFilled(v2);
 
-            _filledVertices.Add(v0);
-            _filledVertices.Add(v2);
-            _filledVertices.Add(v3);
+            AddFilled(v0);
+            AddFilled(v2);
+            AddFilled(v3);
         }
 
         // A line with a width, as two triangles. WebGPU has no lineWidth -- LineList is always one
@@ -1092,9 +1306,9 @@ namespace Radiant.Graphics2D
 
         public void DrawTriangle(Vector2 a, Vector2 b, Vector2 c, Vector4 color)
         {
-            _filledVertices.Add(new Vertex2D(a, color));
-            _filledVertices.Add(new Vertex2D(b, color));
-            _filledVertices.Add(new Vertex2D(c, color));
+            AddFilled(new Vertex2D(a, color));
+            AddFilled(new Vertex2D(b, color));
+            AddFilled(new Vertex2D(c, color));
         }
 
         public void DrawRectangleOutline(float x, float y, float width, float height, Vector4 color)
@@ -1105,10 +1319,10 @@ namespace Radiant.Graphics2D
             var v2 = new Vertex2D(new Vector2(x + width, y + height), color);
             var v3 = new Vertex2D(new Vector2(x, y + height), color);
 
-            _lineVertices.Add(v0); _lineVertices.Add(v1);
-            _lineVertices.Add(v1); _lineVertices.Add(v2);
-            _lineVertices.Add(v2); _lineVertices.Add(v3);
-            _lineVertices.Add(v3); _lineVertices.Add(v0);
+            AddLine(v0); AddLine(v1);
+            AddLine(v1); AddLine(v2);
+            AddLine(v2); AddLine(v3);
+            AddLine(v3); AddLine(v0);
         }
 
         public void DrawCircleFilled(float cx, float cy, float radius, Vector4 color, int segments = 32)
@@ -1127,9 +1341,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1147,8 +1361,8 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
@@ -1168,9 +1382,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * rx, cy + MathF.Sin(angle2) * ry),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1188,15 +1402,15 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * rx, cy + MathF.Sin(angle2) * ry),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
         public void DrawLine(Vector2 p1, Vector2 p2, Vector4 color)
         {
-            _lineVertices.Add(new Vertex2D(p1, color));
-            _lineVertices.Add(new Vertex2D(p2, color));
+            AddLine(new Vertex2D(p1, color));
+            AddLine(new Vertex2D(p2, color));
         }
 
         public void DrawPolyline(IEnumerable<Vector2> points, Vector4 color)
@@ -1206,8 +1420,8 @@ namespace Radiant.Graphics2D
             {
                 if (prevPoint.HasValue)
                 {
-                    _lineVertices.Add(new Vertex2D(prevPoint.Value, color));
-                    _lineVertices.Add(new Vertex2D(point, color));
+                    AddLine(new Vertex2D(prevPoint.Value, color));
+                    AddLine(new Vertex2D(point, color));
                 }
                 prevPoint = point;
             }
@@ -1229,9 +1443,9 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _filledVertices.Add(center);
-                _filledVertices.Add(p1);
-                _filledVertices.Add(p2);
+                AddFilled(center);
+                AddFilled(p1);
+                AddFilled(p2);
             }
         }
 
@@ -1249,8 +1463,8 @@ namespace Radiant.Graphics2D
                     new Vector2(cx + MathF.Cos(angle2) * radius, cy + MathF.Sin(angle2) * radius),
                     color);
 
-                _lineVertices.Add(p1);
-                _lineVertices.Add(p2);
+                AddLine(p1);
+                AddLine(p2);
             }
         }
 
@@ -1263,6 +1477,15 @@ namespace Radiant.Graphics2D
         public void DrawText(MsdfFont font, string text, float x, float y, float pixelHeight, Vector4 color)
         {
             if (string.IsNullOrEmpty(text)) return;
+
+            // An unregistered font has no bind group, and binding a null group aborts the process inside
+            // wgpu. RadiantApplication creates the renderer inside Run, out of the caller's reach, so the
+            // first draw is where a font can be registered. (No device means a CPU-only test renderer
+            // that never submits, so there is nothing to register with.)
+            if (font.BindGroup == null && _device != null)
+            {
+                RegisterMsdfFont(font);
+            }
 
             var penX = x;
             var baseline = y + font.AscenderEm * pixelHeight;
@@ -1312,14 +1535,7 @@ namespace Radiant.Graphics2D
             var added = _msdfVertices.Count - startVertex;
             if (added == 0) return;
 
-            var clip = _clipStack.Count > 0 ? _clipStack.Peek() : (ClipRect?)null;
-            _msdfRanges.Add(new MsdfDrawRange
-            {
-                Font = font,
-                Clip = clip,
-                VertexStart = startVertex,
-                VertexCount = added,
-            });
+            AppendToBatch(BatchKind.Msdf, startVertex, added, (IntPtr)font.BindGroup);
         }
 
         /// <summary>Measure pixel width of a string drawn with an MSDF font at the given pixel height.</summary>
@@ -1421,8 +1637,51 @@ namespace Radiant.Graphics2D
         public void DrawRing(Vector2 center, float outerRadius, float innerRadius, Vector4 color)
             => EmitCircle(center, outerRadius, MathF.Max(0f, innerRadius), 0f, color, color);
 
+        /// <summary>
+        /// Draws an anti-aliased line from <paramref name="a"/> to <paramref name="b"/>,
+        /// <paramref name="width"/> wide with round ends, at any angle: for charts and connectors.
+        /// Unlike <see cref="DrawThickLine"/>, its edges are smooth.
+        /// </summary>
+        public void DrawSegment(Vector2 a, Vector2 b, float width, Vector4 color)
+        {
+            if (width <= 0f) return;
+            var center = (a + b) * 0.5f;
+            var half = width * 0.5f;
+            var extent = Vector2.Abs(b - a) * 0.5f + new Vector2(half, half);
+            var from = a - center;
+            var to = b - center;
+            EmitShape(center, extent, half, SdfShapeKind.Segment, new Vector4(from.X, from.Y, to.X, to.Y), color, color);
+        }
+
+        /// <summary>
+        /// Draws an anti-aliased polyline as round-ended segments, so its joins are round. Opaque
+        /// colours only: where segments meet they overlap, which a translucent colour would show.
+        /// </summary>
+        public void DrawSmoothPolyline(IReadOnlyList<Vector2> points, float width, Vector4 color)
+        {
+            ArgumentNullException.ThrowIfNull(points);
+            for (var i = 1; i < points.Count; i++)
+            {
+                DrawSegment(points[i - 1], points[i], width, color);
+            }
+        }
+
+        /// <summary>
+        /// Draws an arc: a stroke along a circle of <paramref name="radius"/>, <paramref name="thickness"/>
+        /// wide with round ends, from <paramref name="startAngle"/> through <paramref name="sweepAngle"/>
+        /// (radians, clockwise from the positive x axis, as the screen's y points down). A sweep of
+        /// 2π or more is a whole ring. For circular progress and spinners.
+        /// </summary>
+        public void DrawArc(Vector2 center, float radius, float thickness, float startAngle, float sweepAngle, Vector4 color)
+        {
+            if (radius <= 0f || thickness <= 0f || sweepAngle == 0f) return;
+            var outer = radius + thickness * 0.5f;
+            EmitShape(center, new Vector2(outer, outer), 0f, SdfShapeKind.Arc,
+                new Vector4(radius, thickness * 0.5f, startAngle, sweepAngle), color, color);
+        }
+
         private void EmitRoundedRect(float x, float y, float width, float height, CornerRadii radii,
-            float borderWidth, Vector4 fill, Vector4 border)
+            float borderWidth, Vector4 fill, Vector4 border, Gradient? gradient = null)
         {
             if (width <= 0f || height <= 0f) return;
 
@@ -1435,30 +1694,38 @@ namespace Radiant.Graphics2D
                 Math.Clamp(radii.BottomRight, 0f, maxR),
                 Math.Clamp(radii.BottomLeft, 0f, maxR));
             var center = new Vector2(x + halfW, y + halfH);
-            EmitShape(center, new Vector2(halfW, halfH), borderWidth, SdfShapeKind.RoundedRect, clamped, fill, border);
+            EmitShape(center, new Vector2(halfW, halfH), borderWidth, SdfShapeKind.RoundedRect, clamped, fill, border, gradient: gradient);
         }
 
         private void EmitCircle(Vector2 center, float outerRadius, float innerRadius,
-            float borderWidth, Vector4 fill, Vector4 border)
+            float borderWidth, Vector4 fill, Vector4 border, Gradient? gradient = null)
         {
             if (outerRadius <= 0f) return;
             var half = new Vector2(outerRadius, outerRadius);
             var prms = new Vector4(outerRadius, MathF.Min(innerRadius, outerRadius), 0f, 0f);
-            EmitShape(center, half, borderWidth, SdfShapeKind.Circle, prms, fill, border);
+            EmitShape(center, half, borderWidth, SdfShapeKind.Circle, prms, fill, border, gradient: gradient);
         }
 
         private void EmitShape(Vector2 center, Vector2 halfSize, float borderWidth,
-            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border)
+            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border, float pad = 1.5f, Gradient? gradient = null)
         {
-            // Expand the quad by an AA pad so the outer edge fade isn't clipped by the geometry.
-            const float aaPad = 1.5f;
-            var ext = new Vector2(halfSize.X + aaPad, halfSize.Y + aaPad);
+            // Expand the quad by a pad so the outer edge fade (the AA band, or a shadow's blur) isn't
+            // clipped by the geometry.
+            var ext = new Vector2(halfSize.X + pad, halfSize.Y + pad);
             var misc = new Vector4(halfSize.X, halfSize.Y, borderWidth, (float)(int)kind);
+            var template = new SdfShapeVertex2D(default, default, fill, border, misc, prms);
+            if (gradient is not null)
+            {
+                SetGradient(ref template, gradient, center);
+            }
 
             SdfShapeVertex2D Corner(float sx, float sy)
             {
                 var local = new Vector2(sx * ext.X, sy * ext.Y);
-                return new SdfShapeVertex2D(center + local, local, fill, border, misc, prms);
+                var vertex = template;
+                vertex.Position = center + local;
+                vertex.LocalPos = local;
+                return vertex;
             }
 
             var tl = Corner(-1f, -1f);
@@ -1475,13 +1742,108 @@ namespace Radiant.Graphics2D
             _sdfShapeVertices.Add(br);
             _sdfShapeVertices.Add(tr);
 
-            _sdfShapeRanges.Add(new SdfShapeDrawRange
-            {
-                Clip = _clipStack.Count > 0 ? _clipStack.Peek() : null,
-                VertexStart = start,
-                VertexCount = 6,
-            });
+            AppendToBatch(BatchKind.SdfShape, start, 6, IntPtr.Zero);
         }
+
+        // Puts a gradient's stops and geometry into a vertex. Its points are in draw coordinates and
+        // are stored relative to the shape's center: the shape's local frame, which the shader
+        // evaluates in and which a transform leaves alone, so the gradient turns with the shape.
+        private static void SetGradient(ref SdfShapeVertex2D vertex, Gradient gradient, Vector2 center)
+        {
+            var stops = gradient.Stops;
+            var last = stops[^1];
+            GradientStop Stop(int i) => i < stops.Count ? stops[i] : last;
+            vertex.Color = Stop(0).Color;
+            vertex.Color1 = Stop(1).Color;
+            vertex.Color2 = Stop(2).Color;
+            vertex.Color3 = Stop(3).Color;
+            vertex.StopOffsets = new Vector4(Stop(0).Offset, Stop(1).Offset, Stop(2).Offset, Stop(3).Offset);
+            var start = gradient.Start - center;
+            var end = gradient.End - center;
+            vertex.GradientGeometry = gradient.Kind == GradientKind.Linear
+                ? new Vector4(start.X, start.Y, end.X, end.Y)
+                : new Vector4(start.X, start.Y, gradient.Radius, 0f);
+            vertex.GradientInfo = new Vector4((float)(int)gradient.Kind, stops.Count, (float)(int)gradient.Interpolation, 0f);
+        }
+
+        /// <summary>A rounded rectangle filled with a gradient.</summary>
+        public void DrawRoundedRectFilled(float x, float y, float width, float height, CornerRadii radii, Gradient fill)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitRoundedRect(x, y, width, height, radii, 0f, Vector4.Zero, Vector4.Zero, fill);
+        }
+
+        /// <summary>A rounded rectangle filled with a gradient, with a solid border.</summary>
+        public void DrawRoundedRect(float x, float y, float width, float height, CornerRadii radii,
+            float borderWidth, Gradient fill, Vector4 border)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitRoundedRect(x, y, width, height, radii, borderWidth, Vector4.Zero, border, fill);
+        }
+
+        /// <summary>A disc filled with a gradient.</summary>
+        public void DrawDisc(Vector2 center, float radius, Gradient fill)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitCircle(center, radius, 0f, 0f, Vector4.Zero, Vector4.Zero, fill);
+        }
+
+        /// <summary>
+        /// Draws a soft shadow of a rounded rectangle, as CSS <c>box-shadow</c> does: the rectangle
+        /// grown by <paramref name="spread"/>, moved by <paramref name="offset"/>, and blurred.
+        /// Draw it before the surface it belongs to.
+        /// </summary>
+        /// <param name="x">The left of the rectangle casting the shadow.</param>
+        /// <param name="y">The top of the rectangle casting the shadow.</param>
+        /// <param name="width">The width of the rectangle casting the shadow.</param>
+        /// <param name="height">The height of the rectangle casting the shadow.</param>
+        /// <param name="radii">Its corner radii.</param>
+        /// <param name="blur">
+        /// The blur radius, as in CSS: the shadow fades over about this distance either side of its
+        /// edge. The Gaussian's standard deviation is half of it. Zero gives a hard shadow.
+        /// </param>
+        /// <param name="color">The shadow's color at full coverage.</param>
+        /// <param name="offset">How far the shadow is moved (typically down, for light from above).</param>
+        /// <param name="spread">How much larger than the rectangle the shadow is, on every side; may be negative.</param>
+        public void DrawShadow(float x, float y, float width, float height, CornerRadii radii, float blur,
+            Vector4 color, Vector2 offset = default, float spread = 0f)
+        {
+            var w = width + spread * 2f;
+            var h = height + spread * 2f;
+            if (w <= 0f || h <= 0f) return;
+
+            // Spread grows the corners with the box, as CSS does, but a square corner stays square.
+            static float Grow(float r, float by) => r > 0f ? MathF.Max(0f, r + by) : 0f;
+            var grown = new CornerRadii(
+                Grow(radii.TopLeft, spread), Grow(radii.TopRight, spread),
+                Grow(radii.BottomRight, spread), Grow(radii.BottomLeft, spread));
+            var left = x - spread + offset.X;
+            var top = y - spread + offset.Y;
+
+            var sigma = blur * 0.5f;
+            if (sigma < 0.01f)
+            {
+                EmitRoundedRect(left, top, w, h, grown, 0f, color, color);
+                return;
+            }
+
+            var halfW = w * 0.5f;
+            var halfH = h * 0.5f;
+            var maxR = MathF.Min(halfW, halfH);
+            var clamped = new Vector4(
+                Math.Clamp(grown.TopLeft, 0f, maxR),
+                Math.Clamp(grown.TopRight, 0f, maxR),
+                Math.Clamp(grown.BottomRight, 0f, maxR),
+                Math.Clamp(grown.BottomLeft, 0f, maxR));
+            // The blur reaches three standard deviations past the edge.
+            EmitShape(new Vector2(left + halfW, top + halfH), new Vector2(halfW, halfH), sigma,
+                SdfShapeKind.Shadow, clamped, color, color, pad: sigma * 3f + 1f);
+        }
+
+        /// <summary>A soft shadow of a rectangle with one corner radius; see the per-corner overload.</summary>
+        public void DrawShadow(float x, float y, float width, float height, float radius, float blur,
+            Vector4 color, Vector2 offset = default, float spread = 0f)
+            => DrawShadow(x, y, width, height, CornerRadii.All(radius), blur, color, offset, spread);
 
         /// <summary>Draws a rectangle outline.</summary>
         public void DrawRect(Vector2 position, Vector2 size, Vector4 color)
@@ -1501,149 +1863,301 @@ namespace Radiant.Graphics2D
             DrawCircleOutline(center.X, center.Y, radius, color, segments);
         }
 
+        /// <summary>
+        /// Encodes the frame's draws into <paramref name="renderPass"/>, in the order they were made.
+        /// </summary>
         public void EndFrame(RenderPassEncoder* renderPass)
         {
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-
-            if (!_clipEnabled)
+            // Close any layers left open, so their content still appears.
+            while (_layerStack.Count > 0)
             {
-                // Fast path: draw all vertices in one call each.
-                if (_filledVertices.Count > 0)
-                {
-                    var vertexBuffer = CreateAndUploadVertexBuffer(_filledVertices);
-                    _frameBuffers.Add((IntPtr)vertexBuffer);
-                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
-                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                        (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_filledVertices.Count, 1, 0, 0);
-                }
-
-                if (_lineVertices.Count > 0)
-                {
-                    var vertexBuffer = CreateAndUploadVertexBuffer(_lineVertices);
-                    _frameBuffers.Add((IntPtr)vertexBuffer);
-                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
-                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, vertexBuffer, 0,
-                        (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)_lineVertices.Count, 1, 0, 0);
-                }
+                PopLayer();
+            }
+            if (_batches.Count == 0)
+            {
                 return;
             }
 
-            // Close the final range and emit one draw per range with its scissor.
-            CloseCurrentRange();
+            PrepareLayerComposites();
+            var slots = WriteUniformSlots();
 
-            Buffer* filledBuffer = null;
-            Buffer* lineBuffer = null;
-            if (_filledVertices.Count > 0)
+            // One vertex buffer per kind, uploaded once; the main and layer batches index into them.
+            var buffers = new VertexBuffers(
+                UploadIfAny(BatchKind.Filled, _filledVertices),
+                UploadIfAny(BatchKind.Line, _lineVertices),
+                UploadIfAny(BatchKind.SdfShape, _sdfShapeVertices),
+                UploadIfAny(BatchKind.Image, _imageVertices),
+                UploadIfAny(BatchKind.Msdf, _msdfVertices),
+                UploadIfAny(BatchKind.Coverage, _coverageVertices));
+            if (_coverageVertices.Count > 0)
             {
-                filledBuffer = CreateAndUploadVertexBuffer(_filledVertices);
-                _frameBuffers.Add((IntPtr)filledBuffer);
+                WriteCoverageParams();
             }
-            if (_lineVertices.Count > 0)
-            {
-                lineBuffer = CreateAndUploadVertexBuffer(_lineVertices);
-                _frameBuffers.Add((IntPtr)lineBuffer);
-            }
+            UploadSlug();
 
-            if (filledBuffer != null)
-            {
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, filledBuffer, 0,
-                    (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
-                foreach (var range in _ranges)
-                {
-                    if (range.FilledCount == 0) continue;
-                    ApplyScissor(renderPass, range.Clip);
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.FilledCount, 1, (uint)range.FilledStart, 0);
-                }
-            }
-
-            if (lineBuffer != null)
-            {
-                _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
-                _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, lineBuffer, 0,
-                    (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
-                foreach (var range in _ranges)
-                {
-                    if (range.LineCount == 0) continue;
-                    ApplyScissor(renderPass, range.Clip);
-                    _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.LineCount, 1, (uint)range.LineStart, 0);
-                }
-            }
-
-            EmitSdfShapeDraws(renderPass);
-            EmitImageDraws(renderPass);
-            EmitMsdfDraws(renderPass);
-
-            // Restore full-attachment scissor for any subsequent consumer.
-            _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
+            RenderLayers(slots, buffers);
+            ReplayBatches(renderPass, _batches, slots, buffers);
         }
 
-        private void EmitMsdfDraws(RenderPassEncoder* renderPass)
+        private readonly record struct VertexBuffers(IntPtr Filled, IntPtr Line, IntPtr SdfShape, IntPtr Image, IntPtr Msdf, IntPtr Coverage)
         {
-            if (_msdfVertices.Count == 0 || _msdfRanges.Count == 0) return;
-
-            var msdfBuffer = CreateAndUploadMsdfVertexBuffer(_msdfVertices);
-            _frameBuffers.Add((IntPtr)msdfBuffer);
-
-            _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0,
-                (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
-
-            MsdfFont? boundFont = null;
-            foreach (var range in _msdfRanges)
+            public VertexBuffers(Buffer* filled, Buffer* line, Buffer* sdfShape, Buffer* image, Buffer* msdf, Buffer* coverage)
+                : this((IntPtr)filled, (IntPtr)line, (IntPtr)sdfShape, (IntPtr)image, (IntPtr)msdf, (IntPtr)coverage)
             {
-                ApplyScissor(renderPass, range.Clip);
-                if (!ReferenceEquals(boundFont, range.Font))
-                {
-                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, range.Font.BindGroup, 0, null);
-                    boundFont = range.Font;
-                }
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
             }
         }
 
-        private void EmitSdfShapeDraws(RenderPassEncoder* renderPass)
+        private IEnumerable<List<DrawBatch>> AllBatchLists()
         {
-            if (_sdfShapeVertices.Count == 0 || _sdfShapeRanges.Count == 0) return;
-
-            var buffer = CreateAndUploadSdfShapeVertexBuffer(_sdfShapeVertices);
-            _frameBuffers.Add((IntPtr)buffer);
-
-            _wgpu.RenderPassEncoderSetPipeline(renderPass, _sdfShapePipeline);
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, buffer, 0,
-                (ulong)(_sdfShapeVertices.Count * sizeof(SdfShapeVertex2D)));
-
-            foreach (var range in _sdfShapeRanges)
+            yield return _batches;
+            foreach (var layer in _layers)
             {
-                ApplyScissor(renderPass, range.Clip);
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
+                yield return layer.Batches;
             }
         }
 
-        private Buffer* CreateAndUploadSdfShapeVertexBuffer(List<SdfShapeVertex2D> vertices)
+        // Gives every layer a target the size of the attachment, and fills in its composite: a quad
+        // over the whole attachment drawing the target at the layer's opacity.
+        private void PrepareLayerComposites()
         {
-            var bufferDescriptor = new BufferDescriptor
+            if (_layers.Count == 0)
             {
-                Size = (ulong)(vertices.Count * sizeof(SdfShapeVertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false,
-            };
-
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var array = vertices.ToArray();
-            fixed (SdfShapeVertex2D* dataPtr = array)
+                return;
+            }
+            var width = (int)_attachmentWidth;
+            var height = (int)_attachmentHeight;
+            var right = width / _pixelScale;
+            var bottom = height / _pixelScale;
+            for (var i = 0; i < _layers.Count; i++)
             {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(SdfShapeVertex2D)));
+                if (i == _layerTargets.Count)
+                {
+                    _layerTargets.Add(Texture2D.CreateRenderTarget(this, width, height, _surfaceFormat));
+                }
+                else
+                {
+                    _layerTargets[i].Resize(width, height);
+                }
+
+                var layer = _layers[i];
+                var start = _imageVertices.Count;
+                var tint = new Vector4(1f, 1f, 1f, layer.Opacity);
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, 0), Color = tint, TexCoord = new Vector2(0, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, 0), Color = tint, TexCoord = new Vector2(1, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, bottom), Color = tint, TexCoord = new Vector2(1, 1) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, 0), Color = tint, TexCoord = new Vector2(0, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, bottom), Color = tint, TexCoord = new Vector2(1, 1) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, bottom), Color = tint, TexCoord = new Vector2(0, 1) });
+
+                var composite = layer.Parent[layer.CompositeIndex];
+                composite.Start = start;
+                composite.BindGroup = (IntPtr)_layerTargets[i].BindGroup;
+                layer.Parent[layer.CompositeIndex] = composite;
+            }
+            EnsureLayerSampleTextures(width, height);
+        }
+
+        // With multisampling, a layer is drawn into a multisampled texture and resolved into its
+        // target, as the window's own pass is.
+        private void EnsureLayerSampleTextures(int width, int height)
+        {
+            if (_sampleCount == 1)
+            {
+                return;
+            }
+            while (_layerSampleTextures.Count < _layers.Count)
+            {
+                _layerSampleTextures.Add(IntPtr.Zero);
+                _layerSampleViews.Add(IntPtr.Zero);
+            }
+            for (var i = 0; i < _layers.Count; i++)
+            {
+                var existing = (Texture*)_layerSampleTextures[i];
+                if (existing != null
+                    && _wgpu.TextureGetWidth(existing) == (uint)width && _wgpu.TextureGetHeight(existing) == (uint)height)
+                {
+                    continue;
+                }
+                ReleaseLayerSampleTexture(i);
+                var desc = new TextureDescriptor
+                {
+                    Size = new Extent3D { Width = (uint)width, Height = (uint)height, DepthOrArrayLayers = 1 },
+                    MipLevelCount = 1,
+                    SampleCount = _sampleCount,
+                    Dimension = TextureDimension.Dimension2D,
+                    Format = _surfaceFormat,
+                    Usage = TextureUsage.RenderAttachment,
+                };
+                var texture = _wgpu.DeviceCreateTexture(_device, in desc);
+                _layerSampleTextures[i] = (IntPtr)texture;
+                _layerSampleViews[i] = (IntPtr)_wgpu.TextureCreateView(texture, null);
+            }
+        }
+
+        private void ReleaseLayerSampleTexture(int i)
+        {
+            if (_layerSampleViews[i] != IntPtr.Zero) _wgpu.TextureViewRelease((TextureView*)_layerSampleViews[i]);
+            if (_layerSampleTextures[i] != IntPtr.Zero) _wgpu.TextureRelease((Texture*)_layerSampleTextures[i]);
+            _layerSampleViews[i] = IntPtr.Zero;
+            _layerSampleTextures[i] = IntPtr.Zero;
+        }
+
+        // Renders each layer into its target, inner layers first, on a command buffer submitted
+        // now: the caller's pass is submitted after this returns, so the GPU has every layer ready
+        // by the time the main pass composites them.
+        private void RenderLayers(Dictionary<RoundedClip, int> slots, VertexBuffers buffers)
+        {
+            if (_layers.Count == 0)
+            {
+                return;
+            }
+            var encoderDescriptor = new CommandEncoderDescriptor();
+            var encoder = _wgpu.DeviceCreateCommandEncoder(_device, in encoderDescriptor);
+            foreach (var layer in _layerRenderOrder)
+            {
+                var index = _layers.IndexOf(layer);
+                var target = _layerTargets[index];
+                var multisampled = _sampleCount > 1;
+                var attachment = new RenderPassColorAttachment
+                {
+                    View = multisampled ? (TextureView*)_layerSampleViews[index] : target.View,
+                    ResolveTarget = multisampled ? target.View : null,
+                    LoadOp = LoadOp.Clear,
+                    StoreOp = StoreOp.Store,
+                    ClearValue = new Silk.NET.WebGPU.Color { R = 0, G = 0, B = 0, A = 0 },
+                };
+                var passDescriptor = new RenderPassDescriptor { ColorAttachmentCount = 1, ColorAttachments = &attachment };
+                var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, in passDescriptor);
+                ReplayBatches(pass, layer.Batches, slots, buffers);
+                _wgpu.RenderPassEncoderEnd(pass);
+                _wgpu.RenderPassEncoderRelease(pass);
+            }
+            var commandDescriptor = new CommandBufferDescriptor();
+            var commands = _wgpu.CommandEncoderFinish(encoder, in commandDescriptor);
+            _wgpu.QueueSubmit(_queue, 1, &commands);
+            _wgpu.CommandBufferRelease(commands);
+            _wgpu.CommandEncoderRelease(encoder);
+        }
+
+        // Encodes one list of batches, in order, into a pass.
+        private void ReplayBatches(RenderPassEncoder* renderPass, List<DrawBatch> batches,
+            Dictionary<RoundedClip, int> slots, VertexBuffers buffers)
+        {
+            BatchKind? boundKind = null;
+            var boundGroup = IntPtr.Zero;
+            var boundSlot = -1;
+            ClipRect? appliedClip = null;
+            var scissorApplied = false;
+            foreach (var batch in batches)
+            {
+                if (boundKind != batch.Kind)
+                {
+                    BindPipeline(renderPass, batch.Kind, buffers);
+                    boundKind = batch.Kind;
+                    boundGroup = IntPtr.Zero;
+                }
+                var slot = batch.Rounded is { } rounded ? slots[rounded] : 0;
+                if (slot != boundSlot)
+                {
+                    var offset = (uint)(slot * UniformSlotSize);
+                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 1, &offset);
+                    boundSlot = slot;
+                }
+                if (batch.BindGroup != IntPtr.Zero && batch.BindGroup != boundGroup)
+                {
+                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, (BindGroup*)batch.BindGroup, 0, null);
+                    boundGroup = batch.BindGroup;
+                }
+                if (_clipEnabled && (!scissorApplied || appliedClip != batch.Clip))
+                {
+                    ApplyScissor(renderPass, batch.Clip);
+                    appliedClip = batch.Clip;
+                    scissorApplied = true;
+                }
+                _wgpu.RenderPassEncoderDraw(renderPass, (uint)batch.Count, 1, (uint)batch.Start, 0);
             }
 
+            if (_clipEnabled)
+            {
+                // Restore full-attachment scissor for any subsequent consumer.
+                _wgpu.RenderPassEncoderSetScissorRect(renderPass, 0, 0, _attachmentWidth, _attachmentHeight);
+            }
+        }
+
+        private void BindPipeline(RenderPassEncoder* renderPass, BatchKind kind, VertexBuffers buffers)
+        {
+            var filledBuffer = (Buffer*)buffers.Filled;
+            var lineBuffer = (Buffer*)buffers.Line;
+            var sdfShapeBuffer = (Buffer*)buffers.SdfShape;
+            var imageBuffer = (Buffer*)buffers.Image;
+            var msdfBuffer = (Buffer*)buffers.Msdf;
+            switch (kind)
+            {
+                case BatchKind.Filled:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _filledPipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, filledBuffer, 0, (ulong)(_filledVertices.Count * sizeof(Vertex2D)));
+                    break;
+                case BatchKind.Line:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _linePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, lineBuffer, 0, (ulong)(_lineVertices.Count * sizeof(Vertex2D)));
+                    break;
+                case BatchKind.SdfShape:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _sdfShapePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, sdfShapeBuffer, 0, (ulong)(_sdfShapeVertices.Count * sizeof(SdfShapeVertex2D)));
+                    break;
+                case BatchKind.Image:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _imagePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, imageBuffer, 0, (ulong)(_imageVertices.Count * sizeof(ImageVertex2D)));
+                    break;
+                case BatchKind.Msdf:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0, (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
+                    break;
+                case BatchKind.Coverage:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _coveragePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, (Buffer*)buffers.Coverage, 0, (ulong)(_coverageVertices.Count * sizeof(MsdfVertex2D)));
+                    break;
+                case BatchKind.Slug:
+                    BindSlugPipeline(renderPass);
+                    break;
+            }
+        }
+
+        // Writes a vertex list into its kind's persistent buffer, growing it first if needed; null if
+        // the list is empty.
+        private Buffer* UploadIfAny<T>(BatchKind kind, List<T> vertices) where T : unmanaged
+        {
+            if (vertices.Count == 0)
+            {
+                return null;
+            }
+            var slot = (int)kind;
+            var bytes = (ulong)(vertices.Count * sizeof(T));
+            if (bytes > _vertexBufferCapacities[slot])
+            {
+                if (_vertexBuffers[slot] != IntPtr.Zero)
+                {
+                    _wgpu.BufferRelease((Buffer*)_vertexBuffers[slot]);
+                }
+                var capacity = Math.Max(System.Numerics.BitOperations.RoundUpToPowerOf2(bytes), 4096UL);
+                var descriptor = new BufferDescriptor
+                {
+                    Size = capacity,
+                    Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
+                    MappedAtCreation = false,
+                };
+                _vertexBuffers[slot] = (IntPtr)_wgpu.DeviceCreateBuffer(_device, in descriptor);
+                _vertexBufferCapacities[slot] = capacity;
+            }
+            var buffer = (Buffer*)_vertexBuffers[slot];
+            var span = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices);
+            fixed (T* data = span)
+            {
+                _wgpu.QueueWriteBuffer(_queue, buffer, 0, data, (nuint)bytes);
+            }
             return buffer;
         }
+
 
         private void ApplyScissor(RenderPassEncoder* renderPass, ClipRect? clip)
         {
@@ -1669,58 +2183,21 @@ namespace Radiant.Graphics2D
             _wgpu.RenderPassEncoderSetScissorRect(renderPass, (uint)px, (uint)py, (uint)pw, (uint)ph);
         }
 
-        private Buffer* CreateAndUploadMsdfVertexBuffer(List<MsdfVertex2D> vertices)
-        {
-            var bufferDescriptor = new BufferDescriptor
-            {
-                Size = (ulong)(vertices.Count * sizeof(MsdfVertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false,
-            };
 
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var array = vertices.ToArray();
-            fixed (MsdfVertex2D* dataPtr = array)
-            {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(MsdfVertex2D)));
-            }
-
-            return buffer;
-        }
-
-        private Buffer* CreateAndUploadVertexBuffer(List<Vertex2D> vertices)
-        {
-            var bufferDescriptor = new BufferDescriptor
-            {
-                Size = (ulong)(vertices.Count * sizeof(Vertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false
-            };
-
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-
-            var vertexArray = vertices.ToArray();
-            fixed (Vertex2D* dataPtr = vertexArray)
-            {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr,
-                    (nuint)(vertices.Count * sizeof(Vertex2D)));
-            }
-
-            return buffer;
-        }
 
         public void Dispose()
         {
-            // Release any remaining frame buffers
-            foreach (var bufferPtr in _frameBuffers)
+            for (var i = 0; i < _vertexBuffers.Length; i++)
             {
-                _wgpu.BufferRelease((Buffer*)bufferPtr);
+                if (_vertexBuffers[i] != IntPtr.Zero) _wgpu.BufferRelease((Buffer*)_vertexBuffers[i]);
+                _vertexBuffers[i] = IntPtr.Zero;
+                _vertexBufferCapacities[i] = 0;
             }
-            _frameBuffers.Clear();
 
             if (_uniformBuffer != null) _wgpu.BufferRelease(_uniformBuffer);
+            foreach (var target in _layerTargets) target.Dispose();
+            _layerTargets.Clear();
+            for (var i = 0; i < _layerSampleTextures.Count; i++) ReleaseLayerSampleTexture(i);
             if (_bindGroup != null) _wgpu.BindGroupRelease(_bindGroup);
             if (_bindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_bindGroupLayout);
             if (_pipelineLayout != null) _wgpu.PipelineLayoutRelease(_pipelineLayout);
@@ -1739,6 +2216,9 @@ namespace Radiant.Graphics2D
             if (_sdfShapeShader != null) _wgpu.ShaderModuleRelease(_sdfShapeShader);
 
             DisposeImageResources();
+            DisposeGlyphResources();
+            DisposeSlugResources();
+            DisposeMsdfTextResources();
 
             GC.SuppressFinalize(this);
         }

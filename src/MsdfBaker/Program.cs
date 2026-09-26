@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace Radiant.MsdfBaker
 {
@@ -16,6 +17,7 @@ namespace Radiant.MsdfBaker
             var pixelSize = 32;
             var atlasSize = 1024;
             var rangePx = 4f;
+            var fallbacks = new List<string>();
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -28,6 +30,7 @@ namespace Radiant.MsdfBaker
                     case "--size" when i + 1 < args.Length: pixelSize = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                     case "--atlas" when i + 1 < args.Length: atlasSize = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                     case "--range" when i + 1 < args.Length: rangePx = float.Parse(args[++i], CultureInfo.InvariantCulture); break;
+                    case "--fallback" when i + 1 < args.Length: fallbacks.Add(args[++i]); break;
                     case "--help" or "-h":
                         PrintUsage();
                         return 0;
@@ -43,10 +46,13 @@ namespace Radiant.MsdfBaker
                 PrintUsage();
                 return 2;
             }
-            if (!File.Exists(fontPath))
+            foreach (var path in fallbacks.Prepend(fontPath))
             {
-                Console.Error.WriteLine($"Font file not found: {fontPath}");
-                return 2;
+                if (!File.Exists(path))
+                {
+                    Console.Error.WriteLine($"Font file not found: {path}");
+                    return 2;
+                }
             }
 
             var codepoints = codepointSet switch
@@ -66,6 +72,7 @@ namespace Radiant.MsdfBaker
                 AtlasSize = atlasSize,
                 DistanceRangePx = rangePx,
                 Codepoints = codepoints,
+                FallbackFontPaths = fallbacks,
             };
 
             var manifest = Baker.Bake(request);
@@ -85,7 +92,7 @@ namespace Radiant.MsdfBaker
 
         private static void PrintUsage()
         {
-            Console.WriteLine("Usage: MsdfBaker --font <ttf> --out <dir> [--name font] [--codepoints default|drafting] [--size 32] [--atlas 1024] [--range 4]");
+            Console.WriteLine("Usage: MsdfBaker --font <ttf> --out <dir> [--name font] [--codepoints default|drafting] [--size 32] [--atlas 1024] [--range 4] [--fallback <ttf>]...");
         }
 
         /// <summary>
@@ -202,10 +209,10 @@ namespace Radiant.MsdfBaker
                 0x25A1, // □ square
                 0x2014, // —
                 0x2018, 0x2019, 0x201C, 0x201D, // smart quotes
-                // GD&T frame symbols. Arial doesn't carry these — the baker
-                // logs empty entries. They live in the "drafting" font
-                // (Noto Sans Symbols 2); the default font keeps the codepoints
-                // for backstop measurement.
+                // GD&T frame symbols. UI fonts don't carry these; pass Noto
+                // fallbacks with --fallback (tools/bake-fonts.sh does) to bake
+                // them in, otherwise they are left as empty entries for a
+                // runtime fallback chain (the "drafting" fonts) to cover.
                 0x25B1, // ▱ flatness
                 0x232D, // ⌭ cylindricity
                 0x22A5, // ⊥ perpendicularity

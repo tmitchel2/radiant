@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Radiant.Text</RootNamespace>
+    <OutputType>Library</OutputType>
+    <DebugType>embedded</DebugType>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Radiant.Text.Tests" />
+  </ItemGroup>
+
+  <!-- Variable Inter and JetBrains Mono (SIL Open Font License; licences alongside). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Radiant.Text.Fonts.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HarfBuzz (MIT): shaping, variable fonts, glyph outlines. -->
+    <PackageReference Include="HarfBuzzSharp" Version="14.2.1.201" />
+  </ItemGroup>
+
+</Project>

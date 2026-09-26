@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Radiant.UI.Core</RootNamespace>
+    <OutputType>Library</OutputType>
+    <DebugType>embedded</DebugType>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Radiant.UI.Core.Tests" />
+    <InternalsVisibleTo Include="Radiant.Components.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Radiant\Radiant.csproj" />
+    <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
+    <ProjectReference Include="..\Radiant.Platform\Radiant.Platform.csproj" />
+  </ItemGroup>
+
+</Project>

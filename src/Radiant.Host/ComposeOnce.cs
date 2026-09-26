@@ -62,7 +62,7 @@ internal static unsafe class ComposeOnce
         using var renderer = new Renderer2D();
         renderer.Initialize(gpu.State, camera);
 
-        using var font = MsdfFont.LoadEmbedded("default");
+        using var font = MsdfFont.LoadEmbedded(EmbeddedFonts.Default);
         renderer.RegisterMsdfFont(font);
 
         // sRGB so sampling decodes the renderer's sRGB-encoded readback bytes (matches LiveHost).

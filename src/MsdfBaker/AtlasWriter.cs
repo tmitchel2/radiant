@@ -8,7 +8,9 @@ namespace Radiant.MsdfBaker
 {
     public static class AtlasWriter
     {
-        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+        // Compact: the manifest is embedded in the Radiant assembly, and with a few thousand kerning
+        // pairs per font, indentation roughly doubles its size for no reader's benefit.
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
         public static void WritePng(string path, float[] rgb, int width, int height)
         {

@@ -1,16 +1,17 @@
 # Radiant Scrolling & Gestures
 
-A React-Native-inspired scroll system for Radiant's retained-mode widget tree: a composable gesture
-layer for input arbitration, a shared scroll-physics core (momentum / bounce / snap / animated scroll),
-a declarative `ScrollBehaviour`, and the `ScrollView` widget.
+A React-Native-inspired scroll system: a shared scroll-physics core (momentum, bounce, snap,
+animated scroll), a declarative `ScrollBehaviour`, and a composable gesture layer for input
+arbitration.
 
-- **Animation** (`Radiant.Animation`) — reusable `SmoothDamp` spring + frame-rate-independent `Decay`.
-- **Scrolling** (`Radiant.Scrolling`) — the physics core (`ScrollAxis` + `ScrollController`) and config.
-- **Gestures** (`Radiant.Gestures`) — composable recognisers + a single-owner arbiter.
-- **`ScrollView`** (`Radiant.UI`) — the widget that ties them together.
+- **Animation** (`Radiant.Animation`) — reusable `SmoothDamp` spring and frame-rate-independent `Decay`.
+- **Scrolling** (`Radiant.Scrolling`) — the physics core (`ScrollAxis` and `ScrollController`) and config.
+- **Gestures** (`Radiant.Gestures`) — composable recognisers and a single-owner arbiter.
+- **`ScrollArea`** (`Radiant.UI.Core`) — the element that puts a scroll controller in the UI.
 
-All of it is **opt-in and additive**: a `ScrollView` you don't create costs nothing, and the gesture
-layer is only driven by widgets that own a `GestureDetector`.
+The gesture layer was built for the retained widget tree that `Radiant.UI.Core` replaced, and isn't
+wired into the new UI yet: `ScrollArea` takes the wheel, trackpad and scroll-bar drags itself. The
+plan is for UI.Core's pointer events to feed a per-pointer gesture arena built on it.
 
 ## The core idea
 
@@ -91,61 +92,33 @@ if (detector.HasActiveOrClaimingOwner) { /* widget.IsCapturingInput derives from
 - **`GestureDetector`** — binds a gesture set to a widget and exposes `HasActiveOrClaimingOwner`, the
   signal a widget's `IsCapturingInput` should derive from so recognised input can't fall through.
 
-## `ScrollView` — `Radiant.UI`
+## `ScrollArea` — `Radiant.UI.Core`
 
-`UIElement, IUiContainer, ILayoutBoundary, IAnimating`. The `ScrollController`-backed scroller (it
-replaced the old `ScrollPanel`).
+A viewport onto content larger than it (see [ui.md](ui.md#scrolling)):
 
-- **Render-time translate, not child mutation.** `Renderer2D.PushScrollOffset/PopScrollOffset` translate
-  all four emitted vertex streams since the push (composing cumulatively across nesting); the clip stack
-  stays in window space so the viewport doesn't move. O(1)/frame, sub-pixel safe, never corrupts the
-  children's real layout positions.
-- **Content-space hit-testing.** While updating children the pointer is shifted by the offset, then
-  restored — so input lines up with the translated render.
-- **Inputs:** wheel, drag-to-pan, a draggable scrollbar thumb + track-click paging, and keyboard
-  (PageUp/Down, Home/End, arrows) while hovered.
-- **Nested scrolling.** Children update first in content space; a hovered scrollable child takes
-  drag/keyboard. Wheel arbitration is by **consumption** — a scroller zeroes `InputState.ScrollDelta`
-  when it consumes a notch, so an unconsumed notch (inner at its boundary) hands off to the outer.
-- **`IsCapturingInput`** = the detector owns/claims, OR hovering scrollable content, OR a child captures.
-- **Drop-in for the old `ScrollPanel`:** settable `ContentHeight` / `WheelStep`, `Add`/`Clear`/`Children`,
-  `DrawBackground`/`BackgroundColor`, `ScrollbarWidth`, `ILayoutBoundary`.
-
-```csharp
-var sv = new ScrollView(new ScrollBehaviour { Overscroll = OverscrollMode.Bounce });
-sv.Add(child);                 // children positioned in panel-relative (absolute) coords
-sv.ContentHeight = totalY;     // explicit extent (or leave unset to auto-measure from child bounds)
-```
-
-`ListView` is also backed by a `ScrollController` (wheel-only parity).
-
-## Host integration
-
-`UIManager.NeedsContinuousFrame` walks the tree for any `IAnimating` element that is currently animating
-(scroll momentum, spring settle, animated scroll). The host should OR this into its idle-throttle / frame
-decision so motion doesn't stall — the same way it honours a not-at-rest camera. The host also decides
-"is the user interacting with UI vs the 3D scene?": a `ScrollView` reports `IsCapturingInput` while
-hovering scrollable content, and an opaque host panel should additionally gate on pointer-over-bounds so
-input over chrome / non-scrollable areas doesn't fall through.
+- **Layout:** the content is laid out in a node inside the viewport, unconstrained along the
+  scrolling axes; it's drawn and hit-tested moved by the scroll offset.
+- **Input:** the wheel and trackpad scroll through the controller, passing to an enclosing area at
+  a boundary; the scroll bars can be dragged, and pressing their track jumps there.
+- **Frames:** the area asks the UI to animate it while momentum, bounce or an animated `ScrollTo`
+  runs (`ScrollController.AnimationStarted` covers scrolls asked for in code), and listeners hear
+  `Scroll` for wheel moves as well, which is how a `VirtualList` builds the rows coming into view.
+- **Position** survives rebuilds; pass a `Controller` to read or set it.
 
 ## Testing
 
-MSTest, hand-built `InputState`, driven by repeated `Update(input, dt)` at fixed dt. Physics tests are
-fully deterministic (clamp, momentum rest, bounce overshoot+settle, snap, animated scrollTo); gesture
-tests assert state transitions, `RequireToFail`, Race + sticky ownership; nested tests cover
-inner-consumes-wheel and boundary hand-off. See `src/Radiant.Tests/{Animation,Scrolling,Gestures}` and
-the `ScrollView*` / `ListView` UI tests.
+MSTest, driven at a fixed step. Physics tests are deterministic (clamp, momentum rest, bounce
+overshoot and settle, snap, animated `ScrollTo`); gesture tests assert state transitions,
+`RequireToFail`, and race and sticky ownership. See `src/Radiant.Tests/{Animation,Scrolling,Gestures}`,
+and `ScrollTests` and `VirtualListTests` for the UI side.
 
 ## Deferred (why deferred → trigger to revisit)
 
 | Deferred | Why | Revisit when |
 |---|---|---|
-| `WheelGesture` as a first-class gesture | Wheel is instantaneous; direct poll + `ScrollDelta`-consumption already gives nested hand-off | Wheel needs `RequireToFail`/`Simultaneous` relations |
-| True multi-owner `Simultaneous` | Arbiter keeps one primary owner; `Simultaneous` only blocks mutual cancel | A multi-pointer / pan+zoom surface lands |
-| Directional-lock / `FailOffset` on `PanGesture` | Axis threshold-gate suffices for V/H panels | A 2D free-scroll surface needs single-axis lock-in |
-| Drag (not just wheel) nested boundary hand-off | Wheel hand-off done; drag hand-off needs cross-detector negotiation | A nested draggable region is shipped |
-| Cross-detector child-click vs parent-drag cancel | Arbitration is per-detector; press-then-drag-off-a-child doesn't yet cancel the child's click | A flick-scroll list of clickable rows is needed |
-| Yoga-measured content extent | Child-bounds measure + `ContentExtentOverride` cover callers | A `ScrollView` hosts a flex subtree whose extent isn't max-child-bottom |
-| List virtualization | Render-translate + clip cull cheaply for hundreds of rows | A ≥thousands-row consumer shows vertex-build cost |
-| Sticky headers / pinch-zoom / contentInset | Section model + 2nd translate / multi-pointer / desktop has no safe-area | Grouped list / touch host / overlay embedding |
-| Horizontal-axis & `Both` indicator + keyboard polish | Physics is axis-agnostic; indicator/keyboard are vertical-first | A horizontal scroller ships in a real panel |
+| Gestures in `Radiant.UI.Core` | `ScrollArea` handles the wheel, trackpad and scroll bars itself; nothing else needs a recogniser yet | Touch, drag-to-pan content, or a pinch or long press lands |
+| `WheelGesture` as a first-class gesture | The wheel is instantaneous and scroll areas pass it on at their boundaries | Wheel input needs `RequireToFail` or `Simultaneous` relations |
+| True multi-owner `Simultaneous` | The arbiter keeps one primary owner | A multi-pointer pan-and-zoom surface lands |
+| Directional lock on `PanGesture` | An axis threshold suffices for vertical or horizontal panels | A 2D free-scroll surface needs single-axis lock-in |
+| Keyboard scrolling in `ScrollArea` | Controls inside scroll areas move focus, and focus doesn't yet scroll into view | A scroll area of plain content needs Page Up and Down |
+| Sticky headers, pinch zoom, content insets | Not needed by the components so far | A grouped list, a touch host or overlay embedding |

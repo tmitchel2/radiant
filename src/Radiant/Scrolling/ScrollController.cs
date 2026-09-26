@@ -52,6 +52,15 @@ public sealed class ScrollController : IAnimating
     public bool CanScrollHorizontal => HorizontalEnabled && _x.MaxOffset > 0f;
 
     public event Action<ScrollMetrics>? Scroll;
+
+    /// <summary>
+    /// Raised when an animated scroll begins (<see cref="ScrollTo"/> animated, <see cref="ApplyStep"/>),
+    /// so whatever advances the controller each frame knows to start.
+    /// </summary>
+    public event Action? AnimationStarted;
+
+    /// <summary>Raised when the viewport or content size changes (a resize, content growing), after layout.</summary>
+    public event Action<ScrollMetrics>? ExtentsChanged;
     public event Action<ScrollMetrics>? ScrollBeginDrag;
     public event Action<ScrollMetrics>? ScrollEndDrag;
     public event Action<ScrollMetrics>? MomentumBegin;
@@ -63,18 +72,30 @@ public sealed class ScrollController : IAnimating
     /// <summary>Set the visible viewport and total content extents.</summary>
     public void SetExtents(Vector2 viewport, Vector2 content)
     {
+        var changed = viewport != ViewportSize || content != ContentSize;
         _x.SetExtents(viewport.X, content.X);
         _y.SetExtents(viewport.Y, content.Y);
+        if (changed)
+        {
+            ExtentsChanged?.Invoke(MakeArgs());
+        }
     }
 
     /// <summary>Apply a raw wheel delta (notches). Vertical wheel scrolls Y; X scrolls horizontally.</summary>
     public void ApplyWheel(Vector2 wheelDelta)
     {
         if (!Behaviour.ScrollEnabled) return;
+        var before = Offset;
         if (VerticalEnabled && MathF.Abs(wheelDelta.Y) > 1e-4f)
             _y.ApplyImpulse(-wheelDelta.Y * Behaviour.WheelStep, Behaviour);
         if (HorizontalEnabled && MathF.Abs(wheelDelta.X) > 1e-4f)
             _x.ApplyImpulse(-wheelDelta.X * Behaviour.WheelStep, Behaviour);
+        // Without momentum the wheel moves the offset at once, so the frame loop sees no change:
+        // listeners (a virtual list choosing rows) hear it here.
+        if (Offset != before)
+        {
+            Scroll?.Invoke(MakeArgs());
+        }
     }
 
     /// <summary>Apply a keyboard line/page step (positive scrolls toward content end).</summary>
@@ -83,6 +104,7 @@ public sealed class ScrollController : IAnimating
         if (!Behaviour.ScrollEnabled) return;
         if (VerticalEnabled && MathF.Abs(step.Y) > 1e-4f) _y.AnimateTo(_y.Offset + step.Y, Behaviour);
         if (HorizontalEnabled && MathF.Abs(step.X) > 1e-4f) _x.AnimateTo(_x.Offset + step.X, Behaviour);
+        AnimationStarted?.Invoke();
     }
 
     public void BeginDrag()
@@ -120,11 +142,28 @@ public sealed class ScrollController : IAnimating
         {
             if (VerticalEnabled) _y.AnimateTo(target.Y, Behaviour);
             if (HorizontalEnabled) _x.AnimateTo(target.X, Behaviour);
+            AnimationStarted?.Invoke();
         }
         else
         {
             if (VerticalEnabled) _y.JumpTo(target.Y);
             if (HorizontalEnabled) _x.JumpTo(target.X);
+            Scroll?.Invoke(MakeArgs());
+        }
+    }
+
+    /// <summary>
+    /// Scrolls as little as possible to bring the span from <paramref name="start"/> (in content
+    /// coordinates) of <paramref name="length"/> into view along one axis; nothing if it's in view.
+    /// </summary>
+    public void ScrollIntoView(float start, float length, bool vertical = true, bool animated = false)
+    {
+        var offset = vertical ? Offset.Y : Offset.X;
+        var viewport = vertical ? ViewportSize.Y : ViewportSize.X;
+        var target = start < offset ? start : start + length > offset + viewport ? start + length - viewport : offset;
+        if (target != offset)
+        {
+            ScrollTo(vertical ? new Vector2(Offset.X, target) : new Vector2(target, Offset.Y), animated);
         }
     }
 

@@ -1,0 +1,82 @@
+using System;
+using System.Numerics;
+using Radiant.Graphics;
+using Radiant.Input;
+using Radiant.Platform;
+
+namespace Radiant.UI.Core;
+
+/// <summary>Runs a UI in a window.</summary>
+public static class RadiantUI
+{
+    // The longest step animations take in one frame: after the window has waited idle, the first
+    // frame's time since the last would otherwise finish a just-started animation at once.
+    private const double MaxStep = 1.0 / 20;
+
+    /// <summary>
+    /// Opens a window showing <paramref name="root"/> and runs until it closes: window input is
+    /// routed to the tree as events, and each frame the tree is updated, laid out to the window
+    /// and drawn.
+    /// </summary>
+    public static void Run(Element root, UIAppOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        options ??= new UIAppOptions();
+        using var app = new RadiantApplication();
+        using var ui = new UIRoot(root, options.Fonts);
+        using var platform = new PlatformBinding(ui);
+
+        // The platform needs the native window, so it's made once the window is open; the tree
+        // isn't mounted until the first frame, after this.
+        app.Loaded += () =>
+        {
+            var created = options.Platform?.Invoke(new NativeWindow { Cocoa = app.CocoaWindow, Glfw = app.GlfwWindow })
+                ?? new HeadlessPlatform();
+            platform.Attach(created);
+            ui.SetRoot(PlatformContext.Platform.Provide(created, root));
+        };
+
+        // Frames are drawn only while the tree has something to do; otherwise the window waits.
+        app.NeedsFrame = () => ui.NeedsUpdate;
+        ui.FrameRequested = app.RequestFrame;
+
+        app.PointerMoved += position => ui.PointerMove(position, Modifiers(app.Input));
+        app.PointerPressed += button => ui.PointerDown(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
+        app.PointerReleased += button => ui.PointerUp(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
+        // The platform reports wheel notches, up and left positive; the UI takes pixels towards the content's end.
+        app.Scrolled += offset => ui.Wheel(app.Input.MousePosition, -offset * options.WheelStep, Modifiers(app.Input));
+        app.KeyPressed += key => ui.KeyDown((KeyCode)(int)key, Modifiers(app.Input));
+        app.KeyReleased += key => ui.KeyUp((KeyCode)(int)key, Modifiers(app.Input));
+        app.CharacterTyped += character => ui.TextInput(character.ToString());
+        app.FilesDropped += paths => ui.DropFiles(app.Input.MousePosition, paths);
+
+        app.Run(options.Title, options.Width, options.Height, Handedness.RightHanded, renderer =>
+        {
+            ui.Update(new Vector2(app.WindowWidth, app.WindowHeight));
+            platform.AfterUpdate();
+            ui.Paint(renderer);
+        }, seconds => ui.Advance(Math.Min(seconds, MaxStep)), options.Background);
+    }
+
+    private static KeyModifiers Modifiers(InputState input)
+    {
+        var modifiers = KeyModifiers.None;
+        if (input.IsShiftDown)
+        {
+            modifiers |= KeyModifiers.Shift;
+        }
+        if (input.IsCtrlDown)
+        {
+            modifiers |= KeyModifiers.Control;
+        }
+        if (input.IsAltDown)
+        {
+            modifiers |= KeyModifiers.Alt;
+        }
+        if (input.IsKeyDown(Silk.NET.Input.Key.SuperLeft) || input.IsKeyDown(Silk.NET.Input.Key.SuperRight))
+        {
+            modifiers |= KeyModifiers.Super;
+        }
+        return modifiers;
+    }
+}

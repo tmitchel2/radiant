@@ -6,7 +6,6 @@ using Radiant.Graphics;
 using Radiant.Graphics2D.Shaders;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
-using Buffer = Silk.NET.WebGPU.Buffer;
 
 namespace Radiant.Graphics2D
 {
@@ -27,14 +26,11 @@ namespace Radiant.Graphics2D
             public Vector2 TexCoord; // offset 24
         }
 
-        private readonly record struct ImageDrawRange(int VertexStart, int VertexCount, IntPtr BindGroup, ClipRect? Clip);
-
         private RenderPipeline* _imagePipeline;
         private ShaderModule* _imageShader;
         private BindGroupLayout* _imageBindGroupLayout;
         private PipelineLayout* _imagePipelineLayout;
         private readonly List<ImageVertex2D> _imageVertices = [];
-        private readonly List<ImageDrawRange> _imageRanges = [];
 
         /// <summary>
         /// Layout for an image's group-1 bind group (sampler @0 + texture @1). Exposed so callers can
@@ -93,21 +89,7 @@ namespace Radiant.Graphics2D
                 Attributes = attrs,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
             var colorTargetState = new ColorTargetState
             {
                 Format = _surfaceFormat,
@@ -148,7 +130,7 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Queue an image draw: <paramref name="texture"/> stretched to the rectangle (x, y, width,
         /// height) in screen-space pixels, untinted (opaque white).
-        /// Drawn in submission order relative to other image draws; appears under MSDF text.
+        /// Drawn in submission order, like every other draw.
         /// </summary>
         public void DrawImage(Texture2D texture, float x, float y, float width, float height)
             => DrawImage(texture, x, y, width, height, new Vector4(1, 1, 1, 1));
@@ -167,58 +149,12 @@ namespace Radiant.Graphics2D
             AddImageVertex(x1, y1, 1f, 1f, tint);
             AddImageVertex(x0, y1, 0f, 1f, tint);
 
-            var clip = _clipStack.Count > 0 ? _clipStack.Peek() : (ClipRect?)null;
-            _imageRanges.Add(new ImageDrawRange(start, 6, (IntPtr)texture.BindGroup, clip));
+            AppendToBatch(BatchKind.Image, start, 6, (IntPtr)texture.BindGroup);
         }
 
         private void AddImageVertex(float x, float y, float u, float v, Vector4 color)
         {
-            // Note: image draws don't participate in PushScrollOffset (the tab host doesn't scroll
-            // composited frames). If image-in-scroll-region support is ever needed, extend
-            // PopScrollOffset to shift _imageVertices like the other vertex lists.
             _imageVertices.Add(new ImageVertex2D { Position = new Vector2(x, y), Color = color, TexCoord = new Vector2(u, v) });
-        }
-
-        private void EmitImageDraws(RenderPassEncoder* renderPass)
-        {
-            if (_imageVertices.Count == 0 || _imageRanges.Count == 0) return;
-
-            var buffer = CreateAndUploadImageVertexBuffer(_imageVertices);
-            _frameBuffers.Add((IntPtr)buffer);
-
-            _wgpu.RenderPassEncoderSetPipeline(renderPass, _imagePipeline);
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
-            _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, buffer, 0,
-                (ulong)(_imageVertices.Count * sizeof(ImageVertex2D)));
-
-            IntPtr boundGroup = IntPtr.Zero;
-            foreach (var range in _imageRanges)
-            {
-                ApplyScissor(renderPass, range.Clip);
-                if (range.BindGroup != boundGroup)
-                {
-                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 1, (BindGroup*)range.BindGroup, 0, null);
-                    boundGroup = range.BindGroup;
-                }
-                _wgpu.RenderPassEncoderDraw(renderPass, (uint)range.VertexCount, 1, (uint)range.VertexStart, 0);
-            }
-        }
-
-        private Buffer* CreateAndUploadImageVertexBuffer(List<ImageVertex2D> vertices)
-        {
-            var bufferDescriptor = new BufferDescriptor
-            {
-                Size = (ulong)(vertices.Count * sizeof(ImageVertex2D)),
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false,
-            };
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in bufferDescriptor);
-            var array = vertices.ToArray();
-            fixed (ImageVertex2D* dataPtr = array)
-            {
-                _wgpu.QueueWriteBuffer(_queue, buffer, 0, dataPtr, (nuint)(array.Length * sizeof(ImageVertex2D)));
-            }
-            return buffer;
         }
 
         private void DisposeImageResources()

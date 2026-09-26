@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.png" />
     <EmbeddedResource Include="Assets\Fonts\*.json" />
   </ItemGroup>
@@ -36,7 +40,6 @@
     <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.22.0" />
 	  <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
-    <PackageReference Include="SixLabors.Fonts" Version="2.0.7" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 
