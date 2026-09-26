@@ -83,6 +83,7 @@ turns a filled button red.
 | `SplitButton` | The usual action with a joined arrow dropping its alternatives |
 | `NumberField` | A number typed in the culture's format or stepped by its arrows, Up/Down and Page Up/Down; min, max, step, decimals, suffix |
 | `RangeSlider` | Two handles on one track: a press moves the nearer, each is a keyboard slider, they can't cross |
+| `LineChart`, `BarChart`, `DonutChart` | Charts: lines (or areas), grouped or stacked bars, and a donut of shares; round-numbered axes (`ChartScale`), legends, a hover tooltip of every series' value, and the values as text for assistive technology |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

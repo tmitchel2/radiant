@@ -27,6 +27,44 @@ internal static class Pages
                 new Stat("Refunds", "37") { Change = -0.18, Icon = "receipt_long" },
                 new Stat("Visitors", "92.4k") { Change = 0.31, Icon = "groups" },
             ]),
+            new Card(new LineChart(
+                ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                [
+                    new ChartSeries("This year", [31, 34, 33, 39, 42, 41, 46, 45, 48, 52, 55, 61]),
+                    new ChartSeries("Last year", [24, 26, 29, 28, 31, 33, 32, 35, 37, 36, 40, 44]),
+                ])
+            {
+                Title = "Revenue",
+                Area = true,
+                Format = v => $"${v:0}k",
+            })
+            {
+                Variant = CardVariant.Outlined,
+                Layout = new LayoutStyle { Padding = Edges.All(20) },
+            },
+            new Grid
+            {
+                MinColumnWidth = 360,
+                ColumnGap = 16,
+                RowGap = 16,
+                Children =
+                [
+                    new Card(new BarChart(["North", "South", "East", "West"],
+                        [
+                            new ChartSeries("Online", [420, 310, 380, 290]),
+                            new ChartSeries("In store", [180, 240, 150, 210]),
+                        ]) { Title = "Orders by region", Stacked = true, Height = 200 })
+                    {
+                        Variant = CardVariant.Outlined,
+                        Layout = new LayoutStyle { Padding = Edges.All(20) },
+                    },
+                    new Card(new DonutChart([("Search", 48), ("Direct", 27), ("Social", 15), ("Email", 10)]) { Title = "Visitors by source", Caption = "92.4k" })
+                    {
+                        Variant = CardVariant.Outlined,
+                        Layout = new LayoutStyle { Padding = Edges.All(20) },
+                    },
+                ],
+            },
             new StackedList(
             [
                 new ListEntry("Ada Lovelace", "Ordered the Analytical Engine kit") { Meta = "2m ago", Status = "Paid" },

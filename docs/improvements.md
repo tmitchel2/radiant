@@ -178,6 +178,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Toolbars aren't a single Tab stop.** Arrows move within a toolbar, but Tab still visits every
   control in it; a roving tab index (only the last-focused control tabbable) needs `TabIndex` on
   `IconButton` and the other controls, which only `PressableSurface` and `ToggleButton` have.
+- **Charts are a first cut.** Line areas are filled with plain quads (hard edges under the line,
+  fine at the axis), series colours come from theme roles that can sit close together (primary and
+  tertiary under some seeds), there's no zooming, panning, time axis, logarithmic scale or
+  keyboard way to read values (only the pointer and the text summary), and a chart repaints its
+  plot every frame it's drawn rather than caching it.
 - **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
   multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
   item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every
