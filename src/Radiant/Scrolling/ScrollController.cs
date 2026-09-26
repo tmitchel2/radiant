@@ -53,6 +53,12 @@ public sealed class ScrollController : IAnimating
 
     public event Action<ScrollMetrics>? Scroll;
 
+    /// <summary>
+    /// Raised when an animated scroll begins (<see cref="ScrollTo"/> animated, <see cref="ApplyStep"/>),
+    /// so whatever advances the controller each frame knows to start.
+    /// </summary>
+    public event Action? AnimationStarted;
+
     /// <summary>Raised when the viewport or content size changes (a resize, content growing), after layout.</summary>
     public event Action<ScrollMetrics>? ExtentsChanged;
     public event Action<ScrollMetrics>? ScrollBeginDrag;
@@ -79,10 +85,17 @@ public sealed class ScrollController : IAnimating
     public void ApplyWheel(Vector2 wheelDelta)
     {
         if (!Behaviour.ScrollEnabled) return;
+        var before = Offset;
         if (VerticalEnabled && MathF.Abs(wheelDelta.Y) > 1e-4f)
             _y.ApplyImpulse(-wheelDelta.Y * Behaviour.WheelStep, Behaviour);
         if (HorizontalEnabled && MathF.Abs(wheelDelta.X) > 1e-4f)
             _x.ApplyImpulse(-wheelDelta.X * Behaviour.WheelStep, Behaviour);
+        // Without momentum the wheel moves the offset at once, so the frame loop sees no change:
+        // listeners (a virtual list choosing rows) hear it here.
+        if (Offset != before)
+        {
+            Scroll?.Invoke(MakeArgs());
+        }
     }
 
     /// <summary>Apply a keyboard line/page step (positive scrolls toward content end).</summary>
@@ -91,6 +104,7 @@ public sealed class ScrollController : IAnimating
         if (!Behaviour.ScrollEnabled) return;
         if (VerticalEnabled && MathF.Abs(step.Y) > 1e-4f) _y.AnimateTo(_y.Offset + step.Y, Behaviour);
         if (HorizontalEnabled && MathF.Abs(step.X) > 1e-4f) _x.AnimateTo(_x.Offset + step.X, Behaviour);
+        AnimationStarted?.Invoke();
     }
 
     public void BeginDrag()
@@ -128,6 +142,7 @@ public sealed class ScrollController : IAnimating
         {
             if (VerticalEnabled) _y.AnimateTo(target.Y, Behaviour);
             if (HorizontalEnabled) _x.AnimateTo(target.X, Behaviour);
+            AnimationStarted?.Invoke();
         }
         else
         {

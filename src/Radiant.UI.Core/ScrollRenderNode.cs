@@ -25,6 +25,9 @@ internal sealed class ScrollRenderNode : RenderNode
     private readonly Node _content = YGNodeNew();
     private ScrollController? _own;
 
+    // The controller whose animations this node is listening for.
+    private ScrollController? _listening;
+
     // While the thumb is dragged: the axis, and where on the thumb it was grabbed.
     private (bool Vertical, float Grab)? _thumbDrag;
 
@@ -52,6 +55,16 @@ internal sealed class ScrollRenderNode : RenderNode
         if (old is null)
         {
             Owner.Root.AddScroller(this);
+        }
+        // An animated scroll asked for from outside (a list scrolling a row into view) needs frames.
+        if (!ReferenceEquals(_listening, Controller))
+        {
+            if (_listening is not null)
+            {
+                _listening.AnimationStarted -= OnAnimationStarted;
+            }
+            _listening = Controller;
+            _listening.AnimationStarted += OnAnimationStarted;
         }
         if (old is null || old.Layout != Element.Layout || old.ContentLayout != Element.ContentLayout || old.Behaviour.Axes != Element.Behaviour.Axes)
         {
@@ -231,8 +244,14 @@ internal sealed class ScrollRenderNode : RenderNode
         return (start, length);
     }
 
+    private void OnAnimationStarted() => Owner.Root.StartAnimating(this);
+
     public override void Dispose()
     {
+        if (_listening is not null)
+        {
+            _listening.AnimationStarted -= OnAnimationStarted;
+        }
         Owner.Root.RemoveScroller(this);
         base.Dispose();
         YGNodeFree(_content);

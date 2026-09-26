@@ -93,6 +93,18 @@ public class VirtualListTests
     }
 
     [TestMethod]
+    public void TheWheelBuildsTheRowsItScrollsTo()
+    {
+        var controller = new ScrollController(new ScrollBehaviour());
+        using var root = Mount(Numbers(1000, controller));
+
+        root.Wheel(new Vector2(100, 100), new Vector2(0, 3000));
+        Settle(root);
+
+        Assert.IsTrue(Rows(root).Any(r => r.Text == "Row 100"), string.Join(", ", Rows(root).Select(r => r.Text)));
+    }
+
+    [TestMethod]
     public void AResizedViewBuildsMoreRows()
     {
         var controller = new ScrollController(new ScrollBehaviour());
