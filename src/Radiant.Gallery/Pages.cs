@@ -108,6 +108,34 @@ internal static class Pages
                 new PricingTier("Pro", "$12", ["Unlimited apps", "Priority support", "All templates"]) { Description = "For professionals", Featured = true },
                 new PricingTier("Team", "$49", ["Everything in Pro", "Shared themes", "Single sign-on"]) { Description = "For teams" },
             ], null),
+            new Testimonials("Loved by teams",
+            [
+                new Testimonial("We shipped our desktop app in half the time, and it looks native everywhere.", "Ada Lovelace", "CTO, Analytical"),
+                new Testimonial("The theming alone saved us weeks. Dark mode just worked.", "Grace Hopper", "Lead engineer, Cobol & Co"),
+                new Testimonial("Accessible out of the box, which our users noticed straight away.", "Alan Turing", "Founder, Enigma"),
+            ]),
+            new Faq("Frequently asked questions",
+            [
+                new FaqEntry("Which platforms does it run on?", "macOS today; Windows and Linux are planned, behind the same platform interfaces."),
+                new FaqEntry("Can I publish with Native AOT?", "Yes: the gallery and its self-test publish and run as native binaries."),
+                new FaqEntry("Is it accessible?", "Components expose roles, names and states, and VoiceOver can read and press them."),
+            ]) { Subtitle = "Can't find what you need? Ask on the forum." },
+            new CallToAction("Ready to build something great?")
+            {
+                Text = "Start free, and upgrade when your team grows.",
+                Actions = [new SurfaceButton("Get started"), new SurfaceButton("Talk to sales", ButtonVariant.Text)],
+            },
+            new Newsletter("Stay up to date", null) { Text = "News and releases, once a month. No spam." },
+            new SiteFooter("Radiant",
+            [
+                new FooterColumn("Product", ["Features", "Pricing", "Changelog"]),
+                new FooterColumn("Company", ["About", "Careers", "Contact"]),
+                new FooterColumn("Legal", ["Privacy", "Terms"]),
+            ])
+            {
+                Tagline = "A desktop app platform for .NET.",
+                Copyright = "© 2026 Radiant. All rights reserved.",
+            },
         ],
     };
 
@@ -210,6 +238,17 @@ internal static class Pages
                         snackbars.Show($"Added {s_products[i].Name} to your cart");
                     }),
                     new CartSummary(lines) { Shipping = 0 },
+                    new Reviews(
+                    [
+                        new Review("Ada Lovelace", 5, "A calmer desk indeed", "The walnut tray keeps everything in one place.") { Date = "12 March" },
+                        new Review("Grace Hopper", 4, "Lovely lamp", "Warm light, though the switch is a little stiff.") { Date = "2 March" },
+                    ]) { OnWrite = () => snackbars.Show("Thanks! Reviews open once your order arrives.") },
+                    new SurfaceText("Your orders") { TextType = TextType.HeadlineSmall, HeadingLevel = 2 },
+                    new OrderHistory(
+                    [
+                        new Order("WU88191111", "12 March 2026", "$96.00", "On its way", [new OrderLine("Walnut tray", 1, "$48.00"), new OrderLine("Linen notebook", 2, "$48.00")]),
+                        new Order("WU88191009", "2 January 2026", "$64.00", "Delivered", [new OrderLine("Desk lamp", 1, "$64.00")]) { Complete = true },
+                    ]) { OnBuyAgain = order => snackbars.Show($"Added order {order.Number} to your cart") },
                 ],
             };
         }

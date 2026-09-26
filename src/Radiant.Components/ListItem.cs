@@ -28,6 +28,9 @@ public sealed record ListItem(string Headline) : Component
     /// <summary>Trailing text, such as a count or a shortcut.</summary>
     public string? TrailingText { get; init; }
 
+    /// <summary>Anything else at the end, after the trailing text and icon (a switch, an unread dot).</summary>
+    public Element? Trailing { get; init; }
+
     /// <summary>What pressing the row does; null for a static row.</summary>
     public Action? OnPress { get; init; }
 
@@ -63,6 +66,7 @@ public sealed record ListItem(string Headline) : Component
             },
             TrailingText is null ? null : new SurfaceText(TrailingText) { TextType = TextType.LabelSmall, Legibility = Legibility.Medium },
             TrailingIcon is null ? null : new SurfaceIcon(TrailingIcon) { Legibility = Legibility.Medium },
+            Trailing,
         ];
         var layout = new LayoutStyle
         {

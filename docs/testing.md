@@ -66,7 +66,8 @@ They're in `ComponentGoldenTests`, `MoreComponentGoldenTests` and `OverlayAndCha
 with `GoldenSheets` for the themed surface and the light and dark check.
 
 `Radiant.Templates.Tests/TemplateGoldenTests` keeps the template blocks (stats, pricing, sign-in,
-empty state, products), each narrow and wide in light, wide in dark, and wide at compact density
+empty state, products, testimonials, FAQ, call to action, newsletter, footer, 404, reviews,
+order history, checkout and notifications), each narrow and wide in light, wide in dark, and wide at compact density
 (`Theme.Density = -2`), so reflowing and spacing show up. It links `GoldenSheets` from the
 components' tests.
 

@@ -18,6 +18,7 @@ state beyond what the block itself needs (a form's field values).
 | `StackedList(entries)` / `ListEntry` | Rows with an avatar, a title and subtitle, a status chip and a meta line; `OnPress` gets the row's index. |
 | `SettingsSection(title, rows)` / `SettingsRow(label, control)` | Settings grouped under a heading, with its description to the left and the rows in a card. |
 | `EmptyState(icon, title)` | A centred icon, a title, a description and an action, for a view with nothing in it. |
+| `NotificationFeed(entries)` / `NotificationEntry` | Notifications with their icon, text and time; the unread ones dotted and counted in the header, with "Mark all as read". |
 | `SignInForm(onSignIn)` | Email and password (hidden, with a reveal button), remember me, a forgotten-password link and the sign-in button. Enter in the password submits. |
 
 ## Marketing
@@ -26,7 +27,13 @@ state beyond what the block itself needs (a form's field values).
 |---|---|
 | `Hero(headline)` | An eyebrow, a large headline, a paragraph and action buttons, beside an optional picture, on a primary container. It wraps under the picture when narrow. |
 | `FeatureGrid(title, features)` / `Feature` | Features in up to three equal columns, each with a tinted icon. |
-| `PricingTiers(tiers, onChoose)` / `PricingTier` | Plans side by side. A `Featured` plan is raised, filled and marked "Most popular". |
+| `PricingTiers(tiers, onChoose)` / `PricingTier` | Plans side by side. A `Featured` plan is raised, filled and tagged "Most popular". |
+| `Testimonials(title, items)` / `Testimonial` | Customer quotes in cards, each with who said it, in up to three columns. |
+| `Faq(title, entries)` / `FaqEntry` | Questions that open onto their answers, under a heading. |
+| `CallToAction(headline)` | A closing pitch on a tinted panel: headline, sentence and actions, centred. |
+| `Newsletter(headline, onSubscribe)` | An email sign-up beside its headline: checks the address, then thanks the reader. |
+| `SiteFooter(name, columns)` / `FooterColumn` | The name and a tagline, columns of links that wrap when narrow, and a copyright line. |
+| `NotFound` | A "page not found" screen: the code, a title, a sentence and ways back. |
 
 ## Ecommerce
 
@@ -34,6 +41,9 @@ state beyond what the block itself needs (a form's field values).
 |---|---|
 | `ProductGrid(products, onAddToCart)` / `Product` | Product cards in up to four equal columns: picture (with a badge), name, detail, rating, price and an add-to-cart button. |
 | `ProductCard(product)` | One of those cards. |
+| `Reviews(items)` / `Review` / `Stars` | A rating summary (the average, half stars, how many, a bar per star count) beside the reviews, which move under it when narrow. |
+| `OrderHistory(orders)` / `Order` / `OrderLine` | Past orders as cards: number, date, total, a status tag, the items, and View and Buy again. |
+| `CheckoutForm(countries, delivery, onPlaceOrder)` / `CheckoutDetails` / `DeliveryOption` | Contact, shipping address and delivery under their legends; placing the order checks every field first. |
 | `CartSummary(lines)` / `CartLine` | Each line with its picture, quantity buttons and amount, then subtotal, shipping (or "Free"), total and checkout. Quantity changes are reported, not applied: the app owns the cart. |
 
 ## Desktop shells
@@ -57,17 +67,15 @@ and a short last row lines up. A block given a `Layout` adds it to its own (see 
 ## Testing
 
 `Radiant.Templates.Tests` mounts each block in a themed `UIRoot` and drives it through its
-semantics tree: type into fields by label, press buttons by name, and read the text shown. The
-gallery renders every block as a page, light and dark, to PNG (see
-[components.md](components.md#the-gallery)).
+semantics tree: type into fields by label, press buttons by name, and read the text shown.
+`TemplateGoldenTests` keeps every block as goldens, narrow and wide in light, wide in dark and
+wide at compact density (see [testing.md](testing.md)).
 
 ## Still to come
 
-- **More desktop shells:** onboarding, and a document editor with split editor groups.
-- **More Application UI:** tables, description lists, calendars, feeds, command palette and
-  notifications, as the P9 components (`DataTable`, `CommandPalette` and others) land.
-- **More Marketing:** bento grid, testimonials, team, FAQ, logo cloud, newsletter, contact, footer
-  and 404.
-- **More Ecommerce:** product overview and quick view, category filters, checkout, order history
-  and reviews.
-- **Goldens:** each block at three widths × two densities × light and dark.
+- **More desktop shells:** onboarding, and a document editor with split editor groups
+  (`DockPanel` does the docking these would build on).
+- **More Application UI:** description lists, calendars and action panels as blocks.
+- **More Marketing:** bento grid, team, logo cloud and contact.
+- **More Ecommerce:** product overview and quick view, category filters and promotions.
+- **Goldens:** a third, medium width.

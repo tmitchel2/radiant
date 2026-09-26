@@ -66,6 +66,79 @@ public class TemplateGoldenTests
         new Product("Wool beanie", "$18", Picture(0xFF5A6FC9)) { Rating = 4 },
     ], _ => { })));
 
+    [TestMethod]
+    public void TestimonialQuotes() => CheckBlock("Testimonials", 900, 330, () => Fill(new Testimonials("Loved by teams",
+    [
+        new Testimonial("We shipped our desktop app in half the time, and it looks native everywhere.", "Ada Lovelace", "CTO, Analytical"),
+        new Testimonial("The theming alone saved us weeks. Dark mode just worked.", "Grace Hopper", "Lead engineer, Cobol & Co"),
+        new Testimonial("Accessible out of the box, which our users noticed straight away.", "Alan Turing", "Founder, Enigma"),
+    ])));
+
+    [TestMethod]
+    public void FrequentQuestions() => CheckBlock("Faq", 480, 420, () => Fill(new Faq("Frequently asked questions",
+    [
+        new FaqEntry("Is there a free plan?", "Yes: the Hobby plan is free for personal projects, with no time limit."),
+        new FaqEntry("Can I cancel any time?", "You can, from Settings. You keep access until the end of the billing period."),
+        new FaqEntry("Do you offer refunds?", "Within 30 days of purchase, no questions asked."),
+    ]) { Subtitle = "Can't find what you need? Contact support." }));
+
+    [TestMethod]
+    public void ClosingPitch() => CheckBlock("CallToAction", 360, 300, () => Fill(new CallToAction("Ready to build something great?")
+    {
+        Text = "Start free, and upgrade when your team grows.",
+        Actions = [new SurfaceButton("Get started"), new SurfaceButton("Talk to sales", ButtonVariant.Text)],
+    }));
+
+    [TestMethod]
+    public void NewsletterSignUp() => CheckBlock("Newsletter", 300, 200, () => Fill(new Newsletter("Stay up to date", null)
+    {
+        Text = "News and releases, once a month. No spam.",
+    }));
+
+    [TestMethod]
+    public void Footer() => CheckBlock("Footer", 560, 330, () => Fill(new SiteFooter("Radiant",
+    [
+        new FooterColumn("Product", ["Features", "Pricing", "Changelog"]),
+        new FooterColumn("Company", ["About", "Careers", "Contact"]),
+        new FooterColumn("Legal", ["Privacy", "Terms"]),
+    ])
+    {
+        Tagline = "A desktop app platform for .NET.",
+        Copyright = "© 2026 Radiant. All rights reserved.",
+    }));
+
+    [TestMethod]
+    public void PageNotFound() => CheckBlock("NotFound", 380, 380, () => Fill(new NotFound
+    {
+        Actions = [new SurfaceButton("Go home") { Icon = "arrow_back" }, new SurfaceButton("Contact support", ButtonVariant.Text)],
+    }));
+
+    [TestMethod]
+    public void ProductReviews() => CheckBlock("Reviews", 1000, 600, () => Fill(new Reviews(
+    [
+        new Review("Ada Lovelace", 5, "Perfect fit", "Exactly as described, and the linen softens after a wash.") { Date = "12 March" },
+        new Review("Grace Hopper", 4, "Good shirt", "Runs slightly large; I'd size down.") { Date = "2 March" },
+        new Review("Alan Turing", 4, "Would buy again", "Arrived quickly and well packed.") { Date = "20 February" },
+    ]) { OnWrite = () => { } }));
+
+    [TestMethod]
+    public void PastOrders() => CheckBlock("OrderHistory", 760, 560, () => Fill(new OrderHistory(
+    [
+        new Order("WU88191111", "12 March 2026", "$96.00", "On its way", [new OrderLine("Linen shirt", 1, "$48.00"), new OrderLine("Canvas tote", 2, "$48.00")]),
+        new Order("WU88191009", "2 January 2026", "$18.00", "Delivered", [new OrderLine("Wool beanie", 1, "$18.00")]) { Complete = true },
+    ]) { OnView = _ => { }, OnBuyAgain = _ => { } }));
+
+    [TestMethod]
+    public void Checkout() => CheckBlock("Checkout", 780, 700, () => Fill(new CheckoutForm(MoreTemplateTests.Countries, MoreTemplateTests.Delivery, _ => { }) { PlaceOrderLabel = "Pay $101.00" }));
+
+    [TestMethod]
+    public void Notifications() => CheckBlock("Notifications", 420, 420, () => Fill(new NotificationFeed(
+    [
+        new NotificationEntry("chat", "Ada commented on your design", "5 min ago") { Unread = true },
+        new NotificationEntry("person_add", "Grace joined your team", "1 hour ago") { Unread = true },
+        new NotificationEntry("check_circle", "Your export finished", "Yesterday"),
+    ]) { OnMarkAllRead = () => { } }));
+
     // A plain picture: a vertical gradient of one colour, so products differ without image files.
     private static ImageSource Picture(uint argb)
     {
