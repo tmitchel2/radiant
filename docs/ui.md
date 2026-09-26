@@ -117,6 +117,9 @@ cursors and text input. See [platform.md](platform.md).
 - **Nesting:** an area passes the wheel to the one enclosing it when it can't scroll further
   that way.
 - **Position:** the scroll position survives rebuilds; pass a `Controller` to set or read it.
+- **Scroll bars:** the indicators can be dragged, and pressing their track jumps the thumb
+  there. The 12 px strip along the edge belongs to the scroll area while it can scroll that way,
+  even over content (`RenderNode.ClaimsPoint`), so a drag there never clicks what's under it.
 
 ## Grids
 
@@ -227,7 +230,7 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 ## Not yet
 
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
-- **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
+- **Scrolling:** keyboard scrolling.
 - **Commands:** commands and shortcuts.
 - **Accessibility:** the platform bridge for semantics comes later in P7 (the platform's other
   services are in [platform.md](platform.md)).

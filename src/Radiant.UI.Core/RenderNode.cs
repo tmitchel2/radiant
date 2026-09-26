@@ -134,6 +134,11 @@ internal abstract class RenderNode : IDisposable
         {
             return false;
         }
+        if (inside && IsHitTestVisible && ClaimsPoint(point))
+        {
+            path.Add(this);
+            return true;
+        }
         var childPoint = point - ChildOffset;
         for (var i = _children.Count - 1; i >= 0; i--)
         {
@@ -151,8 +156,29 @@ internal abstract class RenderNode : IDisposable
         return false;
     }
 
+    /// <summary>
+    /// Whether a point (in this node's coordinates, inside it) is the node's own rather than its
+    /// children's, even where a child is: a scroll area's scroll bar.
+    /// </summary>
+    protected virtual bool ClaimsPoint(Vector2 point) => false;
+
     /// <summary>What the node does with a wheel event nothing handled: a scroll area scrolls.</summary>
     public virtual void OnWheel(PointerEventArgs args)
+    {
+    }
+
+    /// <summary>What the node does with a press its handlers left alone: a scroll area grabs its thumb.</summary>
+    public virtual void OnPointerDown(PointerEventArgs args)
+    {
+    }
+
+    /// <summary>What the node does with a move its handlers left alone (while pressed, wherever the pointer is).</summary>
+    public virtual void OnPointerMove(PointerEventArgs args)
+    {
+    }
+
+    /// <summary>What the node does with a release its handlers left alone.</summary>
+    public virtual void OnPointerUp(PointerEventArgs args)
     {
     }
 

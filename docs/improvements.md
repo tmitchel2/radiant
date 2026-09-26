@@ -59,8 +59,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **No key repeat.** Input has no key-repeat flag. Typing without a text input client still
   arrives from GLFW one `char` at a time as `TextInput` events; with a client, the platform
   delivers whole strings and compositions (see [platform.md](platform.md)).
-- **`ScrollArea` is basic.** It has no thumb dragging, no keyboard scrolling, and no fading
-  indicators (`Auto` behaves like `Always`).
+- **`ScrollArea` is basic.** It has no keyboard scrolling, no fading indicators (`Auto` behaves
+  like `Always`), and the thumb doesn't widen under the pointer, so the 12 px grip is invisible
+  until used.
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
 - **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
   tree yet, which the P7 accessibility bridge needs.
@@ -143,8 +144,7 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Virtual lists need a fixed row height.** Variable heights want measured rows and an
   estimated-height index (a Fenwick tree of heights). Past 2^24 px (560k rows of 30 px) the scroll
   offset is a float and moves in 2 px steps; rows stay aligned, because whole-pixel tops and
-  their differences are exact. Scrolling by the wheel through a million rows is slow without a
-  draggable scroll thumb, which `ScrollArea` doesn't have yet.
+  their differences are exact. The scroll thumb can be dragged through the whole list.
 - **The range lags a frame on resize.** `ScrollController.ExtentsChanged` is raised during
   layout, so a list that grows builds its new rows on the next frame.
 - **Splitter handles overlap panes by tree order.** The divider's grip reaches 4 px into both

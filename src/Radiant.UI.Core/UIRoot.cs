@@ -553,7 +553,7 @@ public sealed class UIRoot : IDisposable
         var path = HitPath(position);
         UpdateHover(path, position, modifiers);
         var args = new PointerEventArgs(position, PointerButton.Left, modifiers);
-        Dispatch(_pressed ?? path, args, box => null, box => box.OnPointerMove);
+        Dispatch(_pressed ?? path, args, box => null, box => box.OnPointerMove, (node, e) => node.OnPointerMove(e));
     }
 
     /// <summary>A pointer button was pressed at <paramref name="position"/>.</summary>
@@ -577,7 +577,7 @@ public sealed class UIRoot : IDisposable
         SetFocus(focusable, visible: false);
 
         var args = new PointerEventArgs(position, button, modifiers, CountClick(position, button));
-        Dispatch(path, args, box => box.OnPointerDownCapture, box => box.OnPointerDown);
+        Dispatch(path, args, box => box.OnPointerDownCapture, box => box.OnPointerDown, (node, e) => node.OnPointerDown(e));
     }
 
     /// <summary>A pointer button was released at <paramref name="position"/>.</summary>
@@ -587,7 +587,7 @@ public sealed class UIRoot : IDisposable
         _pressed = null;
         var path = HitPath(position);
         var args = new PointerEventArgs(position, button, modifiers, _lastClick.Count);
-        Dispatch(pressed ?? path, args, box => null, box => box.OnPointerUp);
+        Dispatch(pressed ?? path, args, box => null, box => box.OnPointerUp, (node, e) => node.OnPointerUp(e));
 
         // A click goes to the deepest box both the press and the release were over.
         if (pressed is not null)

@@ -19,8 +19,14 @@ internal sealed class ScrollRenderNode : RenderNode
     private const float IndicatorThickness = 4f;
     private const float IndicatorInset = 2f;
 
+    // How far in from the edge the scroll bar can be grabbed.
+    private const float GripWidth = 12f;
+
     private readonly Node _content = YGNodeNew();
     private ScrollController? _own;
+
+    // While the thumb is dragged: the axis, and where on the thumb it was grabbed.
+    private (bool Vertical, float Grab)? _thumbDrag;
 
     public ScrollRenderNode() => YGNodeInsertChild(Yoga, _content, 0);
 
@@ -103,6 +109,83 @@ internal sealed class ScrollRenderNode : RenderNode
         controller.ApplyWheel(new Vector2(canX ? -delta.X / step : 0f, canY ? -delta.Y / step : 0f));
         Owner.Root.StartAnimating(this);
         args.Handled = true;
+    }
+
+    protected override bool ClaimsPoint(Vector2 point) => BarAt(point) is not null;
+
+    // Which scroll bar, if any, a point in this node is over: true for the vertical one.
+    private bool? BarAt(Vector2 point)
+    {
+        if (Element.Behaviour.Indicators == IndicatorVisibility.None || Element.IndicatorColor.W <= 0f)
+        {
+            return null;
+        }
+        var size = Size;
+        var controller = Controller;
+        if (controller.CanScrollVertical && point.X >= size.X - GripWidth)
+        {
+            return true;
+        }
+        if (controller.CanScrollHorizontal && point.Y >= size.Y - GripWidth)
+        {
+            return false;
+        }
+        return null;
+    }
+
+    public override void OnPointerDown(PointerEventArgs args)
+    {
+        if (args.Button != PointerButton.Left || BarAt(ToLocal(args.Position)) is not { } vertical)
+        {
+            return;
+        }
+        var (along, viewport, content, offset) = Axis(vertical, ToLocal(args.Position));
+        var (start, length) = Thumb(viewport, content, offset);
+        // Grabbed on the thumb, it keeps its place under the pointer; on the track, the thumb
+        // jumps to centre on the pointer first.
+        var grab = along >= start && along <= start + length ? along - start : length / 2f;
+        _thumbDrag = (vertical, grab);
+        DragThumb(vertical, along, grab);
+        args.Handled = true;
+    }
+
+    public override void OnPointerMove(PointerEventArgs args)
+    {
+        if (_thumbDrag is { } drag)
+        {
+            DragThumb(drag.Vertical, Axis(drag.Vertical, ToLocal(args.Position)).Along, drag.Grab);
+            args.Handled = true;
+        }
+    }
+
+    public override void OnPointerUp(PointerEventArgs args)
+    {
+        if (_thumbDrag is not null)
+        {
+            _thumbDrag = null;
+            args.Handled = true;
+        }
+    }
+
+    private (float Along, float Viewport, float Content, float Offset) Axis(bool vertical, Vector2 local)
+    {
+        var controller = Controller;
+        return vertical
+            ? (local.Y, Size.Y, controller.ContentSize.Y, controller.Offset.Y)
+            : (local.X, Size.X, controller.ContentSize.X, controller.Offset.X);
+    }
+
+    // Puts the thumb's start at the pointer less the grab point, and scrolls to match.
+    private void DragThumb(bool vertical, float along, float grab)
+    {
+        var (_, viewport, content, offset) = Axis(vertical, Vector2.Zero);
+        var (_, length) = Thumb(viewport, content, offset);
+        var track = viewport - 2f * IndicatorInset;
+        var fraction = Math.Clamp((along - grab - IndicatorInset) / MathF.Max(track - length, 1f), 0f, 1f);
+        var target = fraction * MathF.Max(content - viewport, 0f);
+        var controller = Controller;
+        controller.ScrollTo(vertical ? new Vector2(controller.Offset.X, target) : new Vector2(target, controller.Offset.Y), animated: false);
+        Owner.Root.StartAnimating(this);
     }
 
     public override void Paint(PaintContext context)

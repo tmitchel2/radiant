@@ -142,4 +142,53 @@ public class ScrollTests
 
         CollectionAssert.AreEqual(new[] { "row 3" }, log.Entries);
     }
+
+    [TestMethod]
+    public void DraggingTheThumbScrollsInProportion()
+    {
+        var log = new Log();
+        var controller = new ScrollController(new ScrollBehaviour());
+        using var root = new UIRoot(Rows(10, log, controller));
+        root.Update(Viewport);
+
+        // The thumb is half the 96 px track (100 of 200 px shows), starting at 2 px.
+        root.PointerDown(new Vector2(195, 10));
+        root.PointerMove(new Vector2(150, 34));
+        var halfway = controller.Offset.Y;
+        root.PointerMove(new Vector2(195, 500));
+        var end = controller.Offset.Y;
+        root.PointerUp(new Vector2(195, 500));
+        Settle(root);
+
+        Assert.AreEqual(50f, halfway, 0.01f, "moved half the thumb's travel, even off the bar");
+        Assert.AreEqual(100f, end, "held at the end");
+        Assert.AreEqual(0, log.Entries.Count, "the rows under the bar weren't clicked");
+    }
+
+    [TestMethod]
+    public void PressingTheTrackJumpsTheThumbThere()
+    {
+        var controller = new ScrollController(new ScrollBehaviour());
+        using var root = new UIRoot(Rows(20, controller: controller));
+        root.Update(Viewport);
+
+        // 100 of 400 px shows: the thumb is 24 px of the 96 px track; pressing at 50 centres it there.
+        root.PointerDown(new Vector2(195, 50));
+        root.PointerUp(new Vector2(195, 50));
+
+        Assert.AreEqual((50f - 12f - 2f) / (96f - 24f) * 300f, controller.Offset.Y, 0.01f);
+    }
+
+    [TestMethod]
+    public void WithNothingToScrollTheBarsEdgeBelongsToTheContent()
+    {
+        var log = new Log();
+        using var root = new UIRoot(Rows(3, log));
+        root.Update(Viewport);
+
+        root.PointerDown(new Vector2(195, 10));
+        root.PointerUp(new Vector2(195, 10));
+
+        CollectionAssert.AreEqual(new[] { "row 0" }, log.Entries);
+    }
 }
