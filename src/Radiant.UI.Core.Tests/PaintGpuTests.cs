@@ -33,6 +33,30 @@ public class PaintGpuTests
     };
 
     [TestMethod]
+    public void AGradientIsInTheBoxsOwnCoordinates()
+    {
+        using var frame = GpuFrame.CreateOrSkip(64, 64);
+
+        var pixels = Draw(frame, new Box
+        {
+            Children =
+            [
+                new Box
+                {
+                    Layout = At(32, 32, 32, 32),
+                    // Red at the box's left edge, blue at its right, wherever the box is.
+                    BackgroundGradient = Gradient.Linear(Vector2.Zero, new Vector2(32, 0), Red, Blue),
+                },
+            ],
+        });
+
+        var (leftRed, _, leftBlue) = Rgb(frame.PixelAt(pixels, 33, 48));
+        var (rightRed, _, rightBlue) = Rgb(frame.PixelAt(pixels, 62, 48));
+        Assert.IsTrue(leftRed > 230 && leftBlue < 40, $"left ({leftRed}, {leftBlue})");
+        Assert.IsTrue(rightBlue > 230 && rightRed < 40, $"right ({rightRed}, {rightBlue})");
+    }
+
+    [TestMethod]
     public void BoxesDrawTheirBackgroundsWhereTheyAreLaidOut()
     {
         using var frame = GpuFrame.CreateOrSkip(64, 64);

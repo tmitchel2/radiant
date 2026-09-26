@@ -88,7 +88,7 @@ internal sealed class BoxRenderNode : RenderNode
         }
         if (box.BackgroundGradient is { } gradient)
         {
-            renderer.DrawRoundedRect(x, y, width, height, box.CornerRadii, box.BorderWidth, gradient, box.BorderColor);
+            renderer.DrawRoundedRect(x, y, width, height, box.CornerRadii, box.BorderWidth, gradient.Translated(context.Origin), box.BorderColor);
         }
         else if (box.Background is not null || box.BorderWidth > 0f)
         {

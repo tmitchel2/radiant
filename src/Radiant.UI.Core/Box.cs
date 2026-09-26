@@ -20,7 +20,7 @@ public sealed record Box : HostElement
     /// <summary>The fill, linear and straight alpha; null for none.</summary>
     public Vector4? Background { get; init; }
 
-    /// <summary>A gradient fill, drawn instead of <see cref="Background"/>.</summary>
+    /// <summary>A gradient fill, drawn instead of <see cref="Background"/>; its points are in the box's own coordinates (0, 0 at its top left).</summary>
     public Gradient? BackgroundGradient { get; init; }
 
     /// <summary>The corner radii, for the background, border, shadows and clip.</summary>

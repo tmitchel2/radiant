@@ -52,6 +52,9 @@ public sealed record Gradient
     /// <summary>The color space the stops are blended in.</summary>
     public GradientInterpolation Interpolation { get; }
 
+    /// <summary>The same gradient moved by <paramref name="offset"/>: one given in a box's own coordinates, placed where the box is drawn.</summary>
+    public Gradient Translated(Vector2 offset) => new(Kind, Start + offset, End + offset, Radius, Stops, Interpolation);
+
     /// <summary>A gradient along the line from <paramref name="start"/> to <paramref name="end"/>.</summary>
     public static Gradient Linear(Vector2 start, Vector2 end, IReadOnlyList<GradientStop> stops,
         GradientInterpolation interpolation = GradientInterpolation.Srgb)
