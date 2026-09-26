@@ -55,6 +55,7 @@ turns a filled button red.
 | `NavigationRail` | A desktop side rail: icons in pills that fill when current, labels, badges |
 | `NavigationDrawer` | A sidebar: heading, sections, rows with counts, the current one in a filled pill |
 | `SegmentedButton` | Joined outlined segments, single or multi choice, ticked when chosen |
+| `ButtonGroup`, `GroupButton` | Related actions joined into one outlined control (Bold, Italic, Underline), each its own button, icon-only or labelled, disabled apart |
 | `SelectField` | A read-only field that drops a menu (as wide as itself) of options, the chosen one ticked |
 | `SnackbarHost`, `Snackbars` | Brief messages at the bottom: queued, timed, with an optional action; `context.UseSnackbars().Show(…)` |
 | `Avatar` | Initials on a container colour chosen stably from the name, or a person icon |
@@ -64,9 +65,11 @@ turns a filled button red.
 | `TreeView`, `TreeNode` | A virtualised tree: chevrons or a double click expand, a press selects, a double click activates leaves; Up/Down, Right to open or go in, Left to close or climb, Home/End, Enter; selection and expansion controlled or not |
 | `CommandPalette` | ⌘K-style search over `Command`s (usually `context.UseCommands()`): ranked by `FuzzyMatch` on titles and keywords, grouped when nothing is typed, disabled ones left out; arrows, Enter or a press run one; Escape or outside closes |
 | `CommandMenuBar` | The menu bar made from the registered commands: each command with a `Menu` is an item on it, grouped, with its shortcut, disabled and checked states. The platform's own menu bar where there is one (macOS), a drawn `MenuBar` otherwise (or nothing, with `DrawWithoutPlatformMenuBar` off) |
+| `Collapsible` | A header that shows and hides what's under it, announced as expanded or collapsed; controlled or not |
 | `Accordion`, `AccordionItem` | Sections that open under their headers in an outlined card, one at a time or several; chevrons turn, content fades in; Up/Down/Home/End between headers; controlled or not |
 | `ComboBox` | A text field that suggests options as you type, ranked by `FuzzyMatch`, with focus staying in the field; arrows, Enter or a press pick, Escape puts the text back; custom text kept only with `AllowCustom` |
 | `Calendar` | A month grid: the culture's first weekday, today ringed, the chosen day filled; arrows, pages, Home/End and Enter, one Tab stop; minimum, maximum and refused days |
+| `TimePicker` | A time of day as hour, minute (and AM/PM) parts: Up/Down step, digits type, Left/Right move, Backspace clears; 12- or 24-hour by culture |
 | `DatePicker` | A date field read in the culture's short format (errors for text that isn't a choosable date), with a calendar that opens from its button or Down, focused on the date |
 | `ColorPicker` | Picks in HCT: a hue × chroma plane at the current tone (colours outside sRGB left clear), a tone strip, a swatch and a hex field; pointer and keyboard; the gallery's settings drive the theme seed with it |
 | `ContextMenu` | A menu at the pointer on right-click (Control-click on macOS), or at the element with Shift+F10 or the Menu key |
@@ -78,6 +81,7 @@ turns a filled button red.
 | `Kbd` | Keycaps for a key or chord (`Kbd.For(KeyChord.Command(KeyCode.K))`) |
 | `Breadcrumb`, `Crumb` | Links to each level above the current page; long trails fold their middle into "…" |
 | `Pagination` | Previous, next, the ends, the current page's neighbourhood and gaps |
+| `Banner` | A message across a page or pane that stays until dealt with: an icon, text and actions |
 | `Alert`, `AlertKind` | An in-page message: info, success, warning or error colour and icon, title, text, actions, dismiss; announced as an alert |
 | `Fab` | The floating main action: a 56 px rounded square, or extended with its label |
 | `ToggleButton`, `ToggleGroup` | Icon buttons that stay on; groups of one-of (alignment) or any (bold, italic) |
@@ -98,6 +102,10 @@ turns a filled button red.
 | `HoverCard` | Rich content beside a trigger after the pointer rests, staying while the pointer is on the card |
 | `OtpInput` | A one-time code's boxes: typed or pasted characters fill them, non-digits ignored, called when whole |
 | `GridList` | Selectable tiles in as many columns as fit: arrows move across and down, Ctrl/⌘ and Shift select several, Enter or a double click activates |
+| `PropertyGrid`, `PropertySection`, `PropertyItem` | An inspector's properties: collapsible sections of names beside their editors, the names one width; an optional filter by name |
+| `Fieldset` | Related fields under a legend on their outline, announced as one group |
+| `AspectRatio` | Content kept at a width-to-height ratio as its width changes |
+| `VisuallyHidden` | Text read out by assistive technology but not drawn |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DockPanel`, `DockLayout`, `DockGroup`, `DockItem`, `DockArea` | IDE-style docking: panels as tabs on the left, right, bottom and centre, with dividers between. Drag a tab to another area (the landing area is shown, and near an edge it docks on that side even where nothing is yet); each tab's context menu moves it or closes it. Controlled by an immutable `DockLayout` (`Move`, `Close`, `Activate`, `Resize`), so the layout can be saved |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |

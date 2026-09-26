@@ -230,8 +230,17 @@ public sealed class UIRoot : IDisposable
             {
                 if (node.Mounted && node.Dirty)
                 {
-                    Render(node, node.Element);
-                    SyncRenderChildren(node.NearestHost());
+                    // A component rebuilt on its own (its state changed) is caught by the boundary
+                    // above it, as it would be when built from there.
+                    try
+                    {
+                        Render(node, node.Element);
+                        SyncRenderChildren(node.NearestHost());
+                    }
+                    catch (Exception error) when (error is not OutOfMemoryException && BoundaryAbove(node) is not null)
+                    {
+                        Catch(BoundaryAbove(node)!, error);
+                    }
                 }
             }
         }
@@ -296,13 +305,19 @@ public sealed class UIRoot : IDisposable
     {
         switch (node.Element)
         {
-            case Component component:
-                node.Dirty = false;
-                var context = node.Context ??= new BuildContext(node);
-                context.BeginBuild();
-                var child = component.Build(context);
-                context.EndBuild();
-                Reconcile(node, [child]);
+            case ErrorBoundary when node.Caught is null:
+                // What the content throws as it builds is caught here, and the fallback shows instead.
+                try
+                {
+                    BuildComponent(node);
+                }
+                catch (Exception error) when (error is not OutOfMemoryException)
+                {
+                    Catch(node, error);
+                }
+                break;
+            case Component:
+                BuildComponent(node);
                 break;
             case HostElement host:
                 Reconcile(node, host.ChildElements);
@@ -324,6 +339,56 @@ public sealed class UIRoot : IDisposable
             default:
                 throw new InvalidOperationException($"{node.Element.GetType().Name} is not a kind of element the UI knows how to show.");
         }
+    }
+
+    private void BuildComponent(ElementNode node)
+    {
+        node.Dirty = false;
+        var context = node.Context ??= new BuildContext(node);
+        context.BeginBuild();
+        var child = ((Component)node.Element).Build(context);
+        context.EndBuild();
+        Reconcile(node, [child]);
+    }
+
+    /// <summary>
+    /// An error boundary's content threw: what was built of it goes, and the boundary builds again,
+    /// showing its fallback until it's reset.
+    /// </summary>
+    private void Catch(ElementNode boundary, Exception error)
+    {
+        foreach (var child in boundary.Children)
+        {
+            Unmount(child);
+        }
+        boundary.Children = [];
+        boundary.Caught = error;
+        ((ErrorBoundary)boundary.Element).OnError?.Invoke(error);
+        BuildComponent(boundary);
+        SyncRenderChildren(boundary.NearestHost());
+    }
+
+    /// <summary>Clears what an error boundary caught, so its content is built again.</summary>
+    internal void ResetBoundary(ElementNode boundary)
+    {
+        if (boundary.Mounted && boundary.Caught is not null)
+        {
+            boundary.Caught = null;
+            MarkDirty(boundary);
+        }
+    }
+
+    // The nearest error boundary above a node that isn't already showing its fallback.
+    private static ElementNode? BoundaryAbove(ElementNode node)
+    {
+        for (var at = node.Parent; at is not null; at = at.Parent)
+        {
+            if (at.Element is ErrorBoundary && at.Caught is null && at.Mounted)
+            {
+                return at;
+            }
+        }
+        return null;
     }
 
     /// <summary>

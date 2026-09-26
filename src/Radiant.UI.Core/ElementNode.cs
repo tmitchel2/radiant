@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Radiant.UI.Core;
@@ -38,6 +39,9 @@ internal sealed class ElementNode
 
     /// <summary>For components, the hooks and the context handed to Build.</summary>
     public BuildContext? Context { get; set; }
+
+    /// <summary>For an <see cref="ErrorBoundary"/>, what its content threw, while its fallback shows.</summary>
+    public Exception? Caught { get; set; }
 
     /// <summary>For providers, the nodes that read the value and are rebuilt when it changes.</summary>
     public HashSet<ElementNode>? Consumers { get; set; }

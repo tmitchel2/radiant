@@ -156,6 +156,11 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `TextBlock` then overflows the box it's in. `Badge` measured "99+" and sized its pill to fit;
   a `TextBlock` with `Wrap = false` that always measured its full width (as CSS `nowrap` does)
   would fix it everywhere.
+- **The time picker is typed, not picked.** Its parts step and take digits, as macOS's do, but
+  there's no clock face or list of times to choose from, no seconds, and no time zone.
+- **Property grids take any control.** A `PropertyItem`'s editor is whatever the app gives it, so
+  there are no built-in editors by type (a colour swatch, an enum menu), no multi-object editing
+  (showing "mixed"), and no reset-to-default.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
 - **Sliders are single-valued.** No range slider, no value label while dragging, and no tick marks

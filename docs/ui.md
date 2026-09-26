@@ -224,6 +224,14 @@ new Directionality(TextDirection.RightToLeft, app)
   to right in any language: set `LayoutStyle.Direction` to `LeftToRight` on them. The gallery's
   `--rtl` flag shows every page right to left.
 
+## Error boundaries
+
+`new ErrorBoundary(child, (error, retry) => fallback)` keeps a failure in part of the UI from
+taking the rest down. When building or updating the child throws, whether as it's first built or
+when a component inside rebuilds later, what was built of it is unmounted and the fallback shows,
+given the exception and an action that builds the child again. `OnError` hears what was caught.
+Event handlers and effects aren't guarded: an exception there still throws.
+
 ## Portals, refs and semantics
 
 - **`Portal`** shows its children above everything, in the root's coordinates, wherever it is in
