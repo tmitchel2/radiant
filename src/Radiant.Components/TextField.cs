@@ -61,6 +61,9 @@ public sealed record TextField(string Label) : Component
     /// <summary>Whether it can't be used.</summary>
     public bool Disabled { get; init; }
 
+    /// <summary>Whether its text can be selected but not changed (a select's display).</summary>
+    public bool ReadOnly { get; init; }
+
     /// <summary>Size and placement of the whole field.</summary>
     public LayoutStyle? Layout { get; init; }
 
@@ -152,6 +155,7 @@ public sealed record TextField(string Label) : Component
                                     Ref = input,
                                     Label = Label,
                                     Disabled = Disabled,
+                                    ReadOnly = ReadOnly,
                                     Multiline = Multiline,
                                     OnSubmit = OnSubmit,
                                     Placeholder = focused.Value ? Placeholder : null,
