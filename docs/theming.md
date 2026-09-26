@@ -49,7 +49,9 @@ flows down the tree works out what's readable on it. This is ported from Destash
   example, `new SurfaceChange { Surface = SurfaceName.Primary }` makes a filled button: the surface
   is primary, and its content is on-primary.
 - **Resolving it:** `ResolvedTheme.Get(role)` turns a role state into a colour, and the opacity
-  applies.
+  applies. `ContentColor(state)` and `StateLayerColor(state, opacity)` give *opaque* colours
+  instead, mixed into the state's surface in sRGB, which is how Material's opacities are meant to
+  look. Components use these (see [components.md](components.md#colours-are-opaque)).
 
 ## Runtime
 

@@ -1,0 +1,17 @@
+using Radiant.UI.Core;
+
+namespace Radiant.Components;
+
+/// <summary>Whether a component has a border, in the theme's outline colour.</summary>
+[StyleFacet]
+public interface IHasOutline
+{
+    /// <summary>Whether to draw the outline.</summary>
+    bool? ShowOutline { get; init; }
+
+    /// <summary>Its width, 1 px by default.</summary>
+    float? OutlineWidth { get; init; }
+
+    /// <summary>Whether to use the quieter outline-variant colour.</summary>
+    bool? OutlineVariant { get; init; }
+}

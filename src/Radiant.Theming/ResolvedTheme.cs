@@ -125,6 +125,49 @@ public sealed class ResolvedTheme
         return role.Opacity is { } opacity ? color with { A = color.A * opacity } : color;
     }
 
+    /// <summary>
+    /// The surface a state names, as the opaque colour it shows: a faded surface (a disabled
+    /// container) is mixed into the window background.
+    /// </summary>
+    public Color SurfaceColor(SurfaceState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var surface = Get(state.Surface with { Opacity = null });
+        return state.Surface.Opacity is { } opacity ? MixSrgb(Background, surface, opacity) : surface;
+    }
+
+    /// <summary>
+    /// The colour content is drawn in on a state's surface, opaque. Legibility is applied by mixing
+    /// the content colour into the surface colour in sRGB, as Material's opacities were designed
+    /// for: the same mix in linear light makes 87% text look far lighter than intended.
+    /// </summary>
+    public Color ContentColor(SurfaceState state, bool focused = false)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var role = focused ? state.ContentFocused : state.Content;
+        var content = Get(role with { Opacity = null });
+        return MixSrgb(SurfaceColor(state), content, role.Opacity ?? 1f);
+    }
+
+    /// <summary>
+    /// A state layer over a state's surface, opaque: its content colour mixed in at
+    /// <paramref name="opacity"/> (hover, focus, pressed), in sRGB for the same reason as
+    /// <see cref="ContentColor"/>.
+    /// </summary>
+    public Color StateLayerColor(SurfaceState state, float opacity)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return MixSrgb(SurfaceColor(state), Get(state.Content with { Opacity = null }), opacity);
+    }
+
+    /// <summary>Mixes two colours in sRGB (gamma-encoded) space, as CSS and Material blend.</summary>
+    public static Color MixSrgb(Color under, Color over, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+        float Channel(float a, float b) => SrgbTransfer.ToLinear(SrgbTransfer.ToSrgb(a) + (SrgbTransfer.ToSrgb(b) - SrgbTransfer.ToSrgb(a)) * amount);
+        return new Color(Channel(under.R, over.R), Channel(under.G, over.G), Channel(under.B, over.B), under.A + (over.A - under.A) * amount);
+    }
+
     /// <summary>A shape role's corner radius.</summary>
     public float Radius(CornerShapeRole role) => Theme.Shape.Radius(role);
 

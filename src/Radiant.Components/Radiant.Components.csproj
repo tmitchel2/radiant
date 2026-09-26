@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <RootNamespace>Radiant.UI.Core</RootNamespace>
+    <RootNamespace>Radiant.Components</RootNamespace>
     <OutputType>Library</OutputType>
     <DebugType>embedded</DebugType>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -13,13 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Radiant.UI.Core.Tests" />
     <InternalsVisibleTo Include="Radiant.Components.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Radiant\Radiant.csproj" />
-    <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
+    <ProjectReference Include="..\Radiant.Theming\Radiant.Theming.csproj" />
+    <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

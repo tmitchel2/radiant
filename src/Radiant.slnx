@@ -22,6 +22,9 @@
   <Project Path="Radiant.Generators.Tests/Radiant.Generators.Tests.csproj" />
   <Project Path="Radiant.Theming/Radiant.Theming.csproj" />
   <Project Path="Radiant.Theming.Tests/Radiant.Theming.Tests.csproj" />
+  <Project Path="Radiant.Components/Radiant.Components.csproj" />
+  <Project Path="Radiant.Components.Tests/Radiant.Components.Tests.csproj" />
+  <Project Path="Radiant.Gallery/Radiant.Gallery.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />
 </Solution>

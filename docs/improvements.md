@@ -8,6 +8,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## UI core (`Radiant.UI.Core`)
 
+- **Tests reach into internals.** Component tests read the render tree through
+  `InternalsVisibleTo`. The planned `Radiant.Testing` should offer a public way to find elements
+  and read their resolved props and bounds, like Testing Library's queries.
+
 - **Callbacks make props unequal.** Records compare delegates by reference, so a component
   given a fresh lambda each build always rebuilds. The P5 generator should emit props equality
   that ignores delegates, and refresh callbacks in place.
@@ -41,6 +45,19 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
 - **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
   tree yet, which the P7 accessibility bridge needs.
+
+## Components (`Radiant.Components`)
+
+- **No golden images yet.** The plan's matrix (variants × enabled, hover, focus, pressed,
+  disabled × light and dark) doesn't exist yet. The gallery's `--snapshot` renders offscreen to
+  PNG, so it could start from there.
+- **Presses don't animate.** There's no press scale and no ripple, and state layers appear and
+  disappear rather than fading. This needs the P4 `UseAnimation` or `Presence`.
+- **No icons.** Material Symbols isn't embedded yet, so buttons have no icon slot.
+- **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
+  the window background, not whatever is actually behind it.
+- **Button heights are fixed.** They are 40 px plus density; Material 3's newer button sizes
+  (XS–XL) aren't modelled.
 
 ## Theming (`Radiant.Theming`)
 
