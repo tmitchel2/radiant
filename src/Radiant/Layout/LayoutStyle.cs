@@ -71,4 +71,34 @@ public readonly record struct LayoutStyle
 
     /// <summary>Width-to-height aspect ratio constraint.</summary>
     public float? AspectRatio { get; init; }
+
+    /// <summary>
+    /// This style with everything <paramref name="over"/> sets replacing this one's, edge by edge
+    /// for margin, padding and inset: how a component's own layout takes a caller's additions
+    /// (a button told to stretch keeps its padding).
+    /// </summary>
+    public LayoutStyle Merge(LayoutStyle over) => new()
+    {
+        FlexDirection = over.FlexDirection ?? FlexDirection,
+        JustifyContent = over.JustifyContent ?? JustifyContent,
+        AlignItems = over.AlignItems ?? AlignItems,
+        AlignSelf = over.AlignSelf ?? AlignSelf,
+        FlexWrap = over.FlexWrap ?? FlexWrap,
+        Position = over.Position ?? Position,
+        FlexGrow = over.FlexGrow ?? FlexGrow,
+        FlexShrink = over.FlexShrink ?? FlexShrink,
+        FlexBasis = over.FlexBasis.IsSet ? over.FlexBasis : FlexBasis,
+        Width = over.Width.IsSet ? over.Width : Width,
+        Height = over.Height.IsSet ? over.Height : Height,
+        MinWidth = over.MinWidth.IsSet ? over.MinWidth : MinWidth,
+        MinHeight = over.MinHeight.IsSet ? over.MinHeight : MinHeight,
+        MaxWidth = over.MaxWidth.IsSet ? over.MaxWidth : MaxWidth,
+        MaxHeight = over.MaxHeight.IsSet ? over.MaxHeight : MaxHeight,
+        Margin = Margin.Merge(over.Margin),
+        Padding = Padding.Merge(over.Padding),
+        Inset = Inset.Merge(over.Inset),
+        RowGap = over.RowGap.IsSet ? over.RowGap : RowGap,
+        ColumnGap = over.ColumnGap.IsSet ? over.ColumnGap : ColumnGap,
+        AspectRatio = over.AspectRatio ?? AspectRatio,
+    };
 }

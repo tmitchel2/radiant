@@ -40,7 +40,7 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
                 Color = theme.ContentColor(surface),
                 Variations = IconFilled == true ? s_filled : [],
             },
-            Layout = Layout ?? new LayoutStyle { Width = size, Height = size },
+            Layout = new LayoutStyle { Width = size, Height = size }.Merge(Layout ?? default),
         };
     }
 

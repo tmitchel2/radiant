@@ -137,7 +137,7 @@ public sealed class FacetGenerator : IIncrementalGenerator
                 }
                 foreach (var property in facet.GetMembers().OfType<IPropertySymbol>())
                 {
-                    copied.Add(new ForwardedProperty(property.Name, IsNullable(property.Type)));
+                    copied.Add(new ForwardedProperty(property.Name, IsNullable(property.Type), IsNullable(property.Type) && HasMerge(property.Type)));
                 }
             }
             forwarders.Add(new Forwarder(name, target.ToDisplayString(s_qualified), new EquatableArray<ForwardedProperty>(copied)));
@@ -166,6 +166,24 @@ public sealed class FacetGenerator : IIncrementalGenerator
 
     private static bool IsFacet(INamedTypeSymbol type) =>
         type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == FacetAttribute);
+
+    // A facet type with an instance "T Merge(T over)" layers: set parts of the element's value go
+    // over the target's own, rather than the whole value replacing it (a layout adding AlignSelf
+    // to a button keeps the button's padding).
+    private static bool HasMerge(ITypeSymbol type)
+    {
+        var underlying = type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable
+            ? nullable.TypeArguments[0]
+            : type.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+        return underlying.GetMembers("Merge").OfType<IMethodSymbol>().Any(m =>
+            !m.IsStatic
+            && m.DeclaredAccessibility == Accessibility.Public
+            && m.Parameters.Length == 1
+            && SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type.WithNullableAnnotation(NullableAnnotation.NotAnnotated), underlying)
+            && SymbolEqualityComparer.Default.Equals(m.ReturnType.WithNullableAnnotation(NullableAnnotation.NotAnnotated), underlying));
+    }
+
+    private static string Camel(string name) => char.ToLowerInvariant(name[0]) + name.Substring(1);
 
     private static bool IsNullable(ITypeSymbol type) =>
         type.NullableAnnotation == NullableAnnotation.Annotated
@@ -248,7 +266,9 @@ public sealed class FacetGenerator : IIncrementalGenerator
             code.AppendLine($"{indent}    {{");
             foreach (var property in forwarder.Properties)
             {
-                var value = property.KeepTargetWhenUnset ? $"this.{property.Name} ?? target.{property.Name}" : $"this.{property.Name}";
+                var value = property.Layered
+                    ? $"this.{property.Name} is {{ }} {Camel(property.Name)}Over ? (target.{property.Name} is {{ }} {Camel(property.Name)}Under ? {Camel(property.Name)}Under.Merge({Camel(property.Name)}Over) : {Camel(property.Name)}Over) : target.{property.Name}"
+                    : property.KeepTargetWhenUnset ? $"this.{property.Name} ?? target.{property.Name}" : $"this.{property.Name}";
                 code.AppendLine($"{indent}        {property.Name} = {value},");
             }
             code.AppendLine($"{indent}    }};");

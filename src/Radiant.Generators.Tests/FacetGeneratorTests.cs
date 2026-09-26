@@ -99,6 +99,45 @@ public class FacetGeneratorTests
     }
 
     [TestMethod]
+    public void AFacetWhoseTypeMergesIsLayeredOverTheTargetsOwn()
+    {
+        var (generated, diagnostics, errors) = GeneratorHarness.Run("""
+            using Radiant.UI.Core;
+
+            namespace App;
+
+            public readonly record struct Spacing(float? Left, float? Right)
+            {
+                public Spacing Merge(Spacing over) => new(over.Left ?? Left, over.Right ?? Right);
+            }
+
+            [StyleFacet]
+            public interface IHasSpacing
+            {
+                Spacing? Spacing { get; init; }
+            }
+
+            public sealed partial record Surface : IHasSpacing;
+
+            [ForwardFacets(typeof(Surface), "Container", typeof(IHasSpacing))]
+            public sealed partial record Button : IHasSpacing
+            {
+                public Surface Part() => ForwardContainer(new Surface { Spacing = new Spacing(8, 8) });
+            }
+
+            public static class Probe
+            {
+                public static Spacing? Run() => new Button { Spacing = new Spacing(null, 20) }.Part().Spacing;
+            }
+            """);
+
+        Assert.AreEqual(0, diagnostics.Length);
+        Assert.AreEqual(0, errors.Length, string.Join("\n", errors.Select(d => d.ToString())));
+        StringAssert.Contains(Normalize(generated.Single(g => g.Contains("partial record Button"))),
+            "Spacing = this.Spacing is { } spacingOver ? (target.Spacing is { } spacingUnder ? spacingUnder.Merge(spacingOver) : spacingOver) : target.Spacing,");
+    }
+
+    [TestMethod]
     public void RecordsInsideTypesAreGeneratedInsideThem()
     {
         var (generated, _, errors) = GeneratorHarness.Run(Facets + """

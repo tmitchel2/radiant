@@ -54,8 +54,10 @@ public sealed record SurfaceState(SurfaceRoleState Surface, SurfaceRoleState Con
         }
         if (change.Content is { } content)
         {
-            // Content in the surface's own family is its "on" colour; in another family, the plain colour.
-            var role = state.Surface with { Name = content, On = state.Surface.Name == content, Container = false, Opacity = Legibility.High };
+            // Content in the surface's own family is its "on" colour (on a container, the container's
+            // "on" colour); in another family, the plain colour.
+            var same = state.Surface.Name == content;
+            var role = state.Surface with { Name = content, On = same, Container = same && state.Surface.Container, Opacity = Legibility.High };
             state = state with { Content = role, ContentFocused = role };
         }
         if (change.ContentLegibility is { } contentLegibility)

@@ -49,6 +49,9 @@ public sealed record TextField(string Label) : Component
     /// <summary>What pressing the trailing icon does (clear the text, reveal a password).</summary>
     public Action? OnTrailingIconPress { get; init; }
 
+    /// <summary>What assistive technology calls the trailing icon's button ("Show password"); the icon's name if null.</summary>
+    public string? TrailingIconLabel { get; init; }
+
     /// <summary>Text shown while focused and empty.</summary>
     public string? Placeholder { get; init; }
 
@@ -111,7 +114,7 @@ public sealed record TextField(string Label) : Component
 
         return new Box
         {
-            Layout = Layout ?? new LayoutStyle { MinWidth = 210, AlignSelf = Align.Stretch },
+            Layout = new LayoutStyle { MinWidth = 210, AlignSelf = Align.Stretch }.Merge(Layout ?? default),
             Children =
             [
                 new Box
@@ -175,7 +178,7 @@ public sealed record TextField(string Label) : Component
                             [
                                 OnTrailingIconPress is null
                                     ? new SurfaceIcon(TrailingIcon) { Legibility = Disabled ? Legibility.Low : Legibility.Medium }
-                                    : new IconButton(TrailingIcon, TrailingIcon, IconButtonVariant.Standard) { OnPress = OnTrailingIconPress },
+                                    : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { OnPress = OnTrailingIconPress },
                             ],
                         },
                         !filled ? null : new Box

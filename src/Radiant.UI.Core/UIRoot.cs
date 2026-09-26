@@ -30,6 +30,7 @@ public sealed class UIRoot : IDisposable
     private readonly HashSet<ElementNode> _dirty = [];
     private readonly List<EffectHook> _effects = [];
     private readonly HashSet<ScrollRenderNode> _scrollers = [];
+    private readonly HashSet<GridRenderNode> _grids = [];
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
     private readonly List<Func<double, bool>> _tickers = [];
@@ -456,8 +457,27 @@ public sealed class UIRoot : IDisposable
             YGNodeStyleSetHeight(yoga, size.Y);
             Size = size;
         }
+        foreach (var grid in _grids)
+        {
+            grid.ApplyCellWidth();
+        }
         // Yoga redoes only the subtrees marked dirty by style or text changes since the last layout.
         YGNodeCalculateLayout(yoga, size.X, size.Y, Facebook.Yoga.YGDirection.LTR);
+        // A grid's column width follows its laid-out width; when that moved, lay out again (a few
+        // times at most, for grids inside grids).
+        for (var pass = 0; pass < 4; pass++)
+        {
+            var changed = false;
+            foreach (var grid in _grids)
+            {
+                changed |= grid.Resolve();
+            }
+            if (!changed)
+            {
+                break;
+            }
+            YGNodeCalculateLayout(yoga, size.X, size.Y, Facebook.Yoga.YGDirection.LTR);
+        }
         foreach (var scroller in _scrollers)
         {
             scroller.SyncExtents();
@@ -494,6 +514,10 @@ public sealed class UIRoot : IDisposable
     }
 
     internal void AddScroller(ScrollRenderNode scroller) => _scrollers.Add(scroller);
+
+    internal void AddGrid(GridRenderNode grid) => _grids.Add(grid);
+
+    internal void RemoveGrid(GridRenderNode grid) => _grids.Remove(grid);
 
     internal void AddPortal(PortalRenderNode portal)
     {

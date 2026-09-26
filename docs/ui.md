@@ -118,6 +118,23 @@ cursors and text input. See [platform.md](platform.md).
   that way.
 - **Position:** the scroll position survives rebuilds; pass a `Controller` to set or read it.
 
+## Grids
+
+`Grid` lays its children out in equal columns, row after row: a fixed `Columns` count, or as
+many columns as fit `MinColumnWidth` (capped by `MaxColumns`), with `ColumnGap` and `RowGap`.
+Unlike a wrapping flex row, every cell is the column's width, so a short last row lines up with
+the rows above. Cells in a row are as tall as the tallest, unless they set their own height.
+
+```csharp
+new Grid { MinColumnWidth = 220, MaxColumns = 4, ColumnGap = 16, RowGap = 16, Children = cards }
+```
+
+Yoga has no grid, so the grid is a wrapping row whose children are given the column width. The
+width depends on the grid's own laid-out width, so it's worked out after layout, and when it
+changed the root lays out again. Each layout reuses the last width, so a second pass happens
+only when the grid's width changes (a resize) or the column count does. A child's own width and
+flex sizes are overridden.
+
 ## Portals, refs and semantics
 
 - **`Portal`** shows its children above everything, in the root's coordinates, wherever it is in
@@ -159,7 +176,10 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 - **Facet properties:** every facet property the partial record doesn't declare itself.
 - **Forwarders:** `Forward{Name}(target)`, which returns the target with the record's facet values
   copied on. A null value keeps the target's own, and a `with` afterwards overrides what was
-  forwarded.
+  forwarded. A facet whose type has a `T Merge(T over)` method is *layered*: the value set on the
+  record goes over the target's own rather than replacing it. `LayoutStyle` (and `Edges`) merge
+  property by property, so `new SurfaceButton("Sign in") { Layout = new() { AlignSelf = Align.Stretch } }`
+  stretches the button and keeps its height, padding and centring.
 - **Errors for mistakes:**
 
   | Id | Mistake |

@@ -28,7 +28,30 @@ public sealed record ThemeProvider(ThemeController Controller, Element? Child) :
         var theme = context.Watch(Controller.Current);
         var controller = Controller;
         var root = context.Root;
-        context.UseEffect(() => root.AddTicker(controller.Advance).Dispose, controller);
+        // Frames are asked for only while a transition runs: an idle app draws nothing.
+        context.UseEffect(() =>
+        {
+            IDisposable? ticker = null;
+            void Start() => ticker ??= root.AddTicker(seconds =>
+            {
+                controller.Advance(seconds);
+                if (!controller.IsAnimating)
+                {
+                    ticker?.Dispose();
+                    ticker = null;
+                }
+            });
+            controller.TransitionStarted += Start;
+            if (controller.IsAnimating)
+            {
+                Start();
+            }
+            return () =>
+            {
+                controller.TransitionStarted -= Start;
+                ticker?.Dispose();
+            };
+        }, controller);
         var appearance = context.UsePlatform().Appearance;
         var follow = FollowAppearance;
         var following = Following;

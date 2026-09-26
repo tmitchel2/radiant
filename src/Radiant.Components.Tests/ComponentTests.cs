@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Layout;
 using Radiant.Theming;
 using Radiant.UI.Core;
 
@@ -63,6 +64,22 @@ public class ComponentTests
         Assert.AreEqual((Vector4)theme.ContentColor(state), FirstText(tonal).Element.Style.Color);
         Assert.IsNull(FirstBox(outlined).Element.Background);
         Assert.AreEqual(1f, FirstBox(outlined).Element.BorderWidth);
+    }
+
+    [TestMethod]
+    public void ALayoutSetOnTheButtonAddsToItsOwn()
+    {
+        using var root = Mount(new Box
+        {
+            Layout = new LayoutStyle { Width = 300, AlignItems = Align.FlexStart },
+            Children = [new SurfaceButton("Sign in") { Layout = new LayoutStyle { AlignSelf = Align.Stretch } }],
+        });
+
+        var button = All(root.RootRenderNode).OfType<BoxRenderNode>().ElementAt(1);
+        var label = FirstText(root);
+
+        Assert.AreEqual(new Vector2(300, 40), button.Size, "stretched, and still the button's height");
+        Assert.AreEqual(150f, label.AbsolutePosition.X + label.Size.X / 2, 1f, "the label is still centred");
     }
 
     [TestMethod]

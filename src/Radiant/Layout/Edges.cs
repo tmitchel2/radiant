@@ -15,4 +15,11 @@ public readonly record struct Edges(Dimension Left, Dimension Top, Dimension Rig
     /// <summary>Horizontal (left/right) and vertical (top/bottom) lengths.</summary>
     public static Edges Symmetric(Dimension horizontal, Dimension vertical) =>
         new(horizontal, vertical, horizontal, vertical);
+
+    /// <summary>These edges with each edge <paramref name="over"/> sets replacing this one's.</summary>
+    public Edges Merge(Edges over) => new(
+        over.Left.IsSet ? over.Left : Left,
+        over.Top.IsSet ? over.Top : Top,
+        over.Right.IsSet ? over.Right : Right,
+        over.Bottom.IsSet ? over.Bottom : Bottom);
 }

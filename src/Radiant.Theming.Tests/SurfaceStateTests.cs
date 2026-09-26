@@ -51,6 +51,15 @@ public class SurfaceStateTests
     }
 
     [TestMethod]
+    public void ContentInTheOwnFamilyOfAContainerIsTheContainersOnColour()
+    {
+        // A text button on a primary container: onPrimaryContainer, not onPrimary (white on pale).
+        var state = Root.With(new SurfaceChange { Surface = SurfaceName.Primary, ToggleSurfaceContainer = true }).With(new SurfaceChange { Content = SurfaceName.Primary });
+
+        Assert.AreEqual(new SurfaceRoleState(SurfaceName.Primary, true, true, Legibility.High), state.Content);
+    }
+
+    [TestMethod]
     public void LegibilitySetsOpacity()
     {
         var state = Root.With(new SurfaceChange { ContentLegibility = Legibility.Medium, SurfaceLegibility = 2f });

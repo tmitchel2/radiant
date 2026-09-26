@@ -34,6 +34,12 @@ public sealed class ThemeController
     public bool IsAnimating => _to is not null;
 
     /// <summary>
+    /// Raised when an animated change begins, so whatever drives <see cref="Advance"/> (a
+    /// <see cref="ThemeProvider"/>) asks for frames only while there is something to animate.
+    /// </summary>
+    public event Action? TransitionStarted;
+
+    /// <summary>
     /// Changes the theme. With a <paramref name="transition"/> (and motion not reduced), colours
     /// and shapes move to the new theme over that time along <paramref name="easing"/> (the
     /// theme's standard curve by default); otherwise the change is immediate.
@@ -54,6 +60,7 @@ public sealed class ThemeController
         _elapsed = 0;
         _duration = transition.TotalSeconds;
         _easing = easing ?? theme.Motion.Standard;
+        TransitionStarted?.Invoke();
     }
 
     /// <summary>Moves a running transition on by <paramref name="seconds"/>.</summary>

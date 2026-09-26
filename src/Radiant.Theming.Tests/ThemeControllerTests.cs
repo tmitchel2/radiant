@@ -87,6 +87,27 @@ public class ThemeControllerTests
         Assert.IsTrue(seen[^1]);
     }
 
+    [TestMethod]
+    public void AProviderAsksForFramesOnlyWhileATransitionRuns()
+    {
+        var controller = new ThemeController();
+        using var root = new UIRoot(new ThemeProvider(controller, new Reader([])));
+        root.Update(new Vector2(100, 100));
+        var idle = root.NeedsUpdate;
+
+        controller.Set(Dark, TimeSpan.FromMilliseconds(100));
+        var animating = root.NeedsUpdate;
+        for (var i = 0; i < 10; i++)
+        {
+            root.Advance(1 / 60.0);
+            root.Update(new Vector2(100, 100));
+        }
+
+        Assert.IsFalse(idle, "an idle app draws nothing");
+        Assert.IsTrue(animating);
+        Assert.IsFalse(root.NeedsUpdate, "done once the transition ends");
+    }
+
     private sealed record Reader(System.Collections.Generic.List<bool> Seen) : Component
     {
         public override Element? Build(BuildContext context)

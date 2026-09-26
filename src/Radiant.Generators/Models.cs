@@ -9,7 +9,8 @@ internal sealed record FacetProperty(string Name, string Type, string Facet);
 /// <summary>One property copied by a forwarder.</summary>
 /// <param name="Name">The property.</param>
 /// <param name="KeepTargetWhenUnset">Whether it's nullable, so the target keeps its own value where the source's is null.</param>
-internal sealed record ForwardedProperty(string Name, bool KeepTargetWhenUnset);
+/// <param name="Layered">Whether its type has a <c>Merge</c>, so a set value is merged over the target's own.</param>
+internal sealed record ForwardedProperty(string Name, bool KeepTargetWhenUnset, bool Layered);
 
 /// <summary>A <c>Forward{Name}</c> method to generate.</summary>
 /// <param name="Name">The part's name.</param>

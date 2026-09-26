@@ -125,6 +125,7 @@ public sealed class ScrollController : IAnimating
         {
             if (VerticalEnabled) _y.JumpTo(target.Y);
             if (HorizontalEnabled) _x.JumpTo(target.X);
+            Scroll?.Invoke(MakeArgs());
         }
     }
 
