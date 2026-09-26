@@ -84,8 +84,25 @@ Every kind of draw follows a transform exactly:
   stays exact, and anti-aliasing (from screen-space derivatives) stays one pixel wide at any scale.
 - MSDF text works out its edge sharpness per pixel, so rotated or scaled text stays crisp.
 
-Clip rectangles are not transformed; they are always in window coordinates. A clip that has to
-rotate with its content needs a rounded or path clip, which is not implemented yet.
+Clips are not transformed; they are always in window coordinates.
+
+## Clipping
+
+`PushClip(x, y, w, h)` clips to a rectangle with the GPU scissor. `PushClip(x, y, w, h, radii)`
+also cuts to rounded corners with a one-pixel anti-aliased edge, so a rounded panel's content
+stops at its corners. Clips are in logical window coordinates and nest by intersection. Only the
+innermost rounded clip's corners are applied: a rounded clip inside another rounded clip does not
+also get the outer one's corners.
+
+How rounded clipping works:
+- The clip is not in the vertices. The uniforms are an array of 256-byte slots, one per distinct
+  clip in the frame (slot 0 is "no rounded clip"), each holding the projection and one clip in
+  device pixels.
+- A batch selects its slot with a dynamic offset.
+- Every fragment shader multiplies its output by the clip's coverage.
+
+So rounded clipping costs no vertex data and no extra pipeline, and batches that share a clip
+still merge.
 
 ## Shadows
 

@@ -2,7 +2,43 @@
 {
     public static class ShaderLibrary
     {
-        public const string FilledShapeShader = @"
+        /// <summary>
+        /// Shared by every shader: the per-draw uniforms (the projection, and the rounded clip in
+        /// force) and the rounded clip's coverage. Each fragment shader multiplies its premultiplied
+        /// output by <c>clip_coverage</c>.
+        /// </summary>
+        public const string Common = @"
+struct Uniforms {
+    view_projection: mat4x4<f32>,
+    // The innermost rounded clip, in device pixels: rect = (left, top, right, bottom),
+    // radii = (TopLeft, TopRight, BottomRight, BottomLeft); flags.x > 0.5 while one is in force.
+    clip_rect: vec4<f32>,
+    clip_radii: vec4<f32>,
+    clip_flags: vec4<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
+// How much of the fragment at device position p is inside the rounded clip: 1 inside, 0 outside,
+// with a one-pixel anti-aliased edge. Rectangular clipping is the scissor's job; this only shapes
+// the corners (and does nothing when no rounded clip is in force).
+fn clip_coverage(p: vec2<f32>) -> f32 {
+    if (uniforms.clip_flags.x < 0.5) {
+        return 1.0;
+    }
+    let half_size = (uniforms.clip_rect.zw - uniforms.clip_rect.xy) * 0.5;
+    let local = p - (uniforms.clip_rect.xy + half_size);
+    let radii = uniforms.clip_radii;
+    let lr = select(vec2<f32>(radii.w, radii.z), vec2<f32>(radii.x, radii.y), local.y < 0.0);
+    let r = select(lr.x, lr.y, local.x > 0.0);
+    let q = abs(local) - half_size + vec2<f32>(r);
+    let d = min(max(q.x, q.y), 0.0) + length(max(q, vec2<f32>(0.0))) - r;
+    return clamp(0.5 - d, 0.0, 1.0);
+}
+";
+
+        public const string FilledShapeShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -13,12 +49,6 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
 }
 
-struct Uniforms {
-    view_projection: mat4x4<f32>,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
@@ -31,10 +61,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 // Vertex colours are straight alpha; the pipeline blends premultiplied.
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(input.color.rgb * input.color.a, input.color.a);
+    return vec4<f32>(input.color.rgb * input.color.a, input.color.a) * clip_coverage(input.position.xy);
 }";
 
-        public const string LineShader = @"
+        public const string LineShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -45,12 +75,6 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
 }
 
-struct Uniforms {
-    view_projection: mat4x4<f32>,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
@@ -63,10 +87,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 // Vertex colours are straight alpha; the pipeline blends premultiplied.
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(input.color.rgb * input.color.a, input.color.a);
+    return vec4<f32>(input.color.rgb * input.color.a, input.color.a) * clip_coverage(input.position.xy);
 }";
 
-        public const string MsdfTextShader = @"
+        public const string MsdfTextShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -79,12 +103,6 @@ struct VertexOutput {
     @location(1) texCoord: vec2<f32>,
 }
 
-struct Uniforms {
-    view_projection: mat4x4<f32>,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
 
 @group(1) @binding(0)
 var atlasSampler: sampler;
@@ -126,10 +144,10 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let screenPxDist = screenPxRange * (sd - 0.5);
     let coverage = clamp(screenPxDist + 0.5, 0.0, 1.0);
     let alpha = input.color.a * coverage;
-    return vec4<f32>(input.color.rgb * alpha, alpha);
+    return vec4<f32>(input.color.rgb * alpha, alpha) * clip_coverage(input.position.xy);
 }";
 
-        public const string SdfShapeShader = @"
+        public const string SdfShapeShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) localPos: vec2<f32>,
@@ -160,12 +178,6 @@ struct VertexOutput {
     @location(10) gradientInfo: vec4<f32>,
 }
 
-struct Uniforms {
-    view_projection: mat4x4<f32>,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
@@ -396,10 +408,10 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let fill = vec4<f32>(fill_color.rgb * fill_color.a, fill_color.a);
     let border = vec4<f32>(input.borderColor.rgb * input.borderColor.a, input.borderColor.a);
     let shape = mix(fill, border, border_factor) * coverage;
-    return select(shape, fill * shadow, is_shadow);
+    return select(shape, fill * shadow, is_shadow) * clip_coverage(input.position.xy);
 }";
 
-        public const string TexturedShader = @"
+        public const string TexturedShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -412,12 +424,6 @@ struct VertexOutput {
     @location(1) texCoord: vec2<f32>,
 }
 
-struct Uniforms {
-    view_projection: mat4x4<f32>,
-}
-
-@group(0) @binding(0)
-var<uniform> uniforms: Uniforms;
 
 @group(1) @binding(0)
 var textureSampler: sampler;
@@ -439,7 +445,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // Texels are premultiplied (Texture2D's contract); the tint is a straight-alpha colour.
     let texColor = textureSample(textureData, textureSampler, input.texCoord);
     let tint = vec4<f32>(input.color.rgb * input.color.a, input.color.a);
-    return texColor * tint;
+    return texColor * tint * clip_coverage(input.position.xy);
 }";
     }
 }

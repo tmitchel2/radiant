@@ -157,7 +157,6 @@ content host should still scroll.
 | `:focus` pseudo-state + focus management | No focus model exists in the widget tree yet | Keyboard navigation / focusable widgets land |
 | Thick AA line/segment + arc/pie shapes | The `DrawLine` 1px primitive covers current needs; new shapes are now just a shader `case` + `Draw*` | Dividers/connectors/circular sliders need crisp strokes |
 | True (non-circular) ellipse SDF | Exact elliptical distance is iterative; circles/rings cover UI; legacy tessellated `DrawEllipse*` remains | A UI genuinely needs an anti-aliased ellipse |
-| Rounded / SDF clipping (vs rectangular scissor) | `PushClip` is a rectangular scissor; rounded panels clip content squarely at the corners | Content visibly overflowing a rounded container's corners |
 | `ScrollView` as a *full* layout boundary (laying out its children in content space via a nested Yoga pass) | First cut treats it as a leaf (children stay manually positioned / `ContentHeight`-measured); sufficient for `SettingsShell` | Nested flex content inside a scroll region is needed |
 | Yoga-tree caching / incremental layout | Rebuilding per frame is fine at panel scale | Measured frame cost, or trees beyond ~500 nodes |
 | Style inheritance / `!important` | Flat cascade covers current needs (descendant/ancestor matching is already expressible as a predicate that walks parents) | Cascade expressiveness demand |

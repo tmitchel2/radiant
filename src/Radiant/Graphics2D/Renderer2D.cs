@@ -88,7 +88,7 @@ namespace Radiant.Graphics2D
         private readonly List<IntPtr> _frameBuffers = [];
 
         // Clip/scissor state
-        private readonly Stack<ClipRect> _clipStack = new();
+        private readonly Stack<ClipState> _clipStack = new();
 
         // EVERY DRAW, IN THE ORDER IT WAS MADE. Each primitive kind keeps its own vertex list (and
         // pipeline), but what gets drawn when is decided here: a batch is a run of one kind's
@@ -129,6 +129,12 @@ namespace Radiant.Graphics2D
             }
         }
 
+        // A rounded clip in logical window coordinates: its rectangle and corner radii.
+        private readonly record struct RoundedClip(Vector4 Rect, Vector4 Radii);
+
+        // The clip in force: the scissor rectangle, and the innermost rounded clip if there is one.
+        private readonly record struct ClipState(ClipRect Rect, RoundedClip? Rounded);
+
         // Which pipeline (and vertex list) a batch draws with.
         private enum BatchKind
         {
@@ -147,6 +153,7 @@ namespace Radiant.Graphics2D
             public int Start;
             public int Count;
             public ClipRect? Clip;
+            public RoundedClip? Rounded;
             public IntPtr BindGroup;
         }
 
@@ -188,11 +195,20 @@ namespace Radiant.Graphics2D
             CreateImagePipeline();
         }
 
-        private void CreateUniformBuffer()
+        // THE UNIFORMS ARE AN ARRAY OF SLOTS, ONE PER CLIP STATE IN THE FRAME. Every slot holds the
+        // projection and one rounded clip (slot 0: none), and a batch selects its slot with a
+        // dynamic offset on group 0, so a rounded clip costs no vertex data and no pipeline change.
+        // Slots are 256 bytes apart because that is WebGPU's minimum uniform offset alignment.
+        private const int UniformBlockSize = 112; // mat4x4 + clip rect + radii + flags
+        private const int UniformSlotSize = 256;
+        private int _uniformSlotCapacity;
+
+        private void CreateUniformBuffer(int slots = 16)
         {
+            _uniformSlotCapacity = slots;
             var bufferDescriptor = new BufferDescriptor
             {
-                Size = 64, // 4x4 matrix = 64 bytes
+                Size = (ulong)(slots * UniformSlotSize),
                 Usage = BufferUsage.Uniform | BufferUsage.CopyDst,
                 MappedAtCreation = false
             };
@@ -205,11 +221,12 @@ namespace Radiant.Graphics2D
             var entry = new BindGroupLayoutEntry
             {
                 Binding = 0,
-                Visibility = ShaderStage.Vertex,
+                Visibility = ShaderStage.Vertex | ShaderStage.Fragment,
                 Buffer = new BufferBindingLayout
                 {
                     Type = BufferBindingType.Uniform,
-                    MinBindingSize = 64
+                    HasDynamicOffset = true,
+                    MinBindingSize = UniformBlockSize
                 }
             };
 
@@ -571,7 +588,7 @@ namespace Radiant.Graphics2D
                 Binding = 0,
                 Buffer = _uniformBuffer,
                 Offset = 0,
-                Size = 64
+                Size = UniformBlockSize
             };
 
             var descriptor = new BindGroupDescriptor
@@ -592,7 +609,7 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Starts a new frame with clipping support enabled. Pass the render
         /// attachment size in physical pixels and the logical-to-physical
-        /// pixel scale so <see cref="PushClip"/> rectangles can be translated
+        /// pixel scale so <see cref="PushClip(float, float, float, float)"/> rectangles can be translated
         /// to a WebGPU scissor rectangle.
         /// </summary>
         public void BeginFrame(uint attachmentWidth, uint attachmentHeight, float pixelScale)
@@ -616,7 +633,6 @@ namespace Radiant.Graphics2D
             _attachmentWidth = attachmentWidth;
             _attachmentHeight = attachmentHeight;
             _pixelScale = pixelScale;
-            UpdateUniformBuffer();
         }
 
         /// <summary>
@@ -626,18 +642,47 @@ namespace Radiant.Graphics2D
         /// Requires the frame to have been started with the clipping-aware
         /// <see cref="BeginFrame(uint,uint,float)"/> overload.
         /// </summary>
-        public void PushClip(float x, float y, float width, float height)
+        public void PushClip(float x, float y, float width, float height) =>
+            PushClip(x, y, width, height, default(CornerRadii));
+
+        /// <summary>
+        /// Pushes a rounded clip: like <see cref="PushClip(float, float, float, float)"/>, but
+        /// content is also cut to the rounded corners, with an anti-aliased edge. The rectangle
+        /// part intersects any enclosing clip; the rounding is the innermost rounded clip's (an
+        /// enclosing rounded clip's corners are not also applied).
+        /// </summary>
+        public void PushClip(float x, float y, float width, float height, CornerRadii radii)
         {
             if (!_clipEnabled) return;
-            var newClip = new ClipRect(
+            var newRect = new ClipRect(
                 (int)MathF.Floor(x),
                 (int)MathF.Floor(y),
                 (int)MathF.Ceiling(width),
                 (int)MathF.Ceiling(height));
+            RoundedClip? rounded = null;
             if (_clipStack.Count > 0)
-                newClip = _clipStack.Peek().Intersect(newClip);
-            _clipStack.Push(newClip);
+            {
+                var outer = _clipStack.Peek();
+                newRect = outer.Rect.Intersect(newRect);
+                rounded = outer.Rounded;
+            }
+            if (radii.TopLeft > 0f || radii.TopRight > 0f || radii.BottomRight > 0f || radii.BottomLeft > 0f)
+            {
+                var maxR = MathF.Min(width, height) * 0.5f;
+                rounded = new RoundedClip(
+                    new Vector4(x, y, x + width, y + height),
+                    new Vector4(
+                        Math.Clamp(radii.TopLeft, 0f, maxR),
+                        Math.Clamp(radii.TopRight, 0f, maxR),
+                        Math.Clamp(radii.BottomRight, 0f, maxR),
+                        Math.Clamp(radii.BottomLeft, 0f, maxR)));
+            }
+            _clipStack.Push(new ClipState(newRect, rounded));
         }
+
+        /// <summary>A rounded clip with one corner radius; see the per-corner overload.</summary>
+        public void PushClip(float x, float y, float width, float height, float radius) =>
+            PushClip(x, y, width, height, CornerRadii.All(radius));
 
         /// <summary>Pops the most recent clip rectangle.</summary>
         public void PopClip()
@@ -735,26 +780,67 @@ namespace Radiant.Graphics2D
         // it, and start a new batch otherwise.
         private void AppendToBatch(BatchKind kind, int start, int count, IntPtr bindGroup)
         {
-            ClipRect? clip = _clipStack.Count > 0 ? _clipStack.Peek() : null;
+            ClipRect? clip = _clipStack.Count > 0 ? _clipStack.Peek().Rect : null;
+            RoundedClip? rounded = _clipStack.Count > 0 ? _clipStack.Peek().Rounded : null;
             if (_batches.Count > 0)
             {
                 var last = _batches[^1];
-                if (last.Kind == kind && last.BindGroup == bindGroup && last.Clip == clip && last.Start + last.Count == start)
+                if (last.Kind == kind && last.BindGroup == bindGroup && last.Clip == clip && last.Rounded == rounded
+                    && last.Start + last.Count == start)
                 {
                     last.Count += count;
                     _batches[^1] = last;
                     return;
                 }
             }
-            _batches.Add(new DrawBatch { Kind = kind, Start = start, Count = count, Clip = clip, BindGroup = bindGroup });
+            _batches.Add(new DrawBatch
+            {
+                Kind = kind, Start = start, Count = count, Clip = clip, Rounded = rounded, BindGroup = bindGroup,
+            });
         }
 
-        private void UpdateUniformBuffer()
+        // Assigns every distinct rounded clip in the frame a uniform slot (slot 0 is "none") and
+        // writes the slots: each is the projection followed by that clip in device pixels.
+        private Dictionary<RoundedClip, int> WriteUniformSlots()
         {
-            var matrix = _camera.GetProjectionMatrix();
-            var matrixData = stackalloc float[16];
-            SerializeMatrixForGpu(matrix, new Span<float>(matrixData, 16));
-            _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, matrixData, 64);
+            var slots = new Dictionary<RoundedClip, int>();
+            foreach (var batch in _batches)
+            {
+                if (batch.Rounded is { } rounded && !slots.ContainsKey(rounded))
+                {
+                    slots[rounded] = slots.Count + 1;
+                }
+            }
+
+            if (slots.Count + 1 > _uniformSlotCapacity)
+            {
+                // Grow, and rebuild the bind group that points at the old buffer.
+                _wgpu.BufferRelease(_uniformBuffer);
+                _wgpu.BindGroupRelease(_bindGroup);
+                CreateUniformBuffer(Math.Max(_uniformSlotCapacity * 2, slots.Count + 1));
+                CreateBindGroup();
+            }
+
+            var block = stackalloc float[UniformSlotSize / sizeof(float)];
+            var span = new Span<float>(block, UniformSlotSize / sizeof(float));
+            span.Clear();
+            SerializeMatrixForGpu(_camera.GetProjectionMatrix(), span[..16]);
+            _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, block, UniformBlockSize);
+            foreach (var (clip, slot) in slots)
+            {
+                var s = _pixelScale;
+                span[16] = clip.Rect.X * s;
+                span[17] = clip.Rect.Y * s;
+                span[18] = clip.Rect.Z * s;
+                span[19] = clip.Rect.W * s;
+                span[20] = clip.Radii.X * s;
+                span[21] = clip.Radii.Y * s;
+                span[22] = clip.Radii.Z * s;
+                span[23] = clip.Radii.W * s;
+                span[24] = 1f;
+                _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, (ulong)(slot * UniformSlotSize), block, UniformBlockSize);
+            }
+            return slots;
         }
 
         /// <summary>
@@ -1650,11 +1736,11 @@ namespace Radiant.Graphics2D
         /// </summary>
         public void EndFrame(RenderPassEncoder* renderPass)
         {
-            _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 0, null);
             if (_batches.Count == 0)
             {
                 return;
             }
+            var slots = WriteUniformSlots();
 
             // One vertex buffer per kind, uploaded once; batches index into them.
             Buffer* filledBuffer = UploadIfAny(_filledVertices);
@@ -1665,6 +1751,7 @@ namespace Radiant.Graphics2D
 
             BatchKind? boundKind = null;
             var boundGroup = IntPtr.Zero;
+            var boundSlot = -1;
             ClipRect? appliedClip = null;
             var scissorApplied = false;
             foreach (var batch in _batches)
@@ -1674,6 +1761,13 @@ namespace Radiant.Graphics2D
                     BindPipeline(renderPass, batch.Kind, filledBuffer, lineBuffer, sdfShapeBuffer, imageBuffer, msdfBuffer);
                     boundKind = batch.Kind;
                     boundGroup = IntPtr.Zero;
+                }
+                var slot = batch.Rounded is { } rounded ? slots[rounded] : 0;
+                if (slot != boundSlot)
+                {
+                    var offset = (uint)(slot * UniformSlotSize);
+                    _wgpu.RenderPassEncoderSetBindGroup(renderPass, 0, _bindGroup, 1, &offset);
+                    boundSlot = slot;
                 }
                 if (batch.BindGroup != IntPtr.Zero && batch.BindGroup != boundGroup)
                 {

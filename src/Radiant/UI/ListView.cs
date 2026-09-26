@@ -10,7 +10,7 @@ namespace Radiant.UI;
 
 /// <summary>
 /// Vertical list of selectable text rows with mouse-wheel scrolling. Rows are
-/// scissored to the list bounds via <see cref="Renderer2D.PushClip"/>. Scroll state
+/// scissored to the list bounds via <see cref="Renderer2D.PushClip(float, float, float, float)"/>. Scroll state
 /// is delegated to the shared <see cref="ScrollController"/> (clamped, wheel-step =
 /// <see cref="RowHeight"/>) so the offset/clamp/scrollbar logic isn't reimplemented here.
 /// </summary>

@@ -21,20 +21,28 @@ internal sealed unsafe class GpuFrame : IDisposable
 
     public HeadlessGpu Gpu { get; }
     public Renderer2D Renderer { get; }
+    /// <summary>The frame's width in device pixels.</summary>
     public int Width { get; }
+
+    /// <summary>The frame's height in device pixels.</summary>
     public int Height { get; }
 
-    private GpuFrame(HeadlessGpu gpu, int width, int height)
+    /// <summary>Device pixels per logical unit: 2 draws a logical canvas at Retina density.</summary>
+    public float PixelScale { get; }
+
+    private GpuFrame(HeadlessGpu gpu, int width, int height, float pixelScale)
     {
         Gpu = gpu;
-        Width = width;
-        Height = height;
+        PixelScale = pixelScale;
+        Width = (int)(width * pixelScale);
+        Height = (int)(height * pixelScale);
         Renderer = new Renderer2D();
         Renderer.Initialize(gpu.State, new Camera2D(width, height, Handedness.RightHanded));
-        _target = new OffscreenReadback(gpu, width, height, TextureFormat.Bgra8UnormSrgb);
+        _target = new OffscreenReadback(gpu, Width, Height, TextureFormat.Bgra8UnormSrgb);
     }
 
-    public static GpuFrame CreateOrSkip(int width, int height)
+    /// <summary>A frame of <paramref name="width"/> × <paramref name="height"/> logical units.</summary>
+    public static GpuFrame CreateOrSkip(int width, int height, float pixelScale = 1f)
     {
         HeadlessGpu gpu;
         try
@@ -46,7 +54,7 @@ internal sealed unsafe class GpuFrame : IDisposable
             Assert.Inconclusive($"No GPU available: {ex.Message}");
             throw;
         }
-        return new GpuFrame(gpu, width, height);
+        return new GpuFrame(gpu, width, height, pixelScale);
     }
 
     /// <summary>Renders one frame over <paramref name="clear"/> and returns its BGRA bytes.</summary>
@@ -61,7 +69,7 @@ internal sealed unsafe class GpuFrame : IDisposable
         {
             if (clipping)
             {
-                Renderer.BeginFrame((uint)Width, (uint)Height, 1f);
+                Renderer.BeginFrame((uint)Width, (uint)Height, PixelScale);
             }
             else
             {
@@ -71,7 +79,7 @@ internal sealed unsafe class GpuFrame : IDisposable
             Renderer.EndFrame((RenderPassEncoder*)pass);
         });
 
-    /// <summary>The (R, G, B, A) bytes of one pixel of a frame from <see cref="Render"/>.</summary>
+    /// <summary>The (R, G, B, A) bytes of one device pixel of a frame from <see cref="Render"/>.</summary>
     public (byte R, byte G, byte B, byte A) PixelAt(byte[] bgra, int x, int y)
     {
         var i = (y * Width + x) * 4;
