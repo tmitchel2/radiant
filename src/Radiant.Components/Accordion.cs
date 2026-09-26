@@ -102,7 +102,7 @@ public sealed record Accordion(IReadOnlyList<AccordionItem> Items) : Component
         return new Card([.. sections])
         {
             Variant = CardVariant.Outlined,
-            Layout = new LayoutStyle { AlignSelf = Align.Stretch }.Merge(Layout ?? default),
+            Layout = new LayoutStyle { AlignSelf = Align.Stretch, Padding = Edges.All(0) }.Merge(Layout ?? default),
         };
     }
 

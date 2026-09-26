@@ -146,6 +146,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **Combo boxes are single-choice and synchronous.** No multiple selection (chips in the field),
+  no options loaded as you type (a loading row, debouncing), no grouped options, and the list
+  isn't virtualised, so thousands of options would build every row.
 - **Opening sections don't grow.** An accordion's content fades in at full height; sliding it
   open needs the content's measured height and a height transition, which `Presence` doesn't
   offer yet.

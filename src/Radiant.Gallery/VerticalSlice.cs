@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Radiant.ColorSystem;
 using Radiant.Components;
 using Radiant.Layout;
@@ -27,6 +28,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
     {
         var theme = context.UseTheme();
         var presses = context.UseState(0);
+        var city = context.UseState((string?)"London");
         var agreed = context.UseState(true);
         var notify = context.UseState(false);
         var wifi = context.UseState(true);
@@ -114,6 +116,18 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     new TextField("Name") { SupportingText = "As it appears on your card", Layout = new LayoutStyle { Width = 260 } },
                     new TextField("Email") { Variant = TextFieldVariant.Outlined, LeadingIcon = "mail", InitialText = "tom@example.com", Layout = new LayoutStyle { Width = 260 } },
                     new TextField("Code") { Error = "That code has expired", MaxLength = 6, InitialText = "12345", Layout = new LayoutStyle { Width = 220 } }) { Gap = 16 },
+                new Row(
+                    new ComboBox("City", ["Berlin", "Lagos", "Lima", "London", "Oslo", "Paris", "Seoul", "Tokyo"], city.Value, city.Set)
+                    {
+                        Variant = TextFieldVariant.Outlined,
+                        LeadingIcon = "language",
+                        Layout = new LayoutStyle { Width = 260 },
+                    },
+                    new Accordion(
+                    [
+                        new AccordionItem("Shipping", new SurfaceText("Two to four days, tracked.") { Legibility = Legibility.Medium }) { Icon = "schedule" },
+                        new AccordionItem("Returns", new SurfaceText("Free within thirty days.") { Legibility = Legibility.Medium }) { Icon = "archive" },
+                    ]) { InitiallyOpen = new HashSet<int> { 0 }, Layout = new LayoutStyle { Width = 360 } }) { Gap = 16 },
                 new Card(
                     new ListItem("Inbox") { LeadingIcon = "inbox", TrailingText = "24", OnPress = () => { }, Selected = true },
                     new ListItem("Starred") { LeadingIcon = "star", SupportingText = "Messages you marked", OnPress = () => { } },

@@ -61,6 +61,12 @@ public sealed record TextField(string Label) : Component
     /// <summary>Called when Enter is pressed in a one-line field.</summary>
     public Action? OnSubmit { get; init; }
 
+    /// <summary>Called with true when the field takes focus and false when it loses it.</summary>
+    public Action<bool>? OnFocusChange { get; init; }
+
+    /// <summary>A handle to the field's text input, to focus it from outside.</summary>
+    public ElementRef? InputRef { get; init; }
+
     /// <summary>Whether it can't be used.</summary>
     public bool Disabled { get; init; }
 
@@ -78,7 +84,9 @@ public sealed record TextField(string Label) : Component
         var surface = context.UseSurface();
         var own = context.UseState(() => TextEditState.From(InitialText));
         var focused = context.UseState(false);
-        var input = context.UseRef(new ElementRef()).Value;
+        var ownInput = context.UseRef(new ElementRef()).Value;
+        var input = InputRef ?? ownInput;
+        var focusChange = OnFocusChange;
         var state = Value ?? own.Value;
         var onChange = OnChange ?? own.Set;
         var error = Error is not null;
@@ -166,7 +174,11 @@ public sealed record TextField(string Label) : Component
                                     Style = body with { Color = textColor },
                                     CaretColor = accent,
                                     SelectionColor = accent with { A = 0.3f },
-                                    OnFocusChange = focused.Set,
+                                    OnFocusChange = f =>
+                                    {
+                                        focused.Set(f);
+                                        focusChange?.Invoke(f);
+                                    },
                                     Layout = new LayoutStyle { Margin = new Edges(0, fieldTop, 0, 8), MinHeight = body.LineHeight ?? 24f },
                                 },
                             ],

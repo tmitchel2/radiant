@@ -63,6 +63,7 @@ turns a filled button red.
 | `TreeView`, `TreeNode` | A virtualised tree: chevrons or a double click expand, a press selects, a double click activates leaves; Up/Down, Right to open or go in, Left to close or climb, Home/End, Enter; selection and expansion controlled or not |
 | `CommandPalette`, `Command` | ⌘K-style search over commands: ranked by `FuzzyMatch` on titles and keywords, grouped when nothing is typed; arrows, Enter or a press run one; Escape or outside closes |
 | `Accordion`, `AccordionItem` | Sections that open under their headers in an outlined card, one at a time or several; chevrons turn, content fades in; Up/Down/Home/End between headers; controlled or not |
+| `ComboBox` | A text field that suggests options as you type, ranked by `FuzzyMatch`, with focus staying in the field; arrows, Enter or a press pick, Escape puts the text back; custom text kept only with `AllowCustom` |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
