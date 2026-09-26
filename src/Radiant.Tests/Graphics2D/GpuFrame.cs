@@ -30,19 +30,19 @@ internal sealed unsafe class GpuFrame : IDisposable
     /// <summary>Device pixels per logical unit: 2 draws a logical canvas at Retina density.</summary>
     public float PixelScale { get; }
 
-    private GpuFrame(HeadlessGpu gpu, int width, int height, float pixelScale)
+    private GpuFrame(HeadlessGpu gpu, int width, int height, float pixelScale, uint sampleCount)
     {
         Gpu = gpu;
         PixelScale = pixelScale;
         Width = (int)(width * pixelScale);
         Height = (int)(height * pixelScale);
         Renderer = new Renderer2D();
-        Renderer.Initialize(gpu.State, new Camera2D(width, height, Handedness.RightHanded));
-        _target = new OffscreenReadback(gpu, Width, Height, TextureFormat.Bgra8UnormSrgb);
+        Renderer.Initialize(gpu.State, new Camera2D(width, height, Handedness.RightHanded), sampleCount);
+        _target = new OffscreenReadback(gpu, Width, Height, TextureFormat.Bgra8UnormSrgb, sampleCount);
     }
 
     /// <summary>A frame of <paramref name="width"/> × <paramref name="height"/> logical units.</summary>
-    public static GpuFrame CreateOrSkip(int width, int height, float pixelScale = 1f)
+    public static GpuFrame CreateOrSkip(int width, int height, float pixelScale = 1f, uint sampleCount = 1)
     {
         HeadlessGpu gpu;
         try
@@ -54,7 +54,7 @@ internal sealed unsafe class GpuFrame : IDisposable
             Assert.Inconclusive($"No GPU available: {ex.Message}");
             throw;
         }
-        return new GpuFrame(gpu, width, height, pixelScale);
+        return new GpuFrame(gpu, width, height, pixelScale, sampleCount);
     }
 
     /// <summary>Renders one frame over <paramref name="clear"/> and returns its BGRA bytes.</summary>

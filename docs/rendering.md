@@ -104,6 +104,22 @@ How rounded clipping works:
 So rounded clipping costs no vertex data and no extra pipeline, and batches that share a clip
 still merge.
 
+## Opacity layers
+
+`PushLayer(opacity)` / `PopLayer()` fade a group as one image: where two of its shapes overlap, the
+lower one does not show through the upper. Layers nest, their opacities multiply, and clips and
+transforms inside them work as usual.
+
+Each layer's content is rendered into a pooled offscreen texture the size of the attachment
+(multisampled and resolved, when the renderer is). Inner layers are rendered first. Then a batch
+in the parent, at the point the layer was pushed, composites the texture at the layer's opacity.
+The layer passes are encoded on the renderer's own command buffer and submitted inside `EndFrame`,
+before the caller submits the main pass, so `EndFrame(RenderPassEncoder*)` is unchanged.
+
+Layers need the attachment size, so they need the clip-aware `BeginFrame(width, height, scale)`.
+Each costs a full-size texture and pass, so keep them for groups that actually overlap. A lone
+shape can simply use a translucent color.
+
 ## Shadows
 
 `DrawShadow(x, y, w, h, radii, blur, color, offset, spread)` draws a soft shadow of a rounded

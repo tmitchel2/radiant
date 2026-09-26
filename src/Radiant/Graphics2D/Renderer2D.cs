@@ -98,6 +98,27 @@ namespace Radiant.Graphics2D
         // the last batch, so a frame of many rects is still one draw call.
         private readonly List<DrawBatch> _batches = [];
 
+        // OPACITY LAYERS. Draws between PushLayer and PopLayer go to the layer's own batch list and
+        // are rendered into an offscreen texture before the frame; the parent list holds, where the
+        // layer was pushed, one batch that composites that texture at the layer's opacity. So a
+        // group fades as one image: its overlapping parts don't show through each other.
+        private sealed class Layer
+        {
+            public float Opacity;
+            public List<DrawBatch> Batches = [];
+            public List<DrawBatch> Parent = [];
+            public int CompositeIndex;
+        }
+
+        private readonly List<Layer> _layers = [];           // in PushLayer order; batches refer to them by index
+        private readonly List<Layer> _layerRenderOrder = []; // in PopLayer order: inner layers first
+        private readonly Stack<Layer> _layerStack = new();
+        private List<DrawBatch>? _currentBatchesOrNull;
+        private List<DrawBatch> _currentBatches => _currentBatchesOrNull ?? _batches;
+        private readonly List<Texture2D> _layerTargets = [];  // pooled across frames, one per layer
+        private readonly List<IntPtr> _layerSampleTextures = []; // multisampled attachments, when _sampleCount > 1
+        private readonly List<IntPtr> _layerSampleViews = [];
+
         // Transform state: a matrix applied to emitted geometry (not the clip). Markers record the
         // vertex counts at push time; PopTransform transforms everything appended since. Inner
         // pushes pop first, so nested transforms compose inner-then-outer, as a scene graph does,
@@ -155,6 +176,9 @@ namespace Radiant.Graphics2D
             public ClipRect? Clip;
             public RoundedClip? Rounded;
             public IntPtr BindGroup;
+
+            // For a layer's composite: the index of the layer it draws, or -1.
+            public int Layer;
         }
 
         /// <summary>Number of draw batches recorded this frame. For tests.</summary>
@@ -627,6 +651,10 @@ namespace Radiant.Graphics2D
             _sdfShapeVertices.Clear();
             _imageVertices.Clear();
             _batches.Clear();
+            _layers.Clear();
+            _layerRenderOrder.Clear();
+            _layerStack.Clear();
+            _currentBatchesOrNull = null;
             _clipStack.Clear();
             _transformStack.Clear();
             _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
@@ -763,6 +791,41 @@ namespace Radiant.Graphics2D
             }
         }
 
+        /// <summary>
+        /// Starts an opacity layer: everything drawn until the matching <see cref="PopLayer"/> is
+        /// rendered on its own and then composited at <paramref name="opacity"/>, so the group
+        /// fades as one image (where two of its shapes overlap, the one below does not show
+        /// through). Layers nest. Clips and transforms in force apply to the content as usual.
+        /// Needs the clip-aware <see cref="BeginFrame(uint, uint, float)"/>, which gives the layers
+        /// their size.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">The frame was begun without an attachment size.</exception>
+        public void PushLayer(float opacity)
+        {
+            if (!_clipEnabled)
+            {
+                throw new InvalidOperationException(
+                    "Opacity layers need the attachment size: begin the frame with BeginFrame(width, height, pixelScale).");
+            }
+            var parent = _currentBatches;
+            var layer = new Layer { Opacity = Math.Clamp(opacity, 0f, 1f), Parent = parent, CompositeIndex = parent.Count };
+            // The composite's place in the parent is fixed now; its quad and texture are filled in
+            // at EndFrame (so no enclosing transform moves the quad).
+            parent.Add(new DrawBatch { Kind = BatchKind.Image, Start = 0, Count = 6, Layer = _layers.Count });
+            _layers.Add(layer);
+            _layerStack.Push(layer);
+            _currentBatchesOrNull = layer.Batches;
+        }
+
+        /// <summary>Ends the most recent opacity layer.</summary>
+        public void PopLayer()
+        {
+            if (_layerStack.Count == 0) return;
+            var layer = _layerStack.Pop();
+            _layerRenderOrder.Add(layer);
+            _currentBatchesOrNull = _layerStack.Count > 0 ? _layerStack.Peek().Batches : null;
+        }
+
         private void AddFilled(Vertex2D vertex)
         {
             AppendToBatch(BatchKind.Filled, _filledVertices.Count, 1, IntPtr.Zero);
@@ -782,20 +845,21 @@ namespace Radiant.Graphics2D
         {
             ClipRect? clip = _clipStack.Count > 0 ? _clipStack.Peek().Rect : null;
             RoundedClip? rounded = _clipStack.Count > 0 ? _clipStack.Peek().Rounded : null;
-            if (_batches.Count > 0)
+            var batches = _currentBatches;
+            if (batches.Count > 0)
             {
-                var last = _batches[^1];
-                if (last.Kind == kind && last.BindGroup == bindGroup && last.Clip == clip && last.Rounded == rounded
+                var last = batches[^1];
+                if (last.Kind == kind && last.Layer < 0 && last.BindGroup == bindGroup && last.Clip == clip && last.Rounded == rounded
                     && last.Start + last.Count == start)
                 {
                     last.Count += count;
-                    _batches[^1] = last;
+                    batches[^1] = last;
                     return;
                 }
             }
-            _batches.Add(new DrawBatch
+            batches.Add(new DrawBatch
             {
-                Kind = kind, Start = start, Count = count, Clip = clip, Rounded = rounded, BindGroup = bindGroup,
+                Kind = kind, Start = start, Count = count, Clip = clip, Rounded = rounded, BindGroup = bindGroup, Layer = -1,
             });
         }
 
@@ -804,11 +868,14 @@ namespace Radiant.Graphics2D
         private Dictionary<RoundedClip, int> WriteUniformSlots()
         {
             var slots = new Dictionary<RoundedClip, int>();
-            foreach (var batch in _batches)
+            foreach (var list in AllBatchLists())
             {
-                if (batch.Rounded is { } rounded && !slots.ContainsKey(rounded))
+                foreach (var batch in list)
                 {
-                    slots[rounded] = slots.Count + 1;
+                    if (batch.Rounded is { } rounded && !slots.ContainsKey(rounded))
+                    {
+                        slots[rounded] = slots.Count + 1;
+                    }
                 }
             }
 
@@ -1736,29 +1803,186 @@ namespace Radiant.Graphics2D
         /// </summary>
         public void EndFrame(RenderPassEncoder* renderPass)
         {
+            // Close any layers left open, so their content still appears.
+            while (_layerStack.Count > 0)
+            {
+                PopLayer();
+            }
             if (_batches.Count == 0)
             {
                 return;
             }
+
+            PrepareLayerComposites();
             var slots = WriteUniformSlots();
 
-            // One vertex buffer per kind, uploaded once; batches index into them.
-            Buffer* filledBuffer = UploadIfAny(_filledVertices);
-            Buffer* lineBuffer = UploadIfAny(_lineVertices);
-            Buffer* sdfShapeBuffer = UploadIfAny(_sdfShapeVertices);
-            Buffer* imageBuffer = UploadIfAny(_imageVertices);
-            Buffer* msdfBuffer = UploadIfAny(_msdfVertices);
+            // One vertex buffer per kind, uploaded once; the main and layer batches index into them.
+            var buffers = new VertexBuffers(
+                UploadIfAny(_filledVertices),
+                UploadIfAny(_lineVertices),
+                UploadIfAny(_sdfShapeVertices),
+                UploadIfAny(_imageVertices),
+                UploadIfAny(_msdfVertices));
 
+            RenderLayers(slots, buffers);
+            ReplayBatches(renderPass, _batches, slots, buffers);
+        }
+
+        private readonly record struct VertexBuffers(IntPtr Filled, IntPtr Line, IntPtr SdfShape, IntPtr Image, IntPtr Msdf)
+        {
+            public VertexBuffers(Buffer* filled, Buffer* line, Buffer* sdfShape, Buffer* image, Buffer* msdf)
+                : this((IntPtr)filled, (IntPtr)line, (IntPtr)sdfShape, (IntPtr)image, (IntPtr)msdf)
+            {
+            }
+        }
+
+        private IEnumerable<List<DrawBatch>> AllBatchLists()
+        {
+            yield return _batches;
+            foreach (var layer in _layers)
+            {
+                yield return layer.Batches;
+            }
+        }
+
+        // Gives every layer a target the size of the attachment, and fills in its composite: a quad
+        // over the whole attachment drawing the target at the layer's opacity.
+        private void PrepareLayerComposites()
+        {
+            if (_layers.Count == 0)
+            {
+                return;
+            }
+            var width = (int)_attachmentWidth;
+            var height = (int)_attachmentHeight;
+            var right = width / _pixelScale;
+            var bottom = height / _pixelScale;
+            for (var i = 0; i < _layers.Count; i++)
+            {
+                if (i == _layerTargets.Count)
+                {
+                    _layerTargets.Add(Texture2D.CreateRenderTarget(this, width, height, _surfaceFormat));
+                }
+                else
+                {
+                    _layerTargets[i].Resize(width, height);
+                }
+
+                var layer = _layers[i];
+                var start = _imageVertices.Count;
+                var tint = new Vector4(1f, 1f, 1f, layer.Opacity);
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, 0), Color = tint, TexCoord = new Vector2(0, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, 0), Color = tint, TexCoord = new Vector2(1, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, bottom), Color = tint, TexCoord = new Vector2(1, 1) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, 0), Color = tint, TexCoord = new Vector2(0, 0) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(right, bottom), Color = tint, TexCoord = new Vector2(1, 1) });
+                _imageVertices.Add(new ImageVertex2D { Position = new Vector2(0, bottom), Color = tint, TexCoord = new Vector2(0, 1) });
+
+                var composite = layer.Parent[layer.CompositeIndex];
+                composite.Start = start;
+                composite.BindGroup = (IntPtr)_layerTargets[i].BindGroup;
+                layer.Parent[layer.CompositeIndex] = composite;
+            }
+            EnsureLayerSampleTextures(width, height);
+        }
+
+        // With multisampling, a layer is drawn into a multisampled texture and resolved into its
+        // target, as the window's own pass is.
+        private void EnsureLayerSampleTextures(int width, int height)
+        {
+            if (_sampleCount == 1)
+            {
+                return;
+            }
+            while (_layerSampleTextures.Count < _layers.Count)
+            {
+                _layerSampleTextures.Add(IntPtr.Zero);
+                _layerSampleViews.Add(IntPtr.Zero);
+            }
+            for (var i = 0; i < _layers.Count; i++)
+            {
+                var existing = (Texture*)_layerSampleTextures[i];
+                if (existing != null
+                    && _wgpu.TextureGetWidth(existing) == (uint)width && _wgpu.TextureGetHeight(existing) == (uint)height)
+                {
+                    continue;
+                }
+                ReleaseLayerSampleTexture(i);
+                var desc = new TextureDescriptor
+                {
+                    Size = new Extent3D { Width = (uint)width, Height = (uint)height, DepthOrArrayLayers = 1 },
+                    MipLevelCount = 1,
+                    SampleCount = _sampleCount,
+                    Dimension = TextureDimension.Dimension2D,
+                    Format = _surfaceFormat,
+                    Usage = TextureUsage.RenderAttachment,
+                };
+                var texture = _wgpu.DeviceCreateTexture(_device, in desc);
+                _layerSampleTextures[i] = (IntPtr)texture;
+                _layerSampleViews[i] = (IntPtr)_wgpu.TextureCreateView(texture, null);
+            }
+        }
+
+        private void ReleaseLayerSampleTexture(int i)
+        {
+            if (_layerSampleViews[i] != IntPtr.Zero) _wgpu.TextureViewRelease((TextureView*)_layerSampleViews[i]);
+            if (_layerSampleTextures[i] != IntPtr.Zero) _wgpu.TextureRelease((Texture*)_layerSampleTextures[i]);
+            _layerSampleViews[i] = IntPtr.Zero;
+            _layerSampleTextures[i] = IntPtr.Zero;
+        }
+
+        // Renders each layer into its target, inner layers first, on a command buffer submitted
+        // now: the caller's pass is submitted after this returns, so the GPU has every layer ready
+        // by the time the main pass composites them.
+        private void RenderLayers(Dictionary<RoundedClip, int> slots, VertexBuffers buffers)
+        {
+            if (_layers.Count == 0)
+            {
+                return;
+            }
+            var encoderDescriptor = new CommandEncoderDescriptor();
+            var encoder = _wgpu.DeviceCreateCommandEncoder(_device, in encoderDescriptor);
+            foreach (var layer in _layerRenderOrder)
+            {
+                var index = _layers.IndexOf(layer);
+                var target = _layerTargets[index];
+                var multisampled = _sampleCount > 1;
+                var attachment = new RenderPassColorAttachment
+                {
+                    View = multisampled ? (TextureView*)_layerSampleViews[index] : target.View,
+                    ResolveTarget = multisampled ? target.View : null,
+                    LoadOp = LoadOp.Clear,
+                    StoreOp = StoreOp.Store,
+                    ClearValue = new Silk.NET.WebGPU.Color { R = 0, G = 0, B = 0, A = 0 },
+                };
+                var passDescriptor = new RenderPassDescriptor { ColorAttachmentCount = 1, ColorAttachments = &attachment };
+                var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, in passDescriptor);
+                ReplayBatches(pass, layer.Batches, slots, buffers);
+                _wgpu.RenderPassEncoderEnd(pass);
+                _wgpu.RenderPassEncoderRelease(pass);
+            }
+            var commandDescriptor = new CommandBufferDescriptor();
+            var commands = _wgpu.CommandEncoderFinish(encoder, in commandDescriptor);
+            _wgpu.QueueSubmit(_queue, 1, &commands);
+            _wgpu.CommandBufferRelease(commands);
+            _wgpu.CommandEncoderRelease(encoder);
+        }
+
+        // Encodes one list of batches, in order, into a pass.
+        private void ReplayBatches(RenderPassEncoder* renderPass, List<DrawBatch> batches,
+            Dictionary<RoundedClip, int> slots, VertexBuffers buffers)
+        {
             BatchKind? boundKind = null;
             var boundGroup = IntPtr.Zero;
             var boundSlot = -1;
             ClipRect? appliedClip = null;
             var scissorApplied = false;
-            foreach (var batch in _batches)
+            foreach (var batch in batches)
             {
                 if (boundKind != batch.Kind)
                 {
-                    BindPipeline(renderPass, batch.Kind, filledBuffer, lineBuffer, sdfShapeBuffer, imageBuffer, msdfBuffer);
+                    BindPipeline(renderPass, batch.Kind, (Buffer*)buffers.Filled, (Buffer*)buffers.Line,
+                        (Buffer*)buffers.SdfShape, (Buffer*)buffers.Image, (Buffer*)buffers.Msdf);
                     boundKind = batch.Kind;
                     boundGroup = IntPtr.Zero;
                 }
@@ -1880,6 +2104,9 @@ namespace Radiant.Graphics2D
             _frameBuffers.Clear();
 
             if (_uniformBuffer != null) _wgpu.BufferRelease(_uniformBuffer);
+            foreach (var target in _layerTargets) target.Dispose();
+            _layerTargets.Clear();
+            for (var i = 0; i < _layerSampleTextures.Count; i++) ReleaseLayerSampleTexture(i);
             if (_bindGroup != null) _wgpu.BindGroupRelease(_bindGroup);
             if (_bindGroupLayout != null) _wgpu.BindGroupLayoutRelease(_bindGroupLayout);
             if (_pipelineLayout != null) _wgpu.PipelineLayoutRelease(_pipelineLayout);
