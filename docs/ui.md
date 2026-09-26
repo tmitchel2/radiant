@@ -93,6 +93,16 @@ a change of order throws.
 - **Focus:** `Focusable` boxes take focus when pressed (no focus ring) or by Tab and Shift+Tab in
   tree order (with a ring: `IsFocusVisible`). Key and text events go to the focused box and
   bubble up.
+- **Cursor:** `Box.Cursor` sets the pointer's shape over a box (null inherits). `UIRoot.Cursor`
+  is the deepest hovered box's, or the pressed box's while a press is held, and `RadiantUI.Run`
+  shows it through the platform.
+- **Text input clients:** a focused text field sets `UIRoot.TextInputClient`. Typed text and
+  input method compositions then go to it rather than to text events (see
+  [platform.md](platform.md#text-input-and-input-methods)).
+
+`RadiantUI.Run` makes the window's platform with `UIAppOptions.Platform` and provides it to
+components through `PlatformContext` (`context.UsePlatform()`): clipboard, dialogs, appearance,
+cursors and text input. See [platform.md](platform.md).
 
 ## Scrolling
 
@@ -164,5 +174,6 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
 - **Commands and animation:** commands and shortcuts, and `Presence` for exit animations.
-- **Accessibility:** the platform bridge for semantics comes with P7.
+- **Accessibility:** the platform bridge for semantics comes later in P7 (the platform's other
+  services are in [platform.md](platform.md)).
 - **Theming:** P6.

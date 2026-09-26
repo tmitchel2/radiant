@@ -4,24 +4,26 @@ using Radiant.ColorSystem;
 using Radiant.Gallery;
 using Radiant.Graphics;
 using Radiant.Graphics2D;
+using Radiant.Platform.MacOS;
 using Radiant.Theming;
 using Radiant.UI.Core;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-// radiant-gallery                         opens the gallery in a window
+// radiant-gallery                         opens the gallery in a window, following the system appearance
 // radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
+var followSystem = true;
 var scale = 1f;
 for (var i = 0; i < args.Length; i++)
 {
     switch (args[i])
     {
         case "--snapshot": snapshot = args[++i]; break;
-        case "--dark": theme = theme with { Colors = theme.Colors with { IsDark = true } }; break;
-        case "--seed": theme = theme with { Colors = theme.Colors with { Seed = Radiant.Graphics2D.Color.Parse(args[++i]) } }; break;
+        case "--dark": theme = theme with { Colors = theme.Colors with { IsDark = true } }; followSystem = false; break;
+        case "--seed": theme = theme with { Colors = theme.Colors with { Seed = Radiant.Graphics2D.Color.Parse(args[++i]) } }; followSystem = false; break;
         case "--variant": theme = theme with { Colors = theme.Colors with { Variant = Enum.Parse<Variant>(args[++i]) } }; break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         default: break;
@@ -33,7 +35,10 @@ var app = new ThemeProvider(themes, new VerticalSlice(themes));
 
 if (snapshot is null)
 {
-    RadiantUI.Run(app, new UIAppOptions { Title = "Radiant Gallery", Width = 900, Height = 640 });
+    // In a window the theme follows the system's dark mode, accent and accessibility settings,
+    // unless colours were chosen on the command line.
+    RadiantUI.Run(app with { FollowAppearance = followSystem },
+        new UIAppOptions { Title = "Radiant Gallery", Width = 900, Height = 640, Platform = MacPlatform.CreateOrHeadless });
     return;
 }
 

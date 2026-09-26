@@ -62,5 +62,9 @@ flows down the tree works out what's readable on it. This is ported from Destash
 - **Transitions:** colours mix in OKLab, so blue to orange doesn't pass through grey, and radii
   interpolate. Type, motion and density switch at once, so text doesn't reflow every frame. With
   reduced motion, changes are immediate.
+- **Following the system:** `new ThemeProvider(themes, app) { FollowAppearance = true }` (or
+  `themes.FollowAppearance(appearance)`) maps the user's dark mode, accent colour, increased
+  contrast and reduced motion onto the theme, before the first frame and whenever they change
+  (see [platform.md](platform.md#appearance)).
 - **Resolved values:** `ResolvedTheme` computes every role once when resolved, so a lookup is an
   array index.
