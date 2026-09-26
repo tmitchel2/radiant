@@ -10,5 +10,5 @@ namespace Radiant.Tests;
 /// </summary>
 internal static class TestFonts
 {
-    public static readonly MsdfFont Default = MsdfFont.LoadEmbedded("default");
+    public static readonly MsdfFont Default = MsdfFont.LoadEmbedded(EmbeddedFonts.Default);
 }

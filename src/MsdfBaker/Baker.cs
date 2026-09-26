@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using SixLabors.Fonts;
+using SixLabors.Fonts.Unicode;
 
 namespace Radiant.MsdfBaker
 {
@@ -16,14 +18,15 @@ namespace Radiant.MsdfBaker
             var font = family.CreateFont(request.GlyphPixelSize, FontStyle.Regular);
             var metrics = font.FontMetrics;
 
+            // Fonts to take a glyph from when the primary has none, tried in order. Their glyphs are
+            // baked at the same em size and made baseline-relative with their own ascender, so they
+            // sit on the primary font's baseline at the primary font's scale.
+            var fallbacks = request.FallbackFontPaths
+                .Select(path => collection.Add(path, CultureInfo.InvariantCulture).CreateFont(request.GlyphPixelSize, FontStyle.Regular))
+                .ToList();
+
             // emSize: pixel size of the EM square at this font size.
             var emSize = request.GlyphPixelSize;
-            // SixLabors.Fonts renders with the pen origin at the TOP of the EM
-            // box, Y-down. Bake-time bounds.Y is therefore offset from EM-top
-            // rather than from baseline. Subtract the ascender so the stored
-            // BearingY is baseline-relative (matches TTF / FreeType convention
-            // expected by the runtime DrawText path).
-            var ascenderPx = metrics.HorizontalMetrics.Ascender * (float)emSize / metrics.UnitsPerEm;
             var packer = new ShelfPacker(request.AtlasSize, request.AtlasSize, padding: 2);
             var atlasPixels = new float[request.AtlasSize * request.AtlasSize * 3];
             for (var i = 0; i < atlasPixels.Length; i += 3)
@@ -35,20 +38,32 @@ namespace Radiant.MsdfBaker
             }
 
             var glyphs = new List<AtlasGlyph>();
+            // Codepoints the primary font really has (including blank ones like space): the kerning
+            // candidates. Kerning between a primary glyph and a fallback glyph is not defined.
+            var present = new List<int>();
 
             foreach (var cp in request.Codepoints)
             {
-                var glyphString = char.ConvertFromUtf32(cp);
-                var options = new TextOptions(font);
-                var advanceRect = TextMeasurer.MeasureAdvance(glyphString, options);
-                var advancePx = advanceRect.Width;
-
-                var builder = new GlyphShapeBuilder();
-                var renderer = new TextRenderer(builder);
-                renderer.RenderText(glyphString, options);
+                var (source, builder, advancePx) = Shape(font, cp);
+                if (!builder.IsFallback)
+                {
+                    present.Add(cp);
+                }
+                else
+                {
+                    foreach (var fallback in fallbacks)
+                    {
+                        var candidate = Shape(fallback, cp);
+                        if (!candidate.Builder.IsFallback && candidate.Builder.Result.Contours.Count > 0)
+                        {
+                            (source, builder, advancePx) = candidate;
+                            break;
+                        }
+                    }
+                }
 
                 var shape = builder.Result;
-                // Skip when the source font has no glyph for this codepoint —
+                // Skip when no font has a glyph for this codepoint —
                 // SixLabors fires the .notdef placeholder (IsFallback=true) which
                 // post-bake is indistinguishable from a real glyph. Leaving an
                 // empty manifest entry lets a runtime font-fallback chain try
@@ -106,7 +121,7 @@ namespace Radiant.MsdfBaker
                     Width = w / (float)emSize,
                     Height = h / (float)emSize,
                     BearingX = (float)(bounds.X - padding) / emSize,
-                    BearingY = (float)(bounds.Y - padding - ascenderPx) / emSize,
+                    BearingY = (-TopAboveBaselinePx(source, cp, emSize) - padding) / emSize,
                     Advance = advancePx / emSize,
                 });
             }
@@ -122,7 +137,7 @@ namespace Radiant.MsdfBaker
                 Ascender = metrics.HorizontalMetrics.Ascender * (float)emSize / metrics.UnitsPerEm / emSize,
                 Descender = metrics.HorizontalMetrics.Descender * (float)emSize / metrics.UnitsPerEm / emSize,
                 Glyphs = glyphs,
-                Kerning = [],
+                Kerning = KerningExtractor.Extract(font, present, emSize),
             };
 
             Directory.CreateDirectory(request.OutputDirectory);
@@ -131,6 +146,37 @@ namespace Radiant.MsdfBaker
             AtlasWriter.WritePng(pngPath, atlasPixels, request.AtlasSize, request.AtlasSize);
             AtlasWriter.WriteJson(jsonPath, manifest);
             return manifest;
+        }
+
+        // Lays out one codepoint in one font: its outline (IsFallback when the font has no glyph for
+        // it) and its advance in pixels.
+        private static (Font Source, GlyphShapeBuilder Builder, float AdvancePx) Shape(Font font, int codepoint)
+        {
+            var glyphString = char.ConvertFromUtf32(codepoint);
+            var options = new TextOptions(font);
+            var advancePx = TextMeasurer.MeasureAdvance(glyphString, options).Width;
+
+            var builder = new GlyphShapeBuilder();
+            new TextRenderer(builder).RenderText(glyphString, options);
+            return (font, builder, advancePx);
+        }
+
+        // How far the glyph's outline rises above the baseline, in pixels at this em size.
+        //
+        // The stored BearingY has to be baseline-relative (the TTF / FreeType convention the runtime
+        // DrawText path expects), but the layout bounds SixLabors renders with are measured from the
+        // top of the line, which each font places differently. For Inter that happens to be its
+        // ascender. Noto Sans Math and Noto Sans Symbols use other vertical metrics, so a fallback
+        // glyph placed that way floats above the baseline. The outline's own yMax is measured from the
+        // baseline in every font.
+        private static float TopAboveBaselinePx(Font font, int codepoint, int emSize)
+        {
+            if (!font.TryGetGlyphs(new CodePoint(codepoint), out var glyphs) || glyphs.Count == 0)
+            {
+                throw new InvalidOperationException($"{font.Name} has an outline for U+{codepoint:X4} but no glyph metrics.");
+            }
+            // At the origin and 72 dpi the box is in pixels, y-down from the baseline: its top is -yMax.
+            return -glyphs[0].BoundingBox(GlyphLayoutMode.Horizontal, Vector2.Zero, 72f).Y;
         }
     }
 }

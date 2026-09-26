@@ -59,6 +59,30 @@ namespace Radiant.Graphics2D
         internal IReadOnlyList<SdfShapeVertex2D> SdfShapeVertices => _sdfShapeVertices;
         private TextureFormat _surfaceFormat;
 
+        // EVERY PIPELINE BLENDS PREMULTIPLIED ALPHA. The shaders multiply RGB by alpha before they
+        // return, so "source over" is One / OneMinusSrcAlpha for colour and alpha alike. Two things
+        // follow that straight alpha gets wrong:
+        //  - the target's alpha accumulates correctly (two 50% layers cover 75%), which is what a
+        //    transparent window or an offscreen frame composited later needs;
+        //  - mixing colours inside a shader (an SDF border over its fill, a texel with its
+        //    neighbour) stays right when one side is transparent, instead of pulling towards black.
+        // Colours passed in stay straight alpha; premultiplying is the shader's job, not the caller's.
+        private static readonly BlendState PremultipliedAlphaBlend = new()
+        {
+            Color = new BlendComponent
+            {
+                SrcFactor = BlendFactor.One,
+                DstFactor = BlendFactor.OneMinusSrcAlpha,
+                Operation = BlendOperation.Add,
+            },
+            Alpha = new BlendComponent
+            {
+                SrcFactor = BlendFactor.One,
+                DstFactor = BlendFactor.OneMinusSrcAlpha,
+                Operation = BlendOperation.Add,
+            },
+        };
+
         // HOW MANY SAMPLES EVERY PIPELINE IS BUILT FOR. A pipeline's sample count must match the
         // attachment it draws into, so this is decided once at Initialize and is the same for all
         // four -- a mismatch is a validation error at draw time rather than a soft failure.
@@ -146,7 +170,7 @@ namespace Radiant.Graphics2D
             _device = engineState._device;
             _queue = _wgpu.DeviceGetQueue(_device);
             _camera = camera;
-            _surfaceFormat = engineState._surfaceCapabilities.Formats[0];
+            _surfaceFormat = SurfaceFormats.ChooseColorFormat(engineState._surfaceCapabilities);
 
             CreateUniformBuffer();
             CreateBindGroupLayout();
@@ -262,21 +286,7 @@ namespace Radiant.Graphics2D
             };
 
             // Blend state
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.Zero,
-                    Operation = BlendOperation.Add
-                }
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -327,8 +337,8 @@ namespace Radiant.Graphics2D
 
         private void CreateMsdfPipeline()
         {
-            // Bind group 1: sampler + texture (per-font).
-            var entries = stackalloc BindGroupLayoutEntry[2];
+            // Bind group 1 (per font): sampler, atlas texture, and the atlas parameters uniform.
+            var entries = stackalloc BindGroupLayoutEntry[3];
             entries[0] = new BindGroupLayoutEntry
             {
                 Binding = 0,
@@ -346,9 +356,19 @@ namespace Radiant.Graphics2D
                     Multisampled = false,
                 },
             };
+            entries[2] = new BindGroupLayoutEntry
+            {
+                Binding = 2,
+                Visibility = ShaderStage.Fragment,
+                Buffer = new BufferBindingLayout
+                {
+                    Type = BufferBindingType.Uniform,
+                    MinBindingSize = MsdfFont.AtlasParamsSize,
+                },
+            };
             var layoutDesc = new BindGroupLayoutDescriptor
             {
-                EntryCount = 2,
+                EntryCount = 3,
                 Entries = entries,
             };
             _msdfAtlasBindGroupLayout = _wgpu.DeviceCreateBindGroupLayout(_device, in layoutDesc);
@@ -393,21 +413,7 @@ namespace Radiant.Graphics2D
                 Attributes = vertexAttributes,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -477,21 +483,7 @@ namespace Radiant.Graphics2D
                 Attributes = vertexAttributes,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
 
             var colorTargetState = new ColorTargetState
             {
@@ -544,7 +536,8 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Register an MSDF font with this renderer. The renderer takes
         /// ownership of the font's GPU resources and disposes them with the
-        /// renderer. Must be called after Initialize.
+        /// renderer. Must be called after Initialize. Optional: DrawText
+        /// registers a font it has not seen on first use.
         /// </summary>
         public void RegisterMsdfFont(MsdfFont font)
         {
@@ -1263,6 +1256,15 @@ namespace Radiant.Graphics2D
         public void DrawText(MsdfFont font, string text, float x, float y, float pixelHeight, Vector4 color)
         {
             if (string.IsNullOrEmpty(text)) return;
+
+            // An unregistered font has no bind group, and binding a null group aborts the process inside
+            // wgpu. RadiantApplication creates the renderer inside Run, out of the caller's reach, so the
+            // first draw is where a font can be registered. (No device means a CPU-only test renderer
+            // that never submits, so there is nothing to register with.)
+            if (font.BindGroup == null && _device != null)
+            {
+                RegisterMsdfFont(font);
+            }
 
             var penX = x;
             var baseline = y + font.AscenderEm * pixelHeight;

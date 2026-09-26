@@ -93,21 +93,7 @@ namespace Radiant.Graphics2D
                 Attributes = attrs,
             };
 
-            var blendState = new BlendState
-            {
-                Color = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.SrcAlpha,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-                Alpha = new BlendComponent
-                {
-                    SrcFactor = BlendFactor.One,
-                    DstFactor = BlendFactor.OneMinusSrcAlpha,
-                    Operation = BlendOperation.Add,
-                },
-            };
+            var blendState = PremultipliedAlphaBlend;
             var colorTargetState = new ColorTargetState
             {
                 Format = _surfaceFormat,

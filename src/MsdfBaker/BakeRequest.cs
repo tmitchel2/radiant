@@ -11,5 +11,8 @@ namespace Radiant.MsdfBaker
         public int AtlasSize { get; init; } = 1024;
         public float DistanceRangePx { get; init; } = 4f;
         public IReadOnlyList<int> Codepoints { get; init; } = [];
+
+        /// <summary>Fonts to take a codepoint from when the primary font has no glyph for it, in order.</summary>
+        public IReadOnlyList<string> FallbackFontPaths { get; init; } = [];
     }
 }

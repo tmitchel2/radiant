@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Silk.NET.WebGPU;
+using Buffer = Silk.NET.WebGPU.Buffer;
 
 namespace Radiant.Graphics2D
 {
@@ -40,6 +41,16 @@ namespace Radiant.Graphics2D
         public Sampler* Sampler { get; private set; }
         /// <summary>Default bind group built by <see cref="Renderer2D.RegisterMsdfFont"/>.</summary>
         public BindGroup* BindGroup { get; private set; }
+
+        /// <summary>
+        /// Size in bytes of the per-font uniform the MSDF shader reads (binding 2): one
+        /// <c>vec4&lt;f32&gt;</c> whose x is <see cref="DistanceRangePx"/>.
+        /// </summary>
+        internal const ulong AtlasParamsSize = 16;
+
+        // Carries DistanceRangePx to the shader. The edge sharpness is computed from it, so it has
+        // to be this atlas's own range: a shader constant only matches atlases baked with that value.
+        private Buffer* _atlasParams;
 
         private WebGPU _wgpu = null!;
 
@@ -78,11 +89,14 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Load a font that's been shipped as embedded resources in the
         /// Radiant assembly (Assets/Fonts/&lt;name&gt;.png + .json). This is the
-        /// default path for bundled engineering fonts — no file paths leak
-        /// into the consumer.
+        /// default path for bundled fonts — no file paths leak into the
+        /// consumer. Names are in <see cref="EmbeddedFonts"/>; "default" and
+        /// "monospace" resolve to <see cref="EmbeddedFonts.Default"/> and
+        /// <see cref="EmbeddedFonts.Monospace"/>.
         /// </summary>
         public static MsdfFont LoadEmbedded(string name)
         {
+            name = EmbeddedFonts.Resolve(name);
             var asm = typeof(MsdfFont).Assembly;
             var prefix = "Radiant.Assets.Fonts.";
             using var pngStream = asm.GetManifestResourceStream(prefix + name + ".png")
@@ -146,6 +160,7 @@ namespace Radiant.Graphics2D
             _wgpu = wgpu;
             CreateTexture(device, queue, pixelBytes, width, height);
             CreateSampler(device);
+            CreateAtlasParams(device, queue);
             CreateBindGroup(device, layout);
         }
 
@@ -211,9 +226,22 @@ namespace Radiant.Graphics2D
             Sampler = _wgpu.DeviceCreateSampler(device, in desc);
         }
 
+        private void CreateAtlasParams(Device* device, Queue* queue)
+        {
+            var desc = new BufferDescriptor
+            {
+                Size = AtlasParamsSize,
+                Usage = BufferUsage.Uniform | BufferUsage.CopyDst,
+                MappedAtCreation = false,
+            };
+            _atlasParams = _wgpu.DeviceCreateBuffer(device, in desc);
+            var values = stackalloc float[4] { DistanceRangePx, 0f, 0f, 0f };
+            _wgpu.QueueWriteBuffer(queue, _atlasParams, 0, values, (nuint)AtlasParamsSize);
+        }
+
         private void CreateBindGroup(Device* device, BindGroupLayout* layout)
         {
-            var entries = stackalloc BindGroupEntry[2];
+            var entries = stackalloc BindGroupEntry[3];
             entries[0] = new BindGroupEntry
             {
                 Binding = 0,
@@ -224,10 +252,17 @@ namespace Radiant.Graphics2D
                 Binding = 1,
                 TextureView = TextureView,
             };
+            entries[2] = new BindGroupEntry
+            {
+                Binding = 2,
+                Buffer = _atlasParams,
+                Offset = 0,
+                Size = AtlasParamsSize,
+            };
             var desc = new BindGroupDescriptor
             {
                 Layout = layout,
-                EntryCount = 2,
+                EntryCount = 3,
                 Entries = entries,
             };
             BindGroup = _wgpu.DeviceCreateBindGroup(device, in desc);
@@ -240,6 +275,8 @@ namespace Radiant.Graphics2D
             if (TextureView != null) _wgpu.TextureViewRelease(TextureView);
             if (Texture != null) _wgpu.TextureRelease(Texture);
             if (Sampler != null) _wgpu.SamplerRelease(Sampler);
+            if (_atlasParams != null) _wgpu.BufferRelease(_atlasParams);
+            _atlasParams = null;
             BindGroup = null;
             TextureView = null;
             Texture = null;

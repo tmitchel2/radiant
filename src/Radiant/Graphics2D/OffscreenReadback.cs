@@ -1,7 +1,9 @@
-﻿using Silk.NET.WebGPU;
+using System;
+using System.Numerics;
+using Silk.NET.WebGPU;
 using WgpuExtensions = Silk.NET.WebGPU.Extensions.WGPU.Wgpu;
 
-namespace Radiant.Host;
+namespace Radiant.Graphics2D;
 
 /// <summary>
 /// Renders a single frame into an off-screen colour texture and reads the pixels back to a tightly
@@ -81,12 +83,13 @@ public sealed unsafe class OffscreenReadback : IDisposable
     }
 
     /// <summary>
-    /// Begin a render pass into the off-screen colour view (clearing to <paramref name="clear"/>),
+    /// Begin a render pass into the off-screen colour view (clearing to <paramref name="clear"/>, a
+    /// straight-alpha linear colour like every other colour the renderer takes),
     /// invoke <paramref name="draw"/> (which receives the render-pass encoder pointer as an nint)
     /// to encode draws, end the pass, copy to a staging buffer, submit, and return the tightly packed
     /// pixels in the texture's byte order.
     /// </summary>
-    public byte[] RenderAndRead(System.Numerics.Vector4 clear, Action<nint> draw)
+    public byte[] RenderAndRead(Vector4 clear, Action<nint> draw)
     {
         ArgumentNullException.ThrowIfNull(draw);
         var encoderDesc = new CommandEncoderDescriptor();
@@ -101,7 +104,7 @@ public sealed unsafe class OffscreenReadback : IDisposable
             ResolveTarget = SampleCount == 1 ? null : ColorView,
             LoadOp = LoadOp.Clear,
             StoreOp = StoreOp.Store,
-            ClearValue = new Color { R = clear.X, G = clear.Y, B = clear.Z, A = clear.W },
+            ClearValue = ClearColor.FromStraightAlpha(clear),
         };
         var passDesc = new RenderPassDescriptor { ColorAttachmentCount = 1, ColorAttachments = &colorAttachment };
         var pass = _wgpu.CommandEncoderBeginRenderPass(encoder, in passDesc);

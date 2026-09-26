@@ -61,6 +61,11 @@ namespace Radiant.Graphics2D
         /// <summary>
         /// Upload <paramref name="pixels"/> (tightly packed, 4 bytes/pixel, matching this texture's
         /// format and current <see cref="Width"/>×<see cref="Height"/>) to the GPU.
+        /// <para>
+        /// The pixels must be <b>premultiplied alpha</b>, as a frame rendered by
+        /// <see cref="Renderer2D"/> already is. Straight-alpha image data (as most image files decode
+        /// to) must be premultiplied first, or its translucent pixels draw too bright.
+        /// </para>
         /// </summary>
         public void Update(ReadOnlySpan<byte> pixels)
         {

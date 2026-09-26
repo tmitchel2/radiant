@@ -10,7 +10,7 @@ Three assemblies:
 
 | Assembly | What it holds | References |
 |---|---|---|
-| `Radiant.Host` | the compositing host (`LiveHost`, `HostCompositor`, the tab strip and its gestures), the drag overlay, the renderer half (`TabSession`), `HeadlessGpu` / `OffscreenReadback`, macOS integration, `RadiantAppIdentity` | `Radiant`, the two below |
+| `Radiant.Host` | the compositing host (`LiveHost`, `HostCompositor`, the tab strip and its gestures), the drag overlay, the renderer half (`TabSession`), macOS integration, `RadiantAppIdentity` | `Radiant`, the two below |
 | `Radiant.Host.Ipc` | the data plane: `SharedFrameBuffer`, `InputRing`, `TabProtocol`, `RecentFilesStore` | nothing |
 | `Radiant.Host.AgentControlProtocol` | the control plane: `InstanceRegistry`, `CommandReceiver`, `CommandClient`, the command/response records | nothing |
 
@@ -186,7 +186,9 @@ static int Main(string[] args)
 The renderer half is `TabSession`: `TabSession.Attach(TabAttachOptions)` registers the instance at the
 current protocol version and creates its frame buffer; each frame the application calls `Pump` for the
 host's input and the size and scale it wants, renders off-screen with `HeadlessGpu` +
-`OffscreenReadback`, and hands the pixels to `Publish`. `OwningHostAlive` tells a tab its window has
+`OffscreenReadback` (both in `Radiant.Graphics2D`), and hands the pixels to `Publish`. The frame is
+rendered for the same sRGB format the host's window uses and holds premultiplied alpha, which is what
+`Texture2D` expects, so compositing it changes no pixel (see [rendering.md](rendering.md)). `OwningHostAlive` tells a tab its window has
 gone.
 
 ## Packaging

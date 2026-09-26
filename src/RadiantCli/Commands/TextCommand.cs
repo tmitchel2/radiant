@@ -9,7 +9,7 @@ namespace RadiantCli.Commands
         public void Execute(string[] args)
         {
             using var app = new RadiantApplication();
-            var font = MsdfFont.LoadEmbedded("default");
+            var font = MsdfFont.LoadEmbedded(EmbeddedFonts.Default);
             app.Run("Radiant - Text Demo", 800, 600, Handedness.LeftHanded, renderer =>
             {
                 // Title

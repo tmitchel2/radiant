@@ -3,7 +3,7 @@
 Flexbox layout + a CSS-like styling layer for Radiant's retained-mode widget tree. Avalonia-style:
 declarative styling of *our own* widgets, **not** an HTML/CSS document renderer.
 
-- **Layout** — a vendored pure-C# port of Meta's Yoga engine (flexbox + grid) drives positions/sizes.
+- **Layout** — a pure-C# port of Meta's Yoga engine (flexbox; the `Yoga.Net` NuGet package) drives positions/sizes.
 - **Styling** — predicate selectors + a small paint-only box model resolve each widget's colours/border.
 - **Rendering** — an SDF rounded-rectangle pipeline in `Renderer2D` paints the box model.
 
@@ -116,22 +116,25 @@ Each fragment evaluates the matching signed-distance function (`sd_round_box` wi
 property of a true SDF is what keeps the AA exactly one pixel wide at any scale. Radii are clamped to
 half the shorter side; `radius 0` gives sharp corners; a transparent `fill` yields a border-only
 stroke. Adding a new shape is a new `case` in `ShaderLibrary.SdfShapeShader` + a thin `Draw*` method —
-no new pipeline or vertex type. The WGSL is validated by naga at pipeline creation.
+no new pipeline or vertex type. wgpu compiles and validates the WGSL (via naga) when the pipeline is
+created, which the GPU tests exercise (see [rendering.md](rendering.md)).
+
+Fill and border are straight-alpha colours; the shader premultiplies both before mixing them, so a
+border-only stroke (transparent fill) fades cleanly into whatever is behind it.
 
 `Panel` and `Button` consult `ResolvedStyle.BackgroundColor`/`BorderColor`/`TextColor` (falling back to
 their existing colours); wider adoption of the SDF shapes for the box model can follow as widgets opt in.
 
-## Vendored engine
+## Layout engine
 
-The flexbox engine is a vendored copy of [`chenrensong/Yoga.Net`](https://github.com/chenrensong/Yoga.Net)
-(MIT) under `src/Yoga.Net` — see `src/Yoga.Net/VENDOR.md` for the pinned commit, local modifications,
-and re-vendoring steps. Its 833 upstream tests run in CI (`src/Yoga.Net.Tests`). Radiant exposes none
-of Yoga's types publicly; everything goes through `Radiant.Layout`.
+The flexbox engine is [`Yoga.Net`](https://github.com/chenrensong/Yoga.Net) (MIT), referenced as a NuGet
+package (`src/Radiant/Radiant.csproj`). Radiant exposes none of Yoga's types publicly; everything goes
+through `Radiant.Layout`. `LayoutStyle` covers flexbox only — there are no grid properties.
 
 ## Manual visual check
 
-Headless tests cover layout math, style resolution, rounded-rect geometry, and (via naga) shader
-validity. The on-screen result needs a display session and an application that uses the layout — the
+Headless tests cover layout math, style resolution and rounded-rect geometry; GPU tests (category
+`Gpu`, see [rendering.md](rendering.md)) cover what the shaders actually draw. The on-screen result needs a display session and an application that uses the layout — the
 first was Dynamis's `SettingsShell` — driven through its agent control interface (see
 [host.md](host.md)). From the Dynamis repository:
 

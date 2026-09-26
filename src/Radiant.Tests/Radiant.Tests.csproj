@@ -5,6 +5,7 @@
     <RootNamespace>Radiant.Tests</RootNamespace>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>embedded</DebugType>
     <IsTrimmable>true</IsTrimmable>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>

@@ -1,0 +1,74 @@
+using System;
+using System.Numerics;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Radiant.Graphics;
+using Radiant.Graphics2D;
+using Silk.NET.WebGPU;
+
+namespace Radiant.Tests.Graphics2D;
+
+/// <summary>
+/// A real GPU render target for tests: a headless device, a <see cref="Renderer2D"/> built for the
+/// same sRGB format a window's swapchain gets, and an offscreen target to read frames back from.
+/// On a machine with no usable GPU adapter the test is reported inconclusive rather than failed.
+/// </summary>
+internal sealed unsafe class GpuFrame : IDisposable
+{
+    /// <summary>Test category for tests that need a GPU; CI without one can filter them out.</summary>
+    public const string Category = "Gpu";
+
+    private readonly OffscreenReadback _target;
+
+    public HeadlessGpu Gpu { get; }
+    public Renderer2D Renderer { get; }
+    public int Width { get; }
+    public int Height { get; }
+
+    private GpuFrame(HeadlessGpu gpu, int width, int height)
+    {
+        Gpu = gpu;
+        Width = width;
+        Height = height;
+        Renderer = new Renderer2D();
+        Renderer.Initialize(gpu.State, new Camera2D(width, height, Handedness.RightHanded));
+        _target = new OffscreenReadback(gpu, width, height, TextureFormat.Bgra8UnormSrgb);
+    }
+
+    public static GpuFrame CreateOrSkip(int width, int height)
+    {
+        HeadlessGpu gpu;
+        try
+        {
+            gpu = new HeadlessGpu(TextureFormat.Bgra8UnormSrgb);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Assert.Inconclusive($"No GPU available: {ex.Message}");
+            throw;
+        }
+        return new GpuFrame(gpu, width, height);
+    }
+
+    /// <summary>Renders one frame over <paramref name="clear"/> and returns its BGRA bytes.</summary>
+    public byte[] Render(Vector4 clear, Action<Renderer2D> draw) =>
+        _target.RenderAndRead(clear, pass =>
+        {
+            Renderer.BeginFrame((uint)Width, (uint)Height, 1f);
+            draw(Renderer);
+            Renderer.EndFrame((RenderPassEncoder*)pass);
+        });
+
+    /// <summary>The (R, G, B, A) bytes of one pixel of a frame from <see cref="Render"/>.</summary>
+    public (byte R, byte G, byte B, byte A) PixelAt(byte[] bgra, int x, int y)
+    {
+        var i = (y * Width + x) * 4;
+        return (bgra[i + 2], bgra[i + 1], bgra[i], bgra[i + 3]);
+    }
+
+    public void Dispose()
+    {
+        _target.Dispose();
+        Renderer.Dispose();
+        Gpu.Dispose();
+    }
+}

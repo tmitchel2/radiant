@@ -28,9 +28,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     return output;
 }
 
+// Vertex colours are straight alpha; the pipeline blends premultiplied.
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return input.color;
+    return vec4<f32>(input.color.rgb * input.color.a, input.color.a);
 }";
 
         public const string LineShader = @"
@@ -59,9 +60,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     return output;
 }
 
+// Vertex colours are straight alpha; the pipeline blends premultiplied.
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return input.color;
+    return vec4<f32>(input.color.rgb * input.color.a, input.color.a);
 }";
 
         public const string MsdfTextShader = @"
@@ -90,6 +92,11 @@ var atlasSampler: sampler;
 @group(1) @binding(1)
 var atlasTexture: texture_2d<f32>;
 
+// x = the distance range the atlas was baked with, in atlas pixels (MsdfFont.DistanceRangePx).
+// Per font, because atlases are baked with different ranges.
+@group(1) @binding(2)
+var<uniform> atlasParams: vec4<f32>;
+
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
@@ -113,12 +120,13 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let atlasDims = vec2<f32>(textureDimensions(atlasTexture, 0));
     let derivAtlasPx = fwidth(input.texCoord) * atlasDims;
     let avgDerivAtlasPx = 0.5 * (derivAtlasPx.x + derivAtlasPx.y);
-    let screenPxRange = max(4.0 / max(avgDerivAtlasPx, 1e-4), 1.0);
+    let screenPxRange = max(atlasParams.x / max(avgDerivAtlasPx, 1e-4), 1.0);
     // Baker emits sd_stored > 0.5 for interior pixels (after scanline sign
     // correction), so standard msdfgen mapping applies directly.
     let screenPxDist = screenPxRange * (sd - 0.5);
-    let alpha = clamp(screenPxDist + 0.5, 0.0, 1.0);
-    return vec4<f32>(input.color.rgb, input.color.a * alpha);
+    let coverage = clamp(screenPxDist + 0.5, 0.0, 1.0);
+    let alpha = input.color.a * coverage;
+    return vec4<f32>(input.color.rgb * alpha, alpha);
 }";
 
         public const string SdfShapeShader = @"
@@ -206,8 +214,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         0.0,
         border_width <= 0.0);
 
-    let rgba = mix(input.color, input.borderColor, border_factor);
-    return vec4<f32>(rgba.rgb, rgba.a * coverage);
+    // Mix in premultiplied space: a transparent fill contributes nothing, so a border-only stroke's
+    // inner edge fades to clear rather than through the fill's (meaningless) RGB towards black.
+    let fill = vec4<f32>(input.color.rgb * input.color.a, input.color.a);
+    let border = vec4<f32>(input.borderColor.rgb * input.borderColor.a, input.borderColor.a);
+    return mix(fill, border, border_factor) * coverage;
 }";
 
         public const string TexturedShader = @"
@@ -247,8 +258,10 @@ fn vs_main(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    var texColor = textureSample(textureData, textureSampler, input.texCoord);
-    return input.color * texColor;
+    // Texels are premultiplied (Texture2D's contract); the tint is a straight-alpha colour.
+    let texColor = textureSample(textureData, textureSampler, input.texCoord);
+    let tint = vec4<f32>(input.color.rgb * input.color.a, input.color.a);
+    return texColor * tint;
 }";
     }
 }

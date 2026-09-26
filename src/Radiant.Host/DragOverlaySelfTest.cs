@@ -25,7 +25,7 @@ internal static unsafe class DragOverlaySelfTest
         var camera = new Camera2D(w, h, Handedness.RightHanded);
         using var renderer = new Renderer2D();
         renderer.Initialize(gpu.State, camera);
-        var font = MsdfFont.LoadEmbedded("default");
+        var font = MsdfFont.LoadEmbedded(EmbeddedFonts.Default);
         renderer.RegisterMsdfFont(font);
 
         using var rt = new OffscreenReadback(gpu, w, h, TextureFormat.Bgra8UnormSrgb);

@@ -220,7 +220,7 @@ internal sealed class DragOverlay : IDisposable
 
     private static MsdfFont LoadFont(Renderer2D renderer)
     {
-        var font = MsdfFont.LoadEmbedded("default");
+        var font = MsdfFont.LoadEmbedded(EmbeddedFonts.Default);
         renderer.RegisterMsdfFont(font);
         return font;
     }
