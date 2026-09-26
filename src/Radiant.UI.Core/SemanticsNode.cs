@@ -6,8 +6,9 @@ namespace Radiant.UI.Core;
 /// <summary>A node of the accessibility tree built by <see cref="UIRoot.GetSemantics"/>.</summary>
 public sealed class SemanticsNode
 {
-    internal SemanticsNode(Semantics semantics, string? label, RectangleF bounds, bool focusable, bool focused, IReadOnlyList<SemanticsNode> children)
+    internal SemanticsNode(int id, Semantics semantics, string? label, RectangleF bounds, bool focusable, bool focused, IReadOnlyList<SemanticsNode> children)
     {
+        Id = id;
         Semantics = semantics;
         Label = label;
         Bounds = bounds;
@@ -15,6 +16,13 @@ public sealed class SemanticsNode
         IsFocused = focused;
         Children = children;
     }
+
+    /// <summary>
+    /// Which node this is, the same from one tree to the next for as long as the node it describes
+    /// lives: for assistive technology to keep track of it, and to act on it
+    /// (<see cref="UIRoot.Press"/>, <see cref="UIRoot.FocusNode"/>). The root is 0.
+    /// </summary>
+    public int Id { get; }
 
     /// <summary>Role and state.</summary>
     public Semantics Semantics { get; }

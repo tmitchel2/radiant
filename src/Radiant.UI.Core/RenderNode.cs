@@ -14,7 +14,12 @@ namespace Radiant.UI.Core;
 /// </summary>
 internal abstract class RenderNode : IDisposable
 {
+    private static int s_nextId;
+
     private readonly List<RenderNode> _children = [];
+
+    /// <summary>A number for this node that no other node in the process shares, stable for its life.</summary>
+    public int Id { get; } = System.Threading.Interlocked.Increment(ref s_nextId);
 
     protected RenderNode() => Yoga = YGNodeNew();
 

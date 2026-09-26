@@ -768,8 +768,65 @@ public sealed class UIRoot : IDisposable
                 CollectSemantics(child, children);
             }
         }
-        return new SemanticsNode(new Semantics { Role = SemanticsRole.Group }, null,
+        return new SemanticsNode(0, new Semantics { Role = SemanticsRole.Group }, null,
             new System.Drawing.RectangleF(0, 0, Size.X, Size.Y), false, false, children);
+    }
+
+    /// <summary>
+    /// Presses the node <paramref name="id"/> names (a <see cref="SemanticsNode.Id"/>), as
+    /// assistive technology does for "press": it takes focus if it can, and its box and ancestors
+    /// hear a click at its centre, whatever may be drawn over it. False if there's no such node.
+    /// </summary>
+    public bool Press(int id)
+    {
+        if (Find(id) is not { } node)
+        {
+            return false;
+        }
+        if (node is BoxRenderNode { Element.Focusable: true })
+        {
+            SetFocus(node, visible: true);
+        }
+        var centre = node.AbsolutePosition + node.Size / 2;
+        Dispatch(EventPath(node), new PointerEventArgs(centre, PointerButton.Left, KeyModifiers.None, 1), box => null, box => box.OnClick);
+        FrameRequested?.Invoke();
+        return true;
+    }
+
+    /// <summary>Gives the node <paramref name="id"/> names keyboard focus, as assistive technology moving focus does. False if it can't take it.</summary>
+    public bool FocusNode(int id)
+    {
+        if (Find(id) is not BoxRenderNode { Element.Focusable: true } node)
+        {
+            return false;
+        }
+        SetFocus(node, visible: true);
+        FrameRequested?.Invoke();
+        return true;
+    }
+
+    /// <summary>The <see cref="SemanticsNode.Id"/> of the focused node, or 0.</summary>
+    public int FocusedId => _focused?.Id ?? 0;
+
+    private RenderNode? Find(int id)
+    {
+        RenderNode? Search(RenderNode node)
+        {
+            if (node.Id == id)
+            {
+                return node;
+            }
+            foreach (var child in node.Children)
+            {
+                if (Search(child) is { } found)
+                {
+                    return found;
+                }
+            }
+            return null;
+        }
+        // Portals are the root's children too, so their contents are found as well.
+        return Search(RootRenderNode);
     }
 
     private void CollectSemantics(RenderNode node, List<SemanticsNode> into)
@@ -789,13 +846,13 @@ public sealed class UIRoot : IDisposable
                 var textSemantics = text.Element.HeadingLevel > 0
                     ? new Semantics { Role = SemanticsRole.Heading, HeadingLevel = text.Element.HeadingLevel }
                     : new Semantics { Role = SemanticsRole.Text };
-                into.Add(new SemanticsNode(textSemantics, text.Element.AttributedText.Text, bounds, false, false, []));
+                into.Add(new SemanticsNode(node.Id, textSemantics, text.Element.AttributedText.Text, bounds, false, false, []));
                 break;
             case ImageRenderNode { Element.AltText: { } alt }:
-                into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Image, Label = alt }, alt, bounds, false, false, []));
+                into.Add(new SemanticsNode(node.Id, new Semantics { Role = SemanticsRole.Image, Label = alt }, alt, bounds, false, false, []));
                 break;
             case CanvasRenderNode { Element.Semantics: { } canvasSemantics }:
-                into.Add(new SemanticsNode(canvasSemantics, canvasSemantics.Label, bounds, false, false, children));
+                into.Add(new SemanticsNode(node.Id, canvasSemantics, canvasSemantics.Label, bounds, false, false, children));
                 break;
             case BoxRenderNode { Element: var box } when box.Semantics is not null || box.Focusable:
                 var semantics = box.Semantics ?? new Semantics();
@@ -805,7 +862,7 @@ public sealed class UIRoot : IDisposable
                 {
                     children.RemoveAll(c => c.Role == SemanticsRole.Text);
                 }
-                into.Add(new SemanticsNode(semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children));
+                into.Add(new SemanticsNode(node.Id, semantics, label, bounds, box.Focusable, ReferenceEquals(node, _focused), children));
                 break;
             default:
                 into.AddRange(children);

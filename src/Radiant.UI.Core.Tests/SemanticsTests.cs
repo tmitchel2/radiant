@@ -38,6 +38,65 @@ public class SemanticsTests
     }
 
     [TestMethod]
+    public void NodesKeepTheirIdsFromOneTreeToTheNext()
+    {
+        using var root = new UIRoot(new Box { Children = [new Box { Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Save" } }] });
+        root.Update(new Vector2(400, 300));
+
+        var first = root.GetSemantics().Children.Single().Id;
+        root.Update(new Vector2(500, 300));
+
+        Assert.AreNotEqual(0, first);
+        Assert.AreEqual(first, root.GetSemantics().Children.Single().Id);
+    }
+
+    [TestMethod]
+    public void PressingANodeClicksItAndFocusesIt()
+    {
+        var clicks = 0;
+        using var root = new UIRoot(new Box
+        {
+            Children =
+            [
+                new Box { Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Save" }, Layout = new Radiant.Layout.LayoutStyle { Width = 50, Height = 20 }, OnClick = _ => clicks++ },
+                // Something drawn over it doesn't take the press.
+                new Box { Layout = new Radiant.Layout.LayoutStyle { Position = Radiant.Layout.PositionType.Absolute, Width = 100, Height = 100 } },
+            ],
+        });
+        root.Update(new Vector2(400, 300));
+        var save = root.GetSemantics().Children.Single(n => n.Label == "Save");
+
+        var pressed = root.Press(save.Id);
+        root.Update(new Vector2(400, 300));
+
+        Assert.IsTrue(pressed);
+        Assert.AreEqual(1, clicks);
+        Assert.AreEqual(save.Id, root.FocusedId);
+        Assert.IsFalse(root.Press(987654), "no such node");
+    }
+
+    [TestMethod]
+    public void FocusingANodeMovesKeyboardFocusThere()
+    {
+        using var root = new UIRoot(new Box
+        {
+            Children =
+            [
+                new Box { Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "One" } },
+                new Box { Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Two" } },
+                new Box { Semantics = new Semantics { Role = SemanticsRole.Text, Label = "Not focusable" } },
+            ],
+        });
+        root.Update(new Vector2(400, 300));
+        var nodes = root.GetSemantics().Children;
+
+        Assert.IsTrue(root.FocusNode(nodes[1].Id));
+        Assert.IsFalse(root.FocusNode(nodes[2].Id));
+        root.Update(new Vector2(400, 300));
+        Assert.IsTrue(root.GetSemantics().Children[1].IsFocused);
+    }
+
+    [TestMethod]
     public void TextCanBeAHeading()
     {
         using var root = new UIRoot(new Box { Children = [new TextBlock("Settings") { HeadingLevel = 1 }, new TextBlock("Body")] });

@@ -65,11 +65,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   like `Always`), and the thumb doesn't widen under the pointer, so the 12 px grip is invisible
   until used.
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
-- **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
-  tree yet, which the P7 accessibility bridge needs.
-
-## Platform (`Radiant.Platform`)
-
+- **Semantics act only by press and focus.** `UIRoot.Press` and `UIRoot.FocusNode` act on a
+  node by id; there's no increment or decrement (sliders), setting a value (text fields), scrolling
+  a node into view, or custom actions yet.
 - **Three copies of the Objective-C interop.** `Radiant.Platform.MacOS.ObjC` is the full one;
   `Radiant.Host.MacObjc` and a private copy in `RadiantApplication` predate it. They were left
   alone so P7 didn't disturb the host. Point both at one shared interop, either
