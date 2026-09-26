@@ -57,8 +57,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   expectations everywhere.
 - **Percentage minimums inside nested scroll areas.** Yoga.Net resolves them against the outer
   area. `ScrollArea` fills its viewport with `flexGrow` instead. Worth a minimal repro upstream.
-- **Duplicated style mapping.** `YogaStyle` repeats the legacy `YogaLayoutEngine` mapping. It
-  becomes the only copy when the legacy UI is deleted (the hard replace).
 - **Two kinds of key.** `Key` is an element's identity, so keyboard keys are `KeyCode`, whose
   values equal Silk's. `RadiantApplication` and `InputState` still expose Silk's `Key` and
   `MouseButton`; the P7 platform layer should expose only Radiant types.

@@ -61,10 +61,4 @@ public sealed record ScrollBehaviour
     /// <summary>Pixels a drag must travel before a pan gesture activates.</summary>
     public float ActivationThreshold { get; init; } = 3f;
 
-    /// <summary>
-    /// Explicit content extent override (caller-managed, the legacy
-    /// <c>ScrollView.ContentHeight</c> escape hatch). When null, the content
-    /// extent is measured automatically. Interpreted on the primary scroll axis.
-    /// </summary>
-    public float? ContentExtentOverride { get; init; }
 }

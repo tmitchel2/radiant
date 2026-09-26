@@ -1,8 +1,8 @@
 namespace Radiant.Layout;
 
 /// <summary>
-/// Flexbox + box-model layout inputs for a <see cref="Radiant.UI.UIElement"/>, mapped onto a Yoga
-/// node by <see cref="YogaLayoutEngine"/>. Every property is "unset" by default (nullable enums and
+/// Flexbox + box-model layout inputs for an element, mapped onto its render node's Yoga node (in
+/// <c>Radiant.UI.Core</c>). Every property is "unset" by default (nullable enums and
 /// <see cref="Dimension.Undefined"/> lengths), so <c>default(LayoutStyle)</c> applies no overrides
 /// and the node keeps Yoga's defaults. Build with object/<c>with</c> initialisers:
 /// <code>new LayoutStyle { FlexDirection = FlexDirection.Row, FlexGrow = 1f, Padding = Edges.All(8f) }</code>
