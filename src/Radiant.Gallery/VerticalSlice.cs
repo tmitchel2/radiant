@@ -173,6 +173,27 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                             new RangeSlider(price.Value.Item1, price.Value.Item2, (l, h) => price.Set((l, h))) { Min = 0, Max = 500, Step = 5, Label = "Price" },
                         ],
                     }) { Gap = 16 },
+                new Grid
+                {
+                    MinColumnWidth = 360,
+                    ColumnGap = 16,
+                    Children =
+                    [
+                        new Card(new DescriptionList(
+                        [
+                            ("Order", DescriptionList.Text("#10482")),
+                            ("Placed", DescriptionList.Text("26 September 2026")),
+                            ("Status", new Chip("Shipped") { Icon = "local_shipping", Selected = true }),
+                            ("Deliver to", DescriptionList.Text("1 Infinite Loop, Cupertino")),
+                        ]) { TermWidth = 110 }) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.Symmetric(20, 4) } },
+                        new Card(new Timeline(
+                        [
+                            new TimelineEvent("Order placed", "Mon 9:12") { Icon = "check" },
+                            new TimelineEvent("Packed", "Tue 14:03") { Text = "Two boxes, 3.4 kg." },
+                            new TimelineEvent("Out for delivery", "Today") { Color = SurfaceName.Tertiary },
+                        ])) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(20) } },
+                    ],
+                },
                 new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
                 new Row(
                     new SearchField("Search components") { Layout = new LayoutStyle { Width = 260 } },
