@@ -35,7 +35,14 @@ turns a filled button red.
 | `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
 | `IconButton` | Standard, filled, tonal and outlined icon buttons, named by a required label |
 
-Buttons take a leading icon (`Icon = "add"`).
+| `Checkbox` | Controlled check box: checked, indeterminate, error, disabled; the tick fades in |
+| `Switch` | Controlled switch; the handle slides and grows (bigger still while pressed) |
+| `Radio` | Controlled radio button; selecting calls `OnSelect`, and the dot grows in |
+
+Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
+React's: they show the value they're given and report presses with the value they should become.
+The whole row, label included, presses and takes focus, and the state layer is a 40 px circle
+round the indicator.
 
 ## Icons
 

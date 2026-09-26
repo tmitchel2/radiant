@@ -21,6 +21,10 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
     {
         var theme = context.UseTheme();
         var presses = context.UseState(0);
+        var agreed = context.UseState(true);
+        var notify = context.UseState(false);
+        var wifi = context.UseState(true);
+        var size = context.UseState("Medium");
         var themes = Themes;
         return new Box
         {
@@ -55,6 +59,15 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     new IconButton("favorite", "Favourite", IconButtonVariant.Filled) { IconFilled = true },
                     new IconButton("settings", "Settings", IconButtonVariant.Tonal),
                     new IconButton("delete", "Delete", IconButtonVariant.Outlined)),
+                new Row(
+                    new Checkbox(agreed.Value, agreed.Set) { Label = "I agree" },
+                    new Checkbox(notify.Value, notify.Set) { Label = "Notify me" },
+                    new Checkbox(false, null) { Label = "Some", Indeterminate = true },
+                    new Switch(wifi.Value, wifi.Set) { Label = "Wi-Fi" },
+                    new Switch(!wifi.Value, v => wifi.Set(!v)),
+                    new Radio(size.Value == "Small", () => size.Set("Small")) { Label = "Small" },
+                    new Radio(size.Value == "Medium", () => size.Set("Medium")) { Label = "Medium" },
+                    new Checkbox(true, null) { Label = "Disabled", Disabled = true }) { Gap = 12 },
                 new Row(
                     new Card(new SurfaceText("Filled card")) { Variant = CardVariant.Filled },
                     new Card(new SurfaceText("Outlined card")) { Variant = CardVariant.Outlined },
