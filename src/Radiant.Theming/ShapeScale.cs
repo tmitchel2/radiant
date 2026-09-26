@@ -30,6 +30,12 @@ public sealed record ShapeScale
     /// <summary>Extra extra large.</summary>
     public float ExtraExtraLarge { get; init; } = 48f;
 
+    /// <summary>Controls (<see cref="CornerShapeRole.Control"/>): fully rounded by default.</summary>
+    public float Control { get; init; } = FullRadius;
+
+    /// <summary>A radius big enough to make any control a pill or a circle.</summary>
+    public const float FullRadius = 100_000f;
+
     /// <summary>A scale with every radius multiplied by <paramref name="factor"/>: 0 squares everything off.</summary>
     public ShapeScale Scaled(float factor) => new()
     {
@@ -42,6 +48,7 @@ public sealed record ShapeScale
         ExtraLarge = ExtraLarge * factor,
         ExtraLargeIncreased = ExtraLargeIncreased * factor,
         ExtraExtraLarge = ExtraExtraLarge * factor,
+        Control = Control * factor,
     };
 
     /// <summary>
@@ -60,6 +67,7 @@ public sealed record ShapeScale
         CornerShapeRole.ExtraLarge => ExtraLarge,
         CornerShapeRole.ExtraLargeIncreased => ExtraLargeIncreased,
         CornerShapeRole.ExtraExtraLarge => ExtraExtraLarge,
-        _ => 100_000f,
+        CornerShapeRole.Control => Control,
+        _ => FullRadius,
     };
 }

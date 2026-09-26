@@ -35,7 +35,8 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
             surface = surface with { Content = surface.Content with { Opacity = legibility } };
         }
         var rightToLeft = context.UseRightToLeft();
-        var size = IconSize ?? 24f;
+        var icons = theme.Theme.Components.Icons;
+        var size = IconSize ?? icons.Size;
         var icon = Icon ?? "";
         if (rightToLeft && MirrorInRightToLeft && s_mirrors.TryGetValue(icon, out var mirror))
         {
@@ -50,6 +51,7 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
                 FontFamily = FontLibrary.Icons,
                 Size = size,
                 LineHeight = size,
+                Weight = icons.Weight,
                 Color = theme.ContentColor(surface),
                 Variations = IconFilled == true ? s_filled : [],
             },

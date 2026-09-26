@@ -90,7 +90,7 @@ public sealed partial record Pagination(int PageCount, int Page, Action<int>? On
             {
                 TestId = PageButton,
                 SurfaceColor = current ? SurfaceName.Primary : null,
-                CornerShape = CornerShapeRole.Full,
+                CornerShape = CornerShapeRole.Control,
                 Label = current ? $"Page {number}, current" : $"Page {number}",
                 Selected = current,
                 OnPress = () => change?.Invoke(target),

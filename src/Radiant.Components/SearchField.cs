@@ -62,7 +62,7 @@ public sealed partial record SearchField(string Placeholder) : Component
             Background = theme.SurfaceColor(surface),
             BorderWidth = focused.Value ? 2f : 0f,
             BorderColor = accent,
-            CornerRadii = theme.Corners(CornerShapeRole.Full),
+            CornerRadii = theme.Corners(CornerShapeRole.Control),
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,

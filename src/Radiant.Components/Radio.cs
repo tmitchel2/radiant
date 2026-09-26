@@ -34,29 +34,66 @@ public sealed record Radio(bool Selected, Action? OnSelect) : Component
         var surface = context.UseSurface();
         var motion = theme.Theme.Motion;
         var dot = context.UseTransition(Selected ? 1f : 0f, motion.Reduced ? TimeSpan.Zero : motion.ShortDuration, motion.Standard);
-        var colour = Disabled
-            ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
-            : Selected ? theme.Get(SurfaceName.Primary) : theme.Get(SurfaceName.SurfaceVariant, on: true);
-        var size = 10f * dot;
+        var style = theme.Theme.Components.Selection;
+        var recolor = Disabled && theme.RecolorsDisabled();
+        var outer = style.RadioSize;
         var select = OnSelect;
-        var circle = new Box
+
+        Element Circle(SelectionVisualState state)
         {
-            Layout = new LayoutStyle { Width = 20, Height = 20, AlignItems = Align.Center, JustifyContent = Justify.Center },
-            BorderWidth = 2f,
-            BorderColor = colour,
-            CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
-            Children =
-            [
-                size <= 0.5f ? null : new Box
+            if (style.Halo)
+            {
+                // A ring in the accent (the quiet content colour when not chosen) with a dot growing in it.
+                var colour = recolor
+                    ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
+                    : Selected ? theme.Get(SurfaceName.Primary) : theme.Get(SurfaceName.SurfaceVariant, on: true);
+                var size = outer / 2f * dot;
+                return new Box
                 {
-                    Layout = new LayoutStyle { Width = size, Height = size },
-                    Background = colour,
-                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(size / 2f),
-                },
-            ],
-        };
-        return new SelectionControl(_ => circle, 20)
+                    Layout = new LayoutStyle { Width = outer, Height = outer, AlignItems = Align.Center, JustifyContent = Justify.Center },
+                    BorderWidth = style.BorderWidth,
+                    BorderColor = colour,
+                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(outer / 2f),
+                    Children =
+                    [
+                        size <= 0.5f ? null : new Box
+                        {
+                            Layout = new LayoutStyle { Width = size, Height = size },
+                            Background = colour,
+                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(size / 2f),
+                        },
+                    ],
+                };
+            }
+            // Flat: an outlined disc that fills with the accent when chosen, a small dot in its "on" colour.
+            var outline = recolor
+                ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
+                : state.Hovered && !state.Disabled ? theme.Get(SurfaceName.SurfaceVariant, on: true) : theme.Outline;
+            var accent = recolor ? outline : theme.Get(SurfaceName.Primary);
+            var blank = theme.Get(SurfaceName.SurfaceContainerLowest);
+            var inner = outer * 0.375f * dot;
+            return new Box
+            {
+                Layout = new LayoutStyle { Width = outer, Height = outer, AlignItems = Align.Center, JustifyContent = Justify.Center },
+                BorderWidth = dot >= 1f ? 0f : style.BorderWidth,
+                BorderColor = outline,
+                Background = Radiant.Graphics2D.Color.Lerp(blank, accent, dot),
+                CornerRadii = Radiant.Graphics2D.CornerRadii.All(outer / 2f),
+                Children =
+                [
+                    inner <= 0.5f ? null : new Box
+                    {
+                        Layout = new LayoutStyle { Width = inner, Height = inner },
+                        Background = recolor ? theme.SurfaceColor(surface) : theme.Get(SurfaceName.Primary, on: true),
+                        CornerRadii = Radiant.Graphics2D.CornerRadii.All(inner / 2f),
+                    },
+                ],
+            };
+        }
+        return new SelectionControl(Circle, outer)
         {
+            IndicatorHeight = outer,
+            IndicatorRadius = outer / 2f,
             Label = Label,
             AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.RadioButton,

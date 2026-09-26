@@ -13,9 +13,9 @@ using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
 // radiant-gallery --agent [--headless]    the same, driven by an agent or a test (RADIANT_AGENT=1 does the same)
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-12] [--dialog] [--menu] [--palette] [--sheet] [--rtl] [--bench N [--bench-theme]]
+// radiant-gallery --snapshot out.png [--theme Tonal|Quartz|Linen] [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-13] [--dialog] [--menu] [--palette] [--sheet] [--rtl] [--bench N [--bench-theme]]
 //                                         renders it offscreen to a PNG instead
-var theme = new Theme();
+var theme = ThemePresets.Tonal;
 string? snapshot = null;
 var startWithDialog = false;
 var startWithPalette = false;
@@ -33,6 +33,7 @@ for (var i = 0; i < args.Length; i++)
     switch (args[i])
     {
         case "--snapshot": snapshot = args[++i]; break;
+        case "--theme": theme = theme.WithStyle(ThemePresets.Find(args[++i]) ?? throw new ArgumentException($"No theme called {args[i]}; there's {string.Join(", ", System.Linq.Enumerable.Select(ThemePresets.All, t => t.Name))}")); break;
         case "--dark": theme = theme with { Colors = theme.Colors with { IsDark = true } }; followSystem = false; break;
         case "--seed": theme = theme with { Colors = theme.Colors with { Seed = Radiant.Graphics2D.Color.Parse(args[++i]) } }; followSystem = false; break;
         case "--variant": theme = theme with { Colors = theme.Colors with { Variant = Enum.Parse<Variant>(args[++i]) } }; break;

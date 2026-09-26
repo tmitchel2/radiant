@@ -17,7 +17,7 @@ public abstract class GalleryTest : RadiantUITest
     [TestInitialize]
     public void StartGallery()
     {
-        Themes = new ThemeController();
+        Themes = new ThemeController(ThemePresets.Tonal);
         Use(AppDriver.InProcess(new ThemeProvider(Themes, new GalleryApp(Themes)), new InProcessOptions { Size = new Vector2(1200, 800), AppName = "gallery" }));
     }
 

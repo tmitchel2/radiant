@@ -44,6 +44,7 @@ public sealed partial record Dialog(bool Open, Action OnClose) : Component
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
+        var style = theme.Theme.Components.Overlay;
         var close = OnClose;
         var props = this;
         return new Presence(Open, progress => new Portal(new Box
@@ -56,17 +57,15 @@ public sealed partial record Dialog(bool Open, Action OnClose) : Component
                 JustifyContent = Justify.Center,
                 Padding = Edges.All(24),
             },
-            Background = theme.Scrim with { A = 0.32f * progress },
+            Background = theme.Scrim with { A = style.ScrimOpacity * progress },
             Children =
             [
-                new DismissableLayer(new FocusScope(new Surface
+                new DismissableLayer(new FocusScope(SurfaceLooks.Surface(style.Dialog) with
                 {
                     TestId = Panel,
-                    SurfaceColor = SurfaceName.SurfaceContainerHigh,
-                    CornerShape = CornerShapeRole.ExtraLarge,
-                    Elevation = ElevationLevel.Level3,
+                    CornerShape = style.DialogShape,
                     Semantics = new Semantics { Role = SemanticsRole.Dialog, Label = props.Title },
-                    Layout = new LayoutStyle { MinWidth = 280, MaxWidth = 560, Padding = Edges.All(24), RowGap = 16 },
+                    Layout = new LayoutStyle { MinWidth = 280, MaxWidth = 560, Padding = Edges.All(style.DialogPadding), RowGap = 16 },
                     Children =
                     [
                         new Box
@@ -80,7 +79,7 @@ public sealed partial record Dialog(bool Open, Action OnClose) : Component
                                 props.Title is null ? null : new SurfaceText(props.Title)
                                 {
                                     TestId = Heading,
-                                    TextType = TextType.HeadlineSmall,
+                                    TextType = style.DialogTitle,
                                     Alignment = props.Icon is null ? default : Radiant.Text.TextAlignment.Center,
                                 },
                                 props.Text is null ? null : new SurfaceText(props.Text) { Legibility = Legibility.Medium },

@@ -56,6 +56,10 @@ public sealed class ResolvedTheme
     {
         ArgumentNullException.ThrowIfNull(theme);
         var colors = theme.Colors;
+        if (colors.Roles is { } picked)
+        {
+            return FromRoles(theme, picked);
+        }
         var seed = (int)colors.Seed.ToArgb();
         var scheme = Scheme(seed, colors);
         var roles = new Color[s_names * 4];
@@ -114,6 +118,51 @@ public sealed class ResolvedTheme
             Argb(scheme, RadiantDynamicColors.Scrim()),
             Argb(scheme, RadiantDynamicColors.Shadow()),
             Argb(scheme, RadiantDynamicColors.Background()));
+    }
+
+    // Hand-picked roles fill the families as the seed's scheme's roles do.
+    private static ResolvedTheme FromRoles(Theme theme, ColorRoles c)
+    {
+        var roles = new Color[s_names * 4];
+        void Set(SurfaceName name, Color color, Color on, Color container, Color onContainer)
+        {
+            var i = (int)name * 4;
+            roles[i] = color;
+            roles[i + 1] = on;
+            roles[i + 2] = container;
+            roles[i + 3] = onContainer;
+        }
+        void Family(SurfaceName name, ColorFamily f) => Set(name, f.Color, f.On, f.Container, f.OnContainer);
+        ColorFamily Fixed(ColorFamily? chosen, ColorFamily family) =>
+            chosen ?? new ColorFamily(family.Container, family.OnContainer, family.Container, family.OnContainer);
+
+        Set(SurfaceName.Surface, c.Surface, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        Set(SurfaceName.SurfaceDim, c.SurfaceDim, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        Set(SurfaceName.SurfaceBright, c.SurfaceBright, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        foreach (var (name, container) in new[]
+        {
+            (SurfaceName.SurfaceContainerLowest, c.SurfaceContainerLowest),
+            (SurfaceName.SurfaceContainerLow, c.SurfaceContainerLow),
+            (SurfaceName.SurfaceContainer, c.SurfaceContainer),
+            (SurfaceName.SurfaceContainerHigh, c.SurfaceContainerHigh),
+            (SurfaceName.SurfaceContainerHighest, c.SurfaceContainerHighest),
+        })
+        {
+            Set(name, container, c.OnSurface, container, c.OnSurfaceVariant);
+        }
+        Set(SurfaceName.SurfaceVariant, c.Surface, c.OnSurfaceVariant, c.SurfaceVariant, c.OnSurfaceVariant);
+        Set(SurfaceName.Inverse, c.InverseSurface, c.InverseOnSurface, c.InversePrimary, c.InverseSurface);
+        Family(SurfaceName.Primary, c.Primary);
+        Family(SurfaceName.PrimaryFixed, Fixed(c.PrimaryFixed, c.Primary));
+        Family(SurfaceName.Secondary, c.Secondary);
+        Family(SurfaceName.SecondaryFixed, Fixed(c.SecondaryFixed, c.Secondary));
+        Family(SurfaceName.Tertiary, c.Tertiary);
+        Family(SurfaceName.TertiaryFixed, Fixed(c.TertiaryFixed, c.Tertiary));
+        Family(SurfaceName.Error, c.Error);
+        Family(SurfaceName.Success, c.Success);
+        Family(SurfaceName.Warning, c.Warning);
+        Family(SurfaceName.Info, c.Info);
+        return new ResolvedTheme(theme, roles, c.Outline, c.OutlineVariant, c.Scrim, c.Shadow, c.Background);
     }
 
     /// <summary>A family's colour, "on" colour, container or content on the container.</summary>
@@ -225,6 +274,9 @@ public sealed class ResolvedTheme
                 ExtraLarge = Mix(shape.ExtraLarge, target.ExtraLarge),
                 ExtraLargeIncreased = Mix(shape.ExtraLargeIncreased, target.ExtraLargeIncreased),
                 ExtraExtraLarge = Mix(shape.ExtraExtraLarge, target.ExtraExtraLarge),
+                // A pill's radius is effectively infinite: mixed from there it would stay a pill
+                // until the last moment, so it's mixed from a radius that's already a pill on any control.
+                Control = Mix(MathF.Min(shape.Control, 64f), MathF.Min(target.Control, 64f)),
             },
         };
         return new ResolvedTheme(theme, roles,

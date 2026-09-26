@@ -144,6 +144,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Components (`Radiant.Components`)
 
+- **A `SegmentedButton` needs a width from its parent (in the tonal look).** Its joined segments
+  share the width equally (flex basis 0), so in a row that doesn't give it one they shrink to
+  48 px and their labels truncate. Segmented ones (the `Hairline` look) size to their labels. It
+  could size to its widest segment times the count when nothing constrains it.
+- **`Tag` and `Badge` pin themselves to the top of a row.** They set `AlignSelf = FlexStart` so
+  they don't stretch across a column, which also lifts them to the top of a row whose items are
+  centred (the Studio page wraps its tags in a row of their own). A "hug" alignment that means
+  start across a column and leaves a row's alignment alone would fix both.
 - **Goldens don't cover everything.** Components, the templates' blocks (two widths, light, dark
   and compact) and a few scheme variants have goldens. Page-sized templates (the gallery's pages),
   the drawer, the navigation bar, pickers opened as popovers and animation mid-way don't, and
@@ -320,6 +328,32 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Theming (`Radiant.Theming`)
 
+- **Hand-picked palettes have one contrast level.** `Quartz` and `Linen` set `ColorRoles` for light
+  and dark, so `ContrastLevel` (and following "increase contrast") does nothing for them, nor do
+  the seed and variant, so the gallery hides its colour picker there. A palette could carry a
+  high-contrast pair of `ColorRoles`, or push content and outlines towards black or white by the
+  contrast level. Deriving a palette's primary family from the seed would also let the user pick
+  an accent while keeping the palette's neutrals.
+- **Not every component reads the component styles yet.** Buttons, icon buttons, chips, tags,
+  cards, menus, dialogs, popovers, the app bar, drawer, tabs, segmented buttons, text fields,
+  check boxes, radios, switches, the slider and linear progress do. Still fixed at Material's
+  look: the dialog's layout (headline, text buttons at the end; a `Hairline` dialog would have a
+  close button and a footer), tooltips and snackbars (a toast card would suit `Hairline`),
+  `RangeSlider`'s thumbs, `CircularProgress`'s thickness, `NavigationRail`, `Fab`, `SplitButton`,
+  `ButtonGroup`'s height, list rows, `DataTable` and `TreeView` rows, `Accordion` headers,
+  `Calendar` days and `Pagination`. Each wants its sizes and looks moved into a style record.
+- **Component styles are theme-wide.** A `SurfaceLook` or a `TabsLook` applies to every instance;
+  there's no way to give one screen's tabs a different structure than another's except by
+  providing a different theme below it. A per-instance override (a `Look` prop) would be the
+  next step if apps need it. Templates in the full sense (a style supplying its own build
+  function) aren't exposed.
+- **Segmented trays and pills are worked out, not roles.** The tray is the surface tinted 6%
+  towards its content and the pill white (light) or tinted 14% (dark), so they read on any
+  surface. Named roles would let a palette choose them.
+- **A preset switch jumps its layout.** Type, density and button padding switch at the start of an
+  animated theme change (colours and corners animate), so text reflows once. Fine for a settings
+  choice, but a switch that animates layout would need measuring both ends.
+
 - **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,
   and on every frame of a transition. The expensive part was text: colour lived in `TextStyle`,
   so a recolour re-shaped and re-measured every paragraph. Plain text now takes its colour at
@@ -431,6 +465,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Assets and licences
 
+- **Source Serif 4 adds about 1.1 MB.** It's embedded (Latin only, upright and italic, built by
+  `tools/fonts/serif.sh`) for the `Linen` preset's headings, so every app carries it. A way to
+  register optional fonts only when a theme needs them would keep it out of apps that don't.
 - **SixLabors.ImageSharp** (Split License) still decodes PNGs. Consider a permissively licensed
   decoder; ask first.
 - **`MsdfBaker` is due for replacement.**

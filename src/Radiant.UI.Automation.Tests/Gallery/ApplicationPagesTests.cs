@@ -32,6 +32,22 @@ public sealed class ApplicationPagesTests : GalleryTest
     }
 
     [TestMethod]
+    public async Task TheThemeIsChosenFromAListAndTheColourPickerIsOnlyForSeededThemes()
+    {
+        await GoToAsync("Settings");
+        await Driver.SettingsPage().Style().Field().Expect().ToHaveValueAsync("Tonal");
+        await Driver.SettingsPage().Accent().Expect().ToExistAsync();
+
+        await Driver.SettingsPage().Style().TapAsync();
+        await Driver.Menu().Item().WithLabel("Quartz").TapAsync();
+
+        await Driver.SettingsPage().Style().Field().Expect().ToHaveValueAsync("Quartz");
+        await Driver.SettingsPage().Density().Field().Expect().ToHaveValueAsync("Compact");
+        await Driver.SettingsPage().Accent().Expect().ToBeGoneAsync();
+        Assert.AreEqual("Quartz", Themes.Theme.Name);
+    }
+
+    [TestMethod]
     public async Task TheDensityIsChosenFromAList()
     {
         await GoToAsync("Settings");

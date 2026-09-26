@@ -25,6 +25,7 @@ public sealed partial record Tabs(IReadOnlyList<Tab> Items, int Selected, Action
         ArgumentNullException.ThrowIfNull(context);
         var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
+        var surface = context.UseSurface();
         var row = context.UseRef(new ElementRef()).Value;
         var refs = context.UseMemo(() => Enumerable.Range(0, Items.Count).Select(_ => new ElementRef()).ToArray(), Items.Count);
         var indicator = context.UseState((Left: 0f, Width: 0f));
@@ -53,6 +54,12 @@ public sealed partial record Tabs(IReadOnlyList<Tab> Items, int Selected, Action
             return null;
         });
 
+        var style = theme.Theme.Components.Navigation;
+        var fillChosen = theme.Theme.Components.Icons.FillChosen;
+        if (style.Tabs == TabsLook.Segmented)
+        {
+            return Segmented(theme, surface, style, row, refs, width, left, rightToLeft);
+        }
         var hasIcons = Items.Any(t => t.Icon is not null);
         var tabs = new List<Element?>();
         for (var i = 0; i < Items.Count; i++)
@@ -95,8 +102,8 @@ public sealed partial record Tabs(IReadOnlyList<Tab> Items, int Selected, Action
                         },
                         Children =
                         [
-                            tab.Icon is null ? null : new SurfaceIcon(tab.Icon) { IconFilled = chosen },
-                            new SurfaceText(tab.Label) { TextType = TextType.TitleSmall, MaxLines = 1 },
+                            tab.Icon is null ? null : new SurfaceIcon(tab.Icon) { IconFilled = chosen && fillChosen },
+                            new SurfaceText(tab.Label) { TextType = style.TabText, MaxLines = 1 },
                         ],
                     },
                 ],
@@ -126,6 +133,93 @@ public sealed partial record Tabs(IReadOnlyList<Tab> Items, int Selected, Action
                     CornerRadii = Radiant.Graphics2D.CornerRadii.Top(3),
                 },
             ],
+        };
+    }
+
+    // Tabs sized to their labels in a tray, icons beside labels; the current one a raised pill
+    // that slides between them.
+    private Box Segmented(ResolvedTheme theme, SurfaceState surface, NavigationStyle style, ElementRef row, ElementRef[] refs, float width, float left, bool rightToLeft)
+    {
+        var selected = Selected;
+        var onSelect = OnSelect;
+        var count = Items.Count;
+        const float inset = 3f;
+        var tabs = new List<Element?>
+        {
+            width <= 0f ? null : new Box
+            {
+                HitTestVisible = false,
+                Layout = new LayoutStyle
+                {
+                    Position = PositionType.Absolute,
+                    Width = width,
+                    Inset = Edges.Physical(left, 0, Dimension.Undefined, 0, rightToLeft),
+                },
+                Background = theme.SegmentPill(surface),
+                BorderWidth = 1f,
+                BorderColor = theme.OutlineVariant,
+                CornerRadii = theme.Corners(CornerShapeRole.Small),
+                Shadows = theme.Elevation(ElevationLevel.Level1),
+            },
+        };
+        for (var i = 0; i < count; i++)
+        {
+            var index = i;
+            var tab = Items[i];
+            var chosen = i == selected;
+            tabs.Add(new Box
+            {
+                Ref = refs[i],
+                OnKeyDown = e =>
+                {
+                    var next = e.Key.ForDirection(rightToLeft) switch { KeyCode.Right => index + 1, KeyCode.Left => index - 1, _ => -1 };
+                    if (next >= 0 && next < count)
+                    {
+                        onSelect?.Invoke(next);
+                        refs[next].Focus();
+                        e.Handled = true;
+                    }
+                },
+                Children =
+                [
+                    new PressableSurface
+                    {
+                        TestId = TabButton,
+                        InsetFocusRing = true,
+                        // The chosen tab is on the pill (drawn sliding beneath it), so its content and
+                        // state layer are worked out on the pill's colour without drawing it.
+                        SurfaceColor = chosen ? SurfaceName.SurfaceBright : null,
+                        ShowSurface = false,
+                        ContentColor = chosen ? null : SurfaceName.SurfaceVariant,
+                        ContentOnToggle = chosen ? null : true,
+                        CornerShape = CornerShapeRole.Small,
+                        Role = SemanticsRole.Tab,
+                        Selected = chosen,
+                        OnPress = () => onSelect?.Invoke(index),
+                        Layout = new LayoutStyle
+                        {
+                            FlexDirection = FlexDirection.Row,
+                            Height = 30 + theme.DensityOffset / 2f,
+                            AlignItems = Align.Center,
+                            ColumnGap = 6,
+                            Padding = Edges.Symmetric(12, 0),
+                        },
+                        Children =
+                        [
+                            tab.Icon is null ? null : new SurfaceIcon(tab.Icon) { IconSize = 16 },
+                            new SurfaceText(tab.Label) { TextType = style.TabText, MaxLines = 1 },
+                        ],
+                    },
+                ],
+            });
+        }
+        return new Box
+        {
+            Background = theme.SegmentTray(surface),
+            CornerRadii = theme.Corners(CornerShapeRole.Medium),
+            Semantics = new Semantics { Role = SemanticsRole.TabList },
+            Layout = new LayoutStyle { AlignSelf = Align.FlexStart, Padding = Edges.All(inset) },
+            Children = [new Box { Ref = row, Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 2 }, Children = tabs }],
         };
     }
 }

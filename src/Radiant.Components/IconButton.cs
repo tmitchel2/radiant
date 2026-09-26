@@ -37,22 +37,23 @@ public sealed partial record IconButton : Component, IHasBackgroundColor, IHasCo
     {
         System.ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
-        var size = 40f + theme.DensityOffset;
-        var preset = Variant switch
+        var style = theme.Theme.Components.IconButton;
+        var size = style.Size + theme.DensityOffset;
+        var look = Variant switch
         {
-            IconButtonVariant.Filled => new PressableSurface { SurfaceColor = SurfaceName.Primary },
-            IconButtonVariant.Tonal => new PressableSurface { SurfaceColor = SurfaceName.Secondary, SurfaceContainerToggle = true },
-            IconButtonVariant.Outlined => new PressableSurface { ShowOutline = true, ContentColor = SurfaceName.SurfaceVariant, ContentOnToggle = true },
-            _ => new PressableSurface { ContentColor = SurfaceName.SurfaceVariant, ContentOnToggle = true },
+            IconButtonVariant.Filled => style.Filled,
+            IconButtonVariant.Tonal => style.Tonal,
+            IconButtonVariant.Outlined => style.Outlined,
+            _ => style.Standard,
         };
-        return ForwardContainer(preset with
+        return ForwardContainer(SurfaceLooks.Pressable(look) with
         {
-            CornerShape = CornerShapeRole.Full,
+            CornerShape = style.Shape,
             Label = Label,
             Layout = new LayoutStyle { Width = size, Height = size, AlignItems = Align.Center, JustifyContent = Justify.Center },
         }) with
         {
-            Children = [ForwardGlyph(new SurfaceIcon())],
+            Children = [ForwardGlyph(new SurfaceIcon { IconSize = style.IconSize })],
         };
     }
 }

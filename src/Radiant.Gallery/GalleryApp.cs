@@ -40,6 +40,7 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             new("rocket_launch", "New project"),
             new("tune", "Preferences"),
             new("dashboard_customize", "Docking"),
+            new("view_in_ar", "Studio"),
         ];
         Element content = page.Value switch
         {
@@ -55,6 +56,7 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             10 => ShellPages.NewProject(),
             11 => ShellPages.Preferences(),
             12 => ShellPages.Docking(),
+            13 => new StudioPage(),
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu, StartWithSheet = StartWithSheet },
         };
         // The app's commands: on the menu bar (macOS's own), in the palette, and on their shortcuts.
@@ -90,6 +92,7 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
             Actions =
             [
                 new Tooltip($"Search ({KeyChord.Command(KeyCode.K)})", new IconButton("search", "Search") { TestId = Search, OnPress = () => palette.Set(true) }),
+                new ThemePicker(Themes),
                 new Tooltip("Notifications", new IconButton("notifications", "Notifications") { TestId = Notifications }),
                 new Avatar("Tom Mitchell") { Size = 32 },
             ],
@@ -101,8 +104,21 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
     {
         public override Element? Build(BuildContext context)
         {
-            var dark = context.UseTheme().Theme.Colors.IsDark;
+            var theme = context.UseTheme().Theme;
+            var dark = theme.Colors.IsDark;
             var themes = Themes;
+            foreach (var preset in ThemePresets.All)
+            {
+                context.UseCommand(new Command($"theme-{preset.Name!.ToLowerInvariant()}", $"{preset.Name} theme")
+                {
+                    Menu = "View",
+                    Group = "Theme",
+                    Icon = "format_paint",
+                    Keywords = "style look appearance",
+                    Checked = theme.Name == preset.Name,
+                    Run = () => ThemePicker.Choose(themes, preset),
+                });
+            }
             context.UseCommand(new Command("dark", "Dark theme")
             {
                 Menu = "View",
@@ -111,7 +127,7 @@ internal sealed partial record GalleryApp(ThemeController Themes) : Component
                 Keywords = "night light appearance",
                 Checked = dark,
                 Shortcut = KeyChord.Command(KeyCode.D, KeyModifiers.Shift),
-                Run = () => themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = !themes.Theme.Colors.IsDark } }, System.TimeSpan.FromMilliseconds(300)),
+                Run = () => ThemePicker.ToggleDark(themes),
             });
             return null;
         }

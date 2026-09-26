@@ -25,16 +25,18 @@ public sealed partial record Card : Component, IHasBackgroundColor, IHasCornerSh
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
-        var preset = Variant switch
+        System.ArgumentNullException.ThrowIfNull(context);
+        var style = context.UseTheme().Theme.Components.Card;
+        var look = Variant switch
         {
-            CardVariant.Filled => new Surface { SurfaceColor = SurfaceName.SurfaceContainerHighest },
-            CardVariant.Outlined => new Surface { SurfaceColor = SurfaceName.Surface, ShowOutline = true, OutlineVariant = true },
-            _ => new Surface { SurfaceColor = SurfaceName.SurfaceContainerLow, Elevation = ElevationLevel.Level1 },
+            CardVariant.Filled => style.Filled,
+            CardVariant.Outlined => style.Outlined,
+            _ => style.Elevated,
         };
-        return ForwardSurface(preset with
+        return ForwardSurface(SurfaceLooks.Surface(look) with
         {
-            CornerShape = CornerShapeRole.Medium,
-            Layout = new LayoutStyle { Padding = Edges.All(16), RowGap = 8 },
+            CornerShape = style.Shape,
+            Layout = new LayoutStyle { Padding = Edges.All(style.Padding), RowGap = 8 },
         }) with
         {
             ClipContent = true,

@@ -66,7 +66,7 @@ public sealed partial record Sheet(bool Open, Action OnClose, Element? Content) 
                     FlexDirection = bottom ? FlexDirection.Column : FlexDirection.Row,
                     JustifyContent = start ? Justify.FlexStart : Justify.FlexEnd,
                 },
-                Background = theme.Scrim with { A = 0.32f * progress },
+                Background = theme.Scrim with { A = theme.Theme.Components.Overlay.ScrimOpacity * progress },
                 Children =
                 [
                     new DismissableLayer(new FocusScope(new Box

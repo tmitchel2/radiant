@@ -11,13 +11,24 @@ public class FontTests
     private static FontFace Inter => FontLibrary.Default.FindFace(FontLibrary.Inter)!;
 
     [TestMethod]
-    public void TheDefaultLibraryHasInterAndJetBrainsMonoWithItalicsAndTheIcons()
+    public void TheDefaultLibraryHasInterJetBrainsMonoAndSourceSerifWithItalicsAndTheIcons()
     {
         var library = FontLibrary.Default;
 
-        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono, FontLibrary.Icons }, library.Families.ToArray());
+        CollectionAssert.AreEquivalent(new[] { FontLibrary.Inter, FontLibrary.JetBrainsMono, FontLibrary.SourceSerif, FontLibrary.Icons }, library.Families.ToArray());
         Assert.IsTrue(library.FindFace(FontLibrary.Inter, italic: true)!.IsItalic);
         Assert.IsTrue(library.FindFace(FontLibrary.JetBrainsMono, italic: true)!.IsItalic);
+        Assert.IsTrue(library.FindFace(FontLibrary.SourceSerif, italic: true)!.IsItalic);
+    }
+
+    [TestMethod]
+    public void SourceSerifIsVariableInWeightAndOpticalSize()
+    {
+        var serif = FontLibrary.Default.FindFace(FontLibrary.SourceSerif)!;
+
+        Assert.IsNotNull(serif.FindAxis(FontVariation.Weight));
+        Assert.IsNotNull(serif.FindAxis(FontVariation.OpticalSize));
+        Assert.IsTrue(serif.HasGlyph('é'));
     }
 
     [TestMethod]

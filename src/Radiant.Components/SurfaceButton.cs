@@ -5,7 +5,7 @@ using Radiant.UI.Core;
 namespace Radiant.Components;
 
 /// <summary>
-/// A button: a pill-shaped <see cref="PressableSurface"/> with a label. Its variant sets its
+/// A button: a <see cref="PressableSurface"/> with a label, shaped as the theme shapes controls (a pill by default). Its variant sets its
 /// colours and elevation, and any facet set on the button overrides the variant's.
 /// <code>new SurfaceButton("Save", ButtonVariant.Filled) { OnPress = save }</code>
 /// </summary>
@@ -31,19 +31,20 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
     {
         System.ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
-        var horizontal = Variant == ButtonVariant.Text ? 12f : 24f;
+        var style = theme.Theme.Components.Button;
+        var horizontal = Variant == ButtonVariant.Text ? style.TextPadding : style.Padding;
         var hasIcon = Icon is not null;
-        var container = Preset(Variant) with
+        var container = SurfaceLooks.Pressable(Look(style, Variant)) with
         {
-            CornerShape = CornerShapeRole.Full,
+            CornerShape = style.Shape,
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,
                 AlignItems = Align.Center,
                 JustifyContent = Justify.Center,
-                MinHeight = 40f + theme.DensityOffset,
-                // With an icon, the leading side tightens by 8 (Material's 16/24).
-                Padding = new Edges(hasIcon ? horizontal - 8f : horizontal, 0, horizontal, 0),
+                MinHeight = style.Height + theme.DensityOffset,
+                // With an icon, the leading side tightens by a third of the padding (Material's 16/24).
+                Padding = new Edges(hasIcon ? System.MathF.Max(4f, horizontal - style.Padding / 3f) : horizontal, 0, horizontal, 0),
                 ColumnGap = 8,
             },
         };
@@ -51,23 +52,18 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
         {
             Children =
             [
-                hasIcon ? ForwardLeadingIcon(new SurfaceIcon { IconSize = 18f }) : null,
-                ForwardLabel(new SurfaceText { TextType = Radiant.Theming.TextType.LabelLarge }),
+                hasIcon ? ForwardLeadingIcon(new SurfaceIcon { IconSize = style.IconSize }) : null,
+                ForwardLabel(new SurfaceText { TextType = style.Label }),
             ],
         };
     }
 
-    private static PressableSurface Preset(ButtonVariant variant) => variant switch
+    private static SurfaceLook Look(ButtonStyle style, ButtonVariant variant) => variant switch
     {
-        ButtonVariant.Tonal => new PressableSurface { SurfaceColor = SurfaceName.Secondary, SurfaceContainerToggle = true },
-        ButtonVariant.Outlined => new PressableSurface { ContentColor = SurfaceName.Primary, ShowOutline = true },
-        ButtonVariant.Text => new PressableSurface { ContentColor = SurfaceName.Primary },
-        ButtonVariant.Elevated => new PressableSurface
-        {
-            SurfaceColor = SurfaceName.SurfaceContainerLow,
-            ContentColor = SurfaceName.Primary,
-            Elevation = ElevationLevel.Level1,
-        },
-        _ => new PressableSurface { SurfaceColor = SurfaceName.Primary },
+        ButtonVariant.Tonal => style.Tonal,
+        ButtonVariant.Outlined => style.Outlined,
+        ButtonVariant.Text => style.Text,
+        ButtonVariant.Elevated => style.Elevated,
+        _ => style.Filled,
     };
 }

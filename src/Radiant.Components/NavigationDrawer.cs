@@ -28,13 +28,16 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var theme = context.UseTheme().Theme;
+        var style = theme.Components.Navigation;
+        var fillChosen = theme.Components.Icons.FillChosen;
         var rows = new List<Element?>();
         var count = Items.Count;
         // Up and Down move focus through the destinations, as through a tab list; Enter or Space goes there.
         var refs = context.UseMemo(() => Enumerable.Range(0, count).Select(_ => new ElementRef()).ToArray(), count);
         if (Title is not null)
         {
-            rows.Add(new SurfaceText(Title) { TextType = TextType.TitleSmall, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 18, 16, 18) } });
+            rows.Add(new SurfaceText(Title) { TextType = style.DrawerSectionText, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 18, 16, 18) } });
         }
         for (var i = 0; i < Items.Count; i++)
         {
@@ -48,7 +51,7 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
                 {
                     rows.Add(new Box { Layout = new LayoutStyle { Padding = Edges.Symmetric(16, 8) }, Children = [new Divider()] });
                 }
-                rows.Add(new SurfaceText(section) { TextType = TextType.TitleSmall, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 12, 16, 12) } });
+                rows.Add(new SurfaceText(section) { TextType = style.DrawerSectionText, Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = new Edges(16, 12, 16, 12) } });
             }
             rows.Add(new Box
             {
@@ -71,13 +74,11 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
                 },
                 Children =
                 [
-                    new PressableSurface
+                    (chosen ? SurfaceLooks.Pressable(style.DrawerChosen) : new PressableSurface()) with
                     {
                         TestId = Item,
                         InsetFocusRing = true,
-                        SurfaceColor = chosen ? SurfaceName.Secondary : null,
-                        SurfaceContainerToggle = chosen ? true : null,
-                        CornerShape = CornerShapeRole.Full,
+                        CornerShape = CornerShapeRole.Control,
                         Role = SemanticsRole.Tab,
                         Selected = chosen,
                         OnPress = () => select?.Invoke(index),
@@ -85,16 +86,16 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
                         {
                             FlexDirection = FlexDirection.Row,
                             AlignItems = Align.Center,
-                            Height = 56,
-                            Padding = new Edges(16, 0, 24, 0),
+                            Height = style.DrawerItemHeight,
+                            Padding = new Edges(style.DrawerItemPadding, 0, style.DrawerItemPadding * 1.5f, 0),
                             ColumnGap = 12,
                         },
                         Children =
                         [
-                            new SurfaceIcon(item.Icon) { IconFilled = chosen, Legibility = chosen ? null : Legibility.Medium },
-                            new SurfaceText(item.Label) { TextType = TextType.LabelLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
+                            new SurfaceIcon(item.Icon) { IconSize = style.DrawerIconSize, IconFilled = chosen && fillChosen, Legibility = chosen ? null : Legibility.Medium },
+                            new SurfaceText(item.Label) { TextType = style.DrawerItemText, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
                             item.Badge is { } badge && badge > 0
-                                ? new SurfaceText(badge.ToString(System.Globalization.CultureInfo.InvariantCulture)) { TextType = TextType.LabelLarge }
+                                ? new SurfaceText(badge.ToString(System.Globalization.CultureInfo.InvariantCulture)) { TextType = style.DrawerItemText }
                                 : null,
                         ],
                     },
@@ -104,17 +105,18 @@ public sealed partial record NavigationDrawer(IReadOnlyList<NavItem> Items, int 
         // The destinations scroll when there are more than the window's height shows.
         return new Surface
         {
-            SurfaceColor = SurfaceName.SurfaceContainerLow,
+            SurfaceColor = style.DrawerSurface,
             Semantics = new Semantics { Role = SemanticsRole.TabList, Label = Title },
-            Layout = new LayoutStyle { Width = Width, AlignSelf = Align.Stretch },
+            Layout = new LayoutStyle { Width = Width, AlignSelf = Align.Stretch, FlexDirection = FlexDirection.Row },
             Children =
             [
                 new ScrollArea
                 {
-                    Layout = new LayoutStyle { FlexGrow = 1 },
+                    Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                     ContentLayout = new LayoutStyle { Padding = Edges.Symmetric(12, 0) },
                     Children = rows,
                 },
+                style.DrawerDivider ? new Divider { Vertical = true } : null,
             ],
         };
     }

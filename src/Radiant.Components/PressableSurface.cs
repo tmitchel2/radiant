@@ -48,7 +48,11 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
-        var state = context.UseSurface().With(this.ToSurfaceChange());
+        var interaction = theme.Theme.Components.Interaction;
+        // A theme that fades disabled controls keeps their colours and fades the whole control.
+        var fade = ShowDisabled == true && interaction.Disabled == DisabledLook.Fade;
+        var change = this.ToSurfaceChange();
+        var state = context.UseSurface().With(fade ? change with { ShowDisabled = false } : change);
         var hovered = context.UseState(false);
         var pressed = context.UseState(false);
         var focusRing = context.UseState(false);
@@ -75,21 +79,23 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
             HitTestVisible = false,
         };
 
-        // Keyboard focus also shows a ring just outside the control, as Material's focus indicator
-        // does: 3 wide, 2 out, in the secondary colour; or just inside, for items in a list.
-        const float ringWidth = 3f, ringGap = 2f;
+        // Keyboard focus also shows a ring just outside the control, as the theme draws it (by
+        // default Material's focus indicator: 3 wide, 2 out, in the secondary colour); or just
+        // inside, for items in a list.
+        var (ringWidth, ringGap) = (interaction.FocusRingWidth, interaction.FocusRingGap);
         var ringOut = InsetFocusRing ? 0f : ringWidth + ringGap;
         var ring = !focusRing.Value || disabled ? null : new Box
         {
             Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = Edges.All(-ringOut) },
             BorderWidth = ringWidth,
-            BorderColor = theme.Get(SurfaceName.Secondary),
+            BorderColor = theme.Get(interaction.FocusRingColor),
             CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius + ringOut),
             HitTestVisible = false,
         };
 
         return ThemeContexts.Surface.Provide(state, SurfaceBox.For(this, theme, state) with
         {
+            Opacity = fade ? interaction.DisabledOpacity : 1f,
             Focusable = !disabled,
             TabIndex = TabIndex,
             Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Checked = Checked, Expanded = Expanded },

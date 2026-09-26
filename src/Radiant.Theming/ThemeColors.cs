@@ -5,7 +5,8 @@ namespace Radiant.Theming;
 
 /// <summary>
 /// Where a theme's colours come from: a seed colour turned into a full scheme by Radiant's colour
-/// system (the Material 3 method), in one of its variants, light or dark, at a contrast level.
+/// system (the Material 3 method), in one of its variants, light or dark, at a contrast level; or
+/// hand-picked <see cref="ColorRoles"/> for light and dark.
 /// </summary>
 public sealed record ThemeColors
 {
@@ -35,4 +36,17 @@ public sealed record ThemeColors
 
     /// <summary>Whether success, warning and info are nudged towards the seed's hue, so they sit well with it.</summary>
     public bool HarmonizeCustomColors { get; init; } = true;
+
+    /// <summary>
+    /// Hand-picked colours for the light appearance, used instead of the seed's scheme when not
+    /// <see cref="IsDark"/>. A fixed palette has one contrast level: <see cref="ContrastLevel"/>,
+    /// <see cref="Variant"/> and the seed don't change it.
+    /// </summary>
+    public ColorRoles? Light { get; init; }
+
+    /// <summary>Hand-picked colours for the dark appearance, used instead of the seed's scheme when <see cref="IsDark"/>.</summary>
+    public ColorRoles? Dark { get; init; }
+
+    /// <summary>The hand-picked colours in force for the appearance, or null if they come from the seed.</summary>
+    public ColorRoles? Roles => IsDark ? Dark : Light;
 }

@@ -9,8 +9,10 @@ namespace Radiant.Components;
 /// <summary>
 /// A labelled text field, filled or outlined. The label sits in the field until it's focused or has
 /// text, then floats above; the indicator (the bottom line, or the outline) turns to the primary
-/// colour and thickens while focused. Supporting text, an error message and a character count sit
-/// below it, and icons can lead or trail.
+/// colour and thickens while focused. In a theme whose fields put the label above
+/// (<see cref="FieldLook.LabelAbove"/>), the label sits over a plain bordered input instead, whose
+/// border turns to the primary colour, ringed, while focused. Supporting text, an error message and
+/// a character count sit below it, and icons can lead or trail.
 /// <para>
 /// Controlled when given <see cref="Value"/> and <see cref="OnChange"/>, otherwise it keeps its own
 /// text, starting from <see cref="InitialText"/>.
@@ -159,6 +161,15 @@ public sealed partial record TextField(string Label) : Component
 
         var countText = MaxLength is { } max ? string.Create(CultureInfo.InvariantCulture, $"{state.Text.Length}/{max}") : null;
         var under = Error ?? SupportingText;
+        var style = theme.Theme.Components.Field;
+        if (Variant == TextFieldVariant.Plain)
+        {
+            return Plain(theme, style, surface, state, onChange, input, focused, focusChange);
+        }
+        if (style.Look == FieldLook.LabelAbove)
+        {
+            return LabelAbove(theme, style, surface, state, onChange, input, focused, focusChange, countText, under);
+        }
 
         return new Box
         {
@@ -257,6 +268,129 @@ public sealed partial record TextField(string Label) : Component
                     ],
                 },
             ],
+        };
+    }
+
+    // The label above a plain bordered input; supporting text, error and count below.
+    private Box LabelAbove(ResolvedTheme theme, FieldStyle style, SurfaceState surface, TextEditState state, Action<TextEditState> onChange,
+        ElementRef input, State<bool> focused, Action<bool>? focusChange, string? countText, string? under)
+    {
+        var error = Error is not null;
+        var recolor = Disabled && theme.RecolorsDisabled();
+        var interaction = theme.Theme.Components.Interaction;
+        var faded = surface with { Content = surface.Content with { Opacity = Legibility.Low } };
+        var accent = error ? theme.Get(SurfaceName.Error) : theme.Get(SurfaceName.Primary);
+        var quiet = theme.Get(SurfaceName.SurfaceVariant, on: true);
+        var ink = recolor ? theme.ContentColor(faded) : theme.Get(SurfaceName.Surface, on: true);
+        var active = focused.Value && !Disabled;
+        var border = recolor ? theme.ContentColor(faded) : error || active ? accent : theme.Outline;
+        var body = theme.Text(style.Text);
+        var small = theme.Text(TextType.BodySmall);
+        var height = (Multiline ? style.Height * 2f : style.Height) + theme.DensityOffset;
+        var radius = theme.Radius(style.Shape);
+        var filled = Variant == TextFieldVariant.Filled;
+        const float ring = 3f;
+        return new Box
+        {
+            Opacity = Disabled && !recolor ? interaction.DisabledOpacity : 1f,
+            Layout = new LayoutStyle { MinWidth = 210, AlignSelf = Align.Stretch, RowGap = 6 }.Merge(Layout ?? default),
+            Children =
+            [
+                // The input carries the label for assistive technology.
+                new TextBlock(Label) { IsDecorative = true, Wrap = false, Style = theme.Text(style.Label) with { Color = error ? accent : ink } },
+                new Box
+                {
+                    OnPointerDown = _ => input.Focus(visible: false),
+                    Layout = new LayoutStyle
+                    {
+                        FlexDirection = FlexDirection.Row,
+                        AlignItems = Multiline ? Align.FlexStart : Align.Center,
+                        MinHeight = height,
+                        Padding = new Edges(LeadingIcon is null ? 12 : 10, 0, TrailingIcon is null && Trailing is null ? 12 : 4, 0),
+                        ColumnGap = 8,
+                    },
+                    Background = filled ? theme.Get(SurfaceName.SurfaceContainer) : theme.Get(SurfaceName.SurfaceContainerLowest),
+                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius),
+                    BorderWidth = 1f,
+                    BorderColor = filled && !active && !error ? theme.Get(SurfaceName.SurfaceContainer) : border,
+                    Children =
+                    [
+                        // Focus rings the input softly in the accent.
+                        !active ? null : new Box
+                        {
+                            HitTestVisible = false,
+                            Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = Edges.All(-1f - ring) },
+                            BorderWidth = ring,
+                            BorderColor = accent with { A = 0.25f },
+                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius + ring + 1f),
+                        },
+                        LeadingIcon is null ? null : new SurfaceIcon(LeadingIcon) { IconSize = 18, Legibility = Legibility.Medium },
+                        new TextInput(state, onChange)
+                        {
+                            TestId = Input,
+                            Ref = input,
+                            Label = Label,
+                            Disabled = Disabled,
+                            ReadOnly = ReadOnly,
+                            Multiline = Multiline,
+                            OnSubmit = OnSubmit,
+                            Placeholder = Placeholder,
+                            PlaceholderColor = theme.ContentColor(faded),
+                            Style = body with { Color = ink },
+                            CaretColor = accent,
+                            SelectionColor = accent with { A = 0.3f },
+                            OnFocusChange = f =>
+                            {
+                                focused.Set(f);
+                                focusChange?.Invoke(f);
+                            },
+                            Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, MinHeight = body.LineHeight ?? 20f, Margin = Multiline ? Edges.Symmetric(0, 8) : Edges.None },
+                        },
+                        Trailing ?? (TrailingIcon is null ? null
+                            : OnTrailingIconPress is null
+                                ? new SurfaceIcon(TrailingIcon) { IconSize = 18, Legibility = Legibility.Medium, Layout = new LayoutStyle { Margin = new Edges(0, 0, 8, 0) } }
+                                : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { TestId = TrailingButton, OnPress = OnTrailingIconPress, Layout = new LayoutStyle { Width = 28, Height = 28 } }),
+                    ],
+                },
+                under is null && countText is null ? null : new Box
+                {
+                    Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, ColumnGap = 16 },
+                    Children =
+                    [
+                        new TextBlock(under ?? "") { Style = small with { Color = error ? accent : quiet }, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
+                        countText is null ? null : new TextBlock(countText) { Style = small with { Color = quiet } },
+                    ],
+                },
+            ],
+        };
+    }
+
+    // Just the text input, framed by whatever holds it.
+    private TextInput Plain(ResolvedTheme theme, FieldStyle style, SurfaceState surface, TextEditState state, Action<TextEditState> onChange,
+        ElementRef input, State<bool> focused, Action<bool>? focusChange)
+    {
+        var faded = surface with { Content = surface.Content with { Opacity = Legibility.Low } };
+        var accent = theme.Get(SurfaceName.Primary);
+        return new TextInput(state, onChange)
+        {
+            TestId = Input,
+            Ref = input,
+            Label = Label,
+            Disabled = Disabled,
+            ReadOnly = ReadOnly,
+            Multiline = Multiline,
+            OnSubmit = OnSubmit,
+            Placeholder = Placeholder,
+            PlaceholderColor = theme.ContentColor(faded),
+            Style = theme.Text(style.Text) with { Color = Disabled ? theme.ContentColor(faded) : theme.ContentColor(surface) },
+            CaretColor = accent,
+            SelectionColor = accent with { A = 0.3f },
+            OnFocusChange = f =>
+            {
+                focused.Set(f);
+                focusChange?.Invoke(f);
+            },
+            Layout = new LayoutStyle { AlignSelf = Align.Stretch, MinHeight = theme.Text(style.Text).LineHeight ?? 20f }.Merge(Layout ?? default),
         };
     }
 }

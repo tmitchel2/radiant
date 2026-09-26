@@ -38,11 +38,10 @@ public sealed record Popover(ElementRef Anchor, bool Open, Action OnClose, Eleme
     {
         ArgumentNullException.ThrowIfNull(context);
         var (anchor, close, content, side, align, modal, label, layout) = (Anchor, OnClose, Content, Side, Align, Modal, Label, Layout);
-        return new Presence(Open, progress => new Anchored(anchor, new DismissableLayer(new FocusScope(new Surface
+        var look = context.UseTheme().Theme.Components.Overlay.Popover;
+        return new Presence(Open, progress => new Anchored(anchor, new DismissableLayer(new FocusScope(SurfaceLooks.Surface(look) with
         {
-            SurfaceColor = SurfaceName.SurfaceContainerHigh,
             CornerShape = CornerShapeRole.Medium,
-            Elevation = ElevationLevel.Level2,
             Semantics = new Semantics { Role = SemanticsRole.Dialog, Label = label },
             Layout = new LayoutStyle { MaxWidth = 360, Padding = Edges.All(16) }.Merge(layout ?? default),
             Children = [new Box { Opacity = progress, Children = [content] }],

@@ -29,6 +29,7 @@ internal static partial class Pages
 
     internal sealed partial record SettingsPage(ThemeController Themes) : Component
     {
+        [TestId<SelectField>] public static partial string Style { get; }
         [TestId<Switch>] public static partial string DarkTheme { get; }
         [TestId<SelectField>] public static partial string Density { get; }
         [TestId<ColorPicker>] public static partial string Accent { get; }
@@ -39,9 +40,16 @@ internal static partial class Pages
         {
             var notifications = context.UseState(true);
             var digest = context.UseState(false);
-            var density = context.UseState(0);
             var themes = Themes;
             var theme = context.UseTheme();
+            var names = new string[ThemePresets.All.Count];
+            var style = -1;
+            for (var i = 0; i < names.Length; i++)
+            {
+                names[i] = ThemePresets.All[i].Name!;
+                style = names[i] == theme.Theme.Name ? i : style;
+            }
+            var seeded = theme.Theme.Colors.Roles is null;
             return new Box
             {
                 Layout = new LayoutStyle { RowGap = 32 },
@@ -50,18 +58,23 @@ internal static partial class Pages
                     new PageHeading("Settings") { Description = "Manage your account and preferences" },
                     new SettingsSection("Appearance",
                     [
+                        new SettingsRow("Theme", new SelectField("Theme", names, style, i => ThemePicker.Choose(themes, ThemePresets.All[i]))
+                        {
+                            TestId = Style,
+                            Layout = new LayoutStyle { Width = 200 },
+                        })
+                        {
+                            Description = "Colour, shape, type and shadows, together",
+                        },
                         new SettingsRow("Dark theme", new Switch(theme.Theme.Colors.IsDark, dark =>
                             themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = dark } }, System.TimeSpan.FromMilliseconds(300))) { TestId = DarkTheme })
                         {
                             Description = "Use dark colours everywhere",
                         },
-                        new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], density.Value, i =>
-                        {
-                            density.Set(i);
-                            themes.Set(themes.Theme with { Density = -i });
-                        }) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
+                        new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], theme.Theme.Density < 0 ? 1 : 0, i =>
+                            themes.Set(themes.Theme with { Density = -i })) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
                     ]) { Description = "How Radiant looks on this device." },
-                    new SettingsSection("Theme colour",
+                    !seeded ? null : new SettingsSection("Theme colour",
                     [
                         new Box
                         {
@@ -240,7 +253,7 @@ internal static partial class Pages
                 new Hero("Desktop apps that feel native, built in C#")
                 {
                     Eyebrow = "Radiant 1.0",
-                    Text = "A declarative UI, a Material-inspired theme system, sharp text and GPU rendering, in one platform.",
+                    Text = "A declarative UI, themes you can swap live, sharp text and GPU rendering, in one platform.",
                     Actions = [new SurfaceButton("Get started") { TestId = GetStarted, Icon = "rocket_launch" }, new SurfaceButton("Read the docs", ButtonVariant.Text) { TestId = ReadTheDocs }],
                     Picture = SamplePictures.Gradient(250),
                 },

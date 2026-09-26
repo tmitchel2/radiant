@@ -17,7 +17,7 @@
     <InternalsVisibleTo Include="Radiant.Text.Tests" />
   </ItemGroup>
 
-  <!-- Variable Inter and JetBrains Mono (SIL Open Font License; licences alongside). -->
+  <!-- Variable Inter, JetBrains Mono and Source Serif 4 (SIL Open Font License; licences alongside). -->
   <ItemGroup>
     <EmbeddedResource Include="Fonts\*.ttf" LogicalName="Radiant.Text.Fonts.%(Filename)%(Extension)" />
   </ItemGroup>

@@ -15,18 +15,102 @@ RadiantUI.Run(new ThemeProvider(themes, new App()));
 themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = true } }, TimeSpan.FromMilliseconds(300));
 ```
 
+## Presets
+
+`ThemePresets` holds ready-made themes: the same components, a different look each. Every part of
+the theme below differs between them.
+
+| Preset | Look |
+|---|---|
+| `Tonal` | The default: colour from one seed in tonal palettes, `Tonal` components (pill controls, floating labels, underlined tabs), Inter, soft layered shadows |
+| `Quartz` | Crisp and neutral: cool greys and indigo, `Hairline` components with 6 px controls and square chips, semibold Inter headings, small tight shadows, compact |
+| `Linen` | Warm and calm: ivory and warm charcoal, terracotta, `Hairline` components with 8 px controls and pill chips, bold Inter headings with Source Serif for display text, a blue focus ring, faint diffuse shadows, compact |
+
+Switch with `theme.WithStyle(preset)`: it keeps the user's light or dark, contrast level, seed and
+reduced motion, so a style change doesn't undo their settings.
+
+```csharp
+themes.Set(themes.Theme.WithStyle(ThemePresets.Linen), TimeSpan.FromMilliseconds(400));
+```
+
+`Theme.Name` says which preset a theme came from (for a picker to tick); `ThemePresets.All` lists
+them and `ThemePresets.Find(name)` looks one up. The gallery switches between them live
+([components.md](components.md#the-gallery)).
+
 ## What a theme holds
 
 | Part | Type | Default |
 |---|---|---|
-| Colour | `ThemeColors` | Seed `#6750a4`, tonal spot, light, contrast 0, 2021 spec; success, warning and info colours harmonised to the seed |
-| Shape | `ShapeScale` | Radii 4/8/12/16/20/24/28/32/48 and full, for `CornerShapeRole` |
-| Type | `TypeScale` | Material 3's 15 styles in Inter plus Destash's extra steps, and `Code` in JetBrains Mono |
-| Elevation | `ElevationScale` | Levels 0–5, each a key shadow and an ambient shadow |
+| Colour | `ThemeColors` | Seed `#6750a4`, tonal spot, light, contrast 0, 2021 spec; success, warning and info colours harmonised to the seed; or hand-picked `ColorRoles` for light and dark |
+| Shape | `ShapeScale` | Radii 4/8/12/16/20/24/28/32/48 and full, for `CornerShapeRole`; `Control` (buttons and the like) full |
+| Type | `TypeScale` | Material 3's 15 styles in Inter plus Destash's extra steps, `Code` in JetBrains Mono, and `Overline` (11 px, spaced, set in capitals by `SurfaceText`) |
+| Elevation | `ElevationScale` | Levels 0–5, each any number of `ElevationShadow`s (offset, blur, spread, opacity); by default a key shadow and an ambient shadow |
+| Components | `ComponentStyles` | `Tonal`: see [Component styles](#component-styles) |
 | State layers | `StateLayerOpacities` | Hover .08, focus .10, pressed .10, dragged .16; disabled .12 container, .38 content |
 | Motion | `MotionScheme` | Short/medium/long durations, standard/enter/exit easings, reduced motion |
 | Density | `int` | 0 (each step −4 px on controls) |
 | Spacing | `SpacingUnit` | 4 px |
+
+## Component styles
+
+Colour, shape and type don't make a look on their own: components differ in size, in which colours
+each variant uses, and in how they're built. `Theme.Components` holds that, one record per
+family, and components read it instead of constants. Two sets are built in:
+
+| | `ComponentStyles.Tonal` (default) | `ComponentStyles.Hairline` |
+|---|---|---|
+| Variants | Low-emphasis buttons in the accent; tonal containers | The accent only for the main action and what's on; outlined and text buttons in the ink colour; cards, menus and dialogs white with 1 px lines |
+| Sizes | 40 px buttons padded 24; 48 px menu rows; 56 px drawer rows and fields; 64 px app bar | 40 px buttons padded 14 (36 compact); 36 px menu and drawer rows, inset and rounded; 40 px fields; 56 px app bar with a line under it |
+| Tabs, segments | Underlined, icons above labels; joined outlined segments with a tick | A tray with the chosen one a raised pill (sliding, for tabs); icons beside labels |
+| Fields | Label floats into the field or its outline | Label above a plain bordered input, ringed in the accent while focused |
+| Selection | Halos round indicators; 52 × 32 switch whose handle grows; filled slider thumb | No halos (focus rings the indicator); 16 px boxes and radios; 36 × 20 switch; ringed slider thumb |
+| Disabled | Recoloured faint | The usual colours, faded to 50% |
+| Icons | 24 px, weight 400, chosen ones filled | 20 px, weight 300, never filled |
+| Focus ring | 3 px, 2 out, secondary | 2 px, 2 out, primary |
+
+The records:
+
+- `InteractionStyle`: the focus ring (width, gap, colour family) and the `DisabledLook`.
+- `IconStyle`: default size, stroke weight, and whether chosen icons fill.
+- `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, and a `SurfaceLook` per variant.
+- `ChipStyle`: chips' and tags' sizes, corners and looks.
+- `CardStyle`: corners, padding and a look per variant.
+- `OverlayStyle`: menus, dialogs, popovers and the scrim.
+- `NavigationStyle`: the app bar, the drawer and the `TabsLook`.
+- `FieldStyle`: the `FieldLook`, height, corners and text.
+- `SelectionStyle`: halos, check box and radio sizes, the `SwitchLook`, the `SliderThumb` and track thickness.
+
+A `SurfaceLook` is a variant's colours as data: surface and content families, on and container
+toggles, outline and elevation, the same things a component's facets set. Where the structure
+differs, an enum picks it and the component builds that structure around the same behaviour, keys
+and semantics. Tweak a set with `with`, as `Quartz` does for square chips:
+
+```csharp
+Components = ComponentStyles.Hairline with
+{
+    Chip = ComponentStyles.Hairline.Chip with { Shape = CornerShapeRole.Small },
+},
+```
+
+Component styles switch at the start of an animated theme change; colours and corners animate.
+
+## Shapes: controls and circles
+
+`CornerShapeRole.Full` is a pill or a circle whatever the theme: avatars, radio buttons, switch
+handles, dots. `CornerShapeRole.Control` is for buttons, icon buttons, button and segmented
+groups, search fields, pagination and the current navigation item: a pill by default, but a
+theme can round them gently instead (`Quartz` 6 px, `Linen` 8 px). In a transition a pill's
+corners are mixed from 64 px, so they close steadily rather than all at the end.
+
+## Hand-picked colours
+
+For a theme whose colours aren't worked out from a seed, set `ThemeColors.Light` and
+`ThemeColors.Dark` to `ColorRoles`: every role (surfaces, containers, content, outlines, inverse)
+and each family as a `ColorFamily` (colour, on, container, on container). The one for the
+appearance (`IsDark`) replaces the seed's scheme role for role, so components look the same
+either way. The fixed families default to their family's container colours. A fixed palette has
+one contrast level: the seed, variant and contrast level don't change it. The presets' palettes
+are tested to keep every family's content at 4.5:1 or more, light and dark.
 
 ## Colour: surfaces, not swatches
 

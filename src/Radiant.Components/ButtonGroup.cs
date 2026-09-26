@@ -22,7 +22,7 @@ public sealed record ButtonGroup(IReadOnlyList<GroupButton> Buttons) : Component
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
-        var radius = theme.Radius(CornerShapeRole.Full);
+        var radius = theme.Radius(CornerShapeRole.Control);
         var children = new List<Element?>();
         for (var i = 0; i < Buttons.Count; i++)
         {
@@ -56,8 +56,8 @@ public sealed record ButtonGroup(IReadOnlyList<GroupButton> Buttons) : Component
                 Focusable = !disabled,
                 Semantics = new Semantics { Role = SemanticsRole.Button, Label = button.Label, Disabled = disabled },
                 Background = layer > 0f ? theme.StateLayerColor(state, layer) : null,
-                BorderWidth = ring.Value ? 3f : 1f,
-                BorderColor = ring.Value ? theme.Get(SurfaceName.Secondary) : theme.Outline,
+                BorderWidth = ring.Value ? theme.Theme.Components.Interaction.FocusRingWidth + 1f : 1f,
+                BorderColor = ring.Value ? theme.Get(theme.Theme.Components.Interaction.FocusRingColor) : theme.Outline,
                 CornerRadii = new Radiant.Graphics2D.CornerRadii(First ? radius : 0f, Last ? radius : 0f, Last ? radius : 0f, First ? radius : 0f),
                 OnPointerEnter = _ => hovered.Set(true),
                 OnPointerLeave = _ =>

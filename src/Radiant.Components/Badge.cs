@@ -8,7 +8,8 @@ namespace Radiant.Components;
 
 /// <summary>
 /// A small marker on the top right of its child: a dot for "something new", or a count (99+ past
-/// 99), in the error colour.
+/// 99), in the error colour. <see cref="Inline"/>, it's a quiet count in the flow of a row instead
+/// ("Versions 3"), for a count that's information rather than an alert.
 /// </summary>
 /// <param name="Child">What the badge sits on (usually an icon).</param>
 public sealed record Badge(Element? Child) : Component
@@ -19,11 +20,36 @@ public sealed record Badge(Element? Child) : Component
     /// <summary>Whether to show the badge at all.</summary>
     public bool Visible { get; init; } = true;
 
+    /// <summary>Whether it's a neutral count after its child in a row, rather than a marker on its corner.</summary>
+    public bool Inline { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
+        if (Inline)
+        {
+            var label = Count is { } n ? (n > 99 ? "99+" : n.ToString(CultureInfo.InvariantCulture)) : "";
+            return new Box
+            {
+                Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 6 },
+                Children =
+                [
+                    Child,
+                    !Visible ? null : new Surface
+                    {
+                        SurfaceColor = SurfaceName.SurfaceContainerHighest,
+                        ContentColor = SurfaceName.SurfaceVariant,
+                        ContentOnToggle = true,
+                        CornerShape = CornerShapeRole.Full,
+                        Semantics = new Semantics { Role = SemanticsRole.None, Label = label },
+                        Layout = new LayoutStyle { MinWidth = 20, Height = 20, Padding = Edges.Symmetric(6, 0), AlignItems = Align.Center, JustifyContent = Justify.Center },
+                        Children = [new SurfaceText(label) { TextType = TextType.LabelMedium }],
+                    },
+                ],
+            };
+        }
         Element? marker = null;
         if (Visible)
         {

@@ -22,11 +22,14 @@ public sealed record Tag(string Text) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return new Surface
+        var style = context.UseTheme().Theme.Components.Chip;
+        // Outlined tags draw their family's colour on the surface they're on; a neutral one keeps the surface's own.
+        var preset = style.OutlinedTags
+            ? new Surface { ContentColor = Color == SurfaceName.Secondary ? null : Color, ShowOutline = true, OutlineVariant = true }
+            : new Surface { SurfaceColor = Color, SurfaceContainerToggle = true };
+        return preset with
         {
-            SurfaceColor = Color,
-            SurfaceContainerToggle = true,
-            CornerShape = CornerShapeRole.Small,
+            CornerShape = style.TagShape,
             Semantics = new Semantics { Role = SemanticsRole.None, Label = Text },
             Layout = new LayoutStyle
             {
@@ -34,7 +37,7 @@ public sealed record Tag(string Text) : Component
                 AlignItems = Align.Center,
                 AlignSelf = Align.FlexStart,
                 ColumnGap = 4,
-                Height = 24,
+                Height = style.TagHeight,
                 Padding = new Edges(Icon is null ? 8 : 6, 0, 8, 0),
             },
             Children =

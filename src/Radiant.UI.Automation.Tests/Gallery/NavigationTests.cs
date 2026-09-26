@@ -1,3 +1,4 @@
+using Radiant.Theming;
 using Radiant.UI.Driver;
 
 namespace Radiant.UI.Automation.Tests.Gallery;
@@ -19,6 +20,7 @@ public sealed class NavigationTests : GalleryTest
     [DataRow("New project")]
     [DataRow("Preferences")]
     [DataRow("Docking")]
+    [DataRow("Studio")]
     [DataRow("Components")]
     public async Task EveryDestinationOpensItsPage(string destination)
     {
@@ -106,6 +108,44 @@ public sealed class NavigationTests : GalleryTest
         await Driver.WaitForIdleAsync();
 
         Assert.IsTrue(Themes.Theme.Colors.IsDark);
+    }
+
+    [TestMethod]
+    [DataRow("Quartz")]
+    [DataRow("Linen")]
+    public async Task TheThemeButtonSwitchesThemeKeepingDarkMode(string preset)
+    {
+        await Driver.KeyAsync("Cmd+Shift+D");
+        await Driver.WaitForIdleAsync();
+
+        await Driver.ThemePicker().Button().TapAsync();
+        await Driver.Menu().Item().WithLabel(preset).TapAsync();
+        await Driver.WaitForIdleAsync();
+
+        Assert.AreEqual(preset, Themes.Theme.Name);
+        Assert.IsTrue(Themes.Theme.Colors.IsDark, "dark mode is kept");
+        Assert.AreSame(ThemePresets.Find(preset)!.Colors.Dark, Themes.Theme.Colors.Dark);
+    }
+
+    [TestMethod]
+    public async Task TheThemeMenuSwapsLightAndDark()
+    {
+        await Driver.ThemePicker().Button().TapAsync();
+        await Driver.Menu().Item().WithLabel("Dark").TapAsync();
+        await Driver.WaitForIdleAsync();
+
+        Assert.IsTrue(Themes.Theme.Colors.IsDark);
+    }
+
+    [TestMethod]
+    public async Task ThemesCanBeChosenFromTheCommandPalette()
+    {
+        await Driver.KeyAsync("Cmd+K");
+        await Driver.TypeAsync("Linen theme");
+        await Driver.KeyAsync("Enter");
+        await Driver.WaitForIdleAsync();
+
+        Assert.AreEqual("Linen", Themes.Theme.Name);
     }
 
     [TestMethod]

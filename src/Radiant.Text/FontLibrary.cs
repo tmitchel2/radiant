@@ -7,8 +7,8 @@ namespace Radiant.Text;
 
 /// <summary>
 /// The font families text can be set in, by name, with a fallback order for characters a family
-/// lacks. <see cref="Default"/> holds Radiant's embedded fonts: Inter and JetBrains Mono, both
-/// variable (any weight) and both with italics.
+/// lacks. <see cref="Default"/> holds Radiant's embedded fonts: Inter, JetBrains Mono and Source
+/// Serif 4, all variable (any weight) and all with italics.
 /// </summary>
 public sealed class FontLibrary : IDisposable
 {
@@ -17,6 +17,9 @@ public sealed class FontLibrary : IDisposable
 
     /// <summary>JetBrains Mono: Radiant's fixed-width typeface.</summary>
     public const string JetBrainsMono = "JetBrains Mono";
+
+    /// <summary>Source Serif 4: Radiant's serif typeface, with an optical-size axis (Latin only).</summary>
+    public const string SourceSerif = "Source Serif 4";
 
     /// <summary>
     /// Material Symbols Rounded: icons, drawn by setting an icon's name as text ("check",
@@ -31,7 +34,7 @@ public sealed class FontLibrary : IDisposable
     private readonly List<FontFace> _fallbacks = [];
     private readonly object _gate = new();
 
-    /// <summary>A library with Radiant's embedded fonts: Inter and JetBrains Mono.</summary>
+    /// <summary>A library with Radiant's embedded fonts: Inter, JetBrains Mono and Source Serif 4.</summary>
     public static FontLibrary Default => s_default.Value;
 
     /// <summary>The registered family names.</summary>
@@ -153,6 +156,8 @@ public sealed class FontLibrary : IDisposable
         library.Register(Embedded("InterVariable-Italic.ttf", Inter, italic: true));
         library.Register(Embedded("JetBrainsMonoVariable.ttf", JetBrainsMono, italic: false));
         library.Register(Embedded("JetBrainsMonoVariable-Italic.ttf", JetBrainsMono, italic: true));
+        library.Register(Embedded("SourceSerif4Variable-Roman.ttf", SourceSerif, italic: false));
+        library.Register(Embedded("SourceSerif4Variable-Italic.ttf", SourceSerif, italic: true));
         // Icons are only ever asked for by name: they must never stand in for missing letters.
         library.Register(Embedded("MaterialSymbolsRounded.ttf", Icons, italic: false), fallback: false);
         return library;
