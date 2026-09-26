@@ -82,6 +82,21 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Rendering (`Radiant.Graphics2D`)
 
+- **Slug is costly and soft when small.** It isn't pixel-snapped, so it's a little softer than
+  coverage at small sizes. It also costs 3–4× coverage on the GPU: ~3.7 ms for a full 1080p
+  screen of 14 px text on an M4 Pro, against ~0.8 ms.
+  - Features under 2 px (a period at 11 px) are its weak spot, because it takes one ray each way
+    rather than the pixel's area.
+  - The paper's band splitting and corner clipping aren't implemented.
+- **Slug's cache is per font instance.** Inter's optical-size axis gives each size from 14 to 32 px
+  its own instance, so its own curve data. Share curve data across `opsz`, or quantise.
+- **One Slug GPU test depends on a chosen offset** (`-10.37f`). An earlier value put a crossbar edge
+  exactly on a pixel boundary; a different font version could trip it again.
+- **The Slug patent dedication isn't on Google Patents yet.** It dedicates US 10,373,352 to the
+  public domain from 2026-03-17, per Lengyel's post
+  (https://terathon.com/blog/decade-slug.html), but Google Patents still shows the patent as
+  active. Recheck later.
+
 - **The coverage atlas empties itself.** It clears in full past four pages rather than evicting the
   least-recently-used glyphs. Each glyph is also uploaded on its own; batch the uploads per frame.
 - **Text gamma is a heuristic tuned by eye.** It mixes by the text's luminance. Tune it against
