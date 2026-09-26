@@ -39,7 +39,8 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
         var motion = theme.Theme.Motion;
         var opacity = context.UseTransition(target, motion.Reduced ? TimeSpan.Zero : motion.ShortDuration, motion.Standard);
         var visual = new SelectionVisualState(hovered.Value, pressed.Value, focusRing.Value, disabled);
-        var ringSize = 40f;
+        // The state layer's ring: 40 px, smaller at a compact density (never under a switch's 32).
+        var ringSize = MathF.Max(32f, 40f + theme.DensityOffset);
 
         return new Box
         {

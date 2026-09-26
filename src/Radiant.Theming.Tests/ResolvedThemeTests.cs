@@ -120,4 +120,17 @@ public class ResolvedThemeTests
         var tone = Tone(half.Get(SurfaceName.Surface));
         Assert.IsTrue(tone > Tone(to.Get(SurfaceName.Surface)) && tone < Tone(from.Get(SurfaceName.Surface)), $"{tone}");
     }
+
+    [TestMethod]
+    public void SuccessKeepsItsHueWhenTheSchemeIsMonochrome()
+    {
+        var mono = ResolvedTheme.Resolve(new Theme { Colors = new ThemeColors { Variant = Variant.Monochrome } });
+
+        var success = Hct.FromInt(unchecked((int)mono.Get(SurfaceName.Success, container: true).ToArgb()));
+        var primary = Hct.FromInt(unchecked((int)mono.Get(SurfaceName.Primary).ToArgb()));
+
+        Assert.IsTrue(primary.Chroma < 2, $"the monochrome primary is grey ({primary.Chroma:0.0})");
+        Assert.IsTrue(success.Chroma > 15, $"success is still coloured ({success.Chroma:0.0})");
+        Assert.AreEqual(140, success.Hue, 30, "and still green");
+    }
 }

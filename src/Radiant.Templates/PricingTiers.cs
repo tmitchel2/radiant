@@ -37,7 +37,7 @@ public sealed record PricingTiers(IReadOnlyList<PricingTier> Tiers, Action<int>?
                     Children =
                     [
                         new SurfaceText(tier.Name) { TextType = TextType.TitleLarge },
-                        tier.Featured ? new Chip("Most popular") { Selected = true } : null,
+                        tier.Featured ? new Tag("Most popular") { Icon = "star" } : null,
                     ],
                 },
                 tier.Description is null ? null : new SurfaceText(tier.Description) { Legibility = Legibility.Medium },

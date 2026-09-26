@@ -55,20 +55,24 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
                 return cached;
             }
             var pixels = new byte[PlaneColumns * PlaneRows * 4];
-            for (var row = 0; row < PlaneRows; row++)
+            var halfRow = MaxChroma / PlaneRows / 2;
+            for (var column = 0; column < PlaneColumns; column++)
             {
-                var chroma = MaxChroma * (1 - (row + 0.5) / PlaneRows);
-                for (var column = 0; column < PlaneColumns; column++)
+                var hue = 360.0 * (column + 0.5) / PlaneColumns;
+                // The most chroma this hue has at this tone: asked for more than any colour has, the
+                // solver gives the most it can.
+                var most = Hct.From(hue, MaxChroma * 2, step * ToneStep).Chroma;
+                for (var row = 0; row < PlaneRows; row++)
                 {
-                    var hue = 360.0 * (column + 0.5) / PlaneColumns;
-                    var hct = Hct.From(hue, chroma, step * ToneStep);
-                    var argb = hct.ToInt();
+                    var chroma = MaxChroma * (1 - (row + 0.5) / PlaneRows);
+                    var argb = Hct.From(hue, chroma, step * ToneStep).ToInt();
                     var i = (row * PlaneColumns + column) * 4;
                     pixels[i] = (byte)argb;
                     pixels[i + 1] = (byte)(argb >> 8);
                     pixels[i + 2] = (byte)(argb >> 16);
-                    // The solver gives the nearest colour it can: one well short of the chroma asked for is out of gamut.
-                    pixels[i + 3] = hct.Chroma >= chroma - 3 ? (byte)255 : (byte)0;
+                    // How much of the pixel's chroma range is in gamut, so the edge is smooth, not stepped.
+                    var inside = Math.Clamp((most - (chroma - halfRow)) / (2 * halfRow), 0, 1);
+                    pixels[i + 3] = (byte)Math.Round(inside * 255);
                 }
             }
             return s_planes[step] = ImageSource.FromBgra(PlaneColumns, PlaneRows, pixels);

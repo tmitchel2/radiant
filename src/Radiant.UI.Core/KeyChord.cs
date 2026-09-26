@@ -72,14 +72,31 @@ public readonly record struct KeyChord(KeyCode Key, KeyModifiers Modifiers = Key
         return new Radiant.Platform.MenuShortcut(key, held);
     }
 
-    private static string KeyName(KeyCode key) => key switch
+    private static string KeyName(KeyCode key)
     {
-        >= KeyCode.A and <= KeyCode.Z => ((char)key).ToString(),
-        >= KeyCode.Number0 and <= KeyCode.Number9 => ((char)key).ToString(),
-        KeyCode.Enter => "Enter",
-        KeyCode.Escape => "Esc",
-        KeyCode.Space => "Space",
-        KeyCode.Comma => ",",
-        _ => key.ToString(),
-    };
+        var mac = OperatingSystem.IsMacOS();
+        return key switch
+        {
+            >= KeyCode.A and <= KeyCode.Z => ((char)key).ToString(),
+            >= KeyCode.Number0 and <= KeyCode.Number9 => ((char)key).ToString(),
+            // Punctuation shows as the character it types.
+            KeyCode.Comma or KeyCode.Minus or KeyCode.Period or KeyCode.Slash or KeyCode.Semicolon or KeyCode.Equal
+                or KeyCode.Apostrophe or KeyCode.LeftBracket or KeyCode.BackSlash or KeyCode.RightBracket or KeyCode.GraveAccent => ((char)key).ToString(),
+            KeyCode.Enter => mac ? "↩" : "Enter",
+            KeyCode.Escape => mac ? "⎋" : "Esc",
+            KeyCode.Space => "Space",
+            KeyCode.Tab => mac ? "⇥" : "Tab",
+            KeyCode.Backspace => mac ? "⌫" : "Backspace",
+            KeyCode.Delete => mac ? "⌦" : "Del",
+            KeyCode.Up => "↑",
+            KeyCode.Down => "↓",
+            KeyCode.Left => "←",
+            KeyCode.Right => "→",
+            KeyCode.Home => mac ? "↖" : "Home",
+            KeyCode.End => mac ? "↘" : "End",
+            KeyCode.PageUp => mac ? "⇞" : "PgUp",
+            KeyCode.PageDown => mac ? "⇟" : "PgDn",
+            _ => key.ToString(),
+        };
+    }
 }

@@ -111,11 +111,13 @@ public sealed record TextField(string Label) : Component
         var body = theme.Text(TextType.BodyLarge);
         var small = theme.Text(TextType.BodySmall);
         var labelSize = body.Size + (small.Size - body.Size) * floated;
-        // Resting, the label is centred in the 56 px field; floated, it sits at the top (filled) or on the border (outlined).
-        var restingTop = (56f - (body.LineHeight ?? 24f)) / 2f;
-        var floatedTop = filled ? 8f : -(small.LineHeight ?? 16f) / 2f;
+        // A line of the field: 56 px, less at a compact density.
+        var line = 56f + theme.DensityOffset;
+        // Resting, the label is centred in the line; floated, it sits at the top (filled) or on the border (outlined).
+        var restingTop = (line - (body.LineHeight ?? 24f)) / 2f;
+        var floatedTop = filled ? 8f + theme.DensityOffset / 4f : -(small.LineHeight ?? 16f) / 2f;
         var labelTop = restingTop + (floatedTop - restingTop) * floated;
-        var fieldTop = filled ? 24f : restingTop;
+        var fieldTop = filled ? 24f + theme.DensityOffset / 2f : restingTop;
         var background = filled ? theme.Get(SurfaceName.SurfaceContainerHighest) : theme.SurfaceColor(surface);
         var height = (Multiline ? 88f : 56f) + theme.DensityOffset;
         var leading = LeadingIcon is null ? 16f : 52f;
@@ -147,7 +149,7 @@ public sealed record TextField(string Label) : Component
                     [
                         LeadingIcon is null ? null : new Box
                         {
-                            Layout = new LayoutStyle { Width = 48, Height = 56, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(4, 0, 0, 0) },
+                            Layout = new LayoutStyle { Width = 48, Height = line, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(4, 0, 0, 0) },
                             Children = [new SurfaceIcon(LeadingIcon) { Legibility = Disabled ? Legibility.Low : Legibility.Medium }],
                         },
                         new Box
@@ -188,12 +190,12 @@ public sealed record TextField(string Label) : Component
                         },
                         Trailing is not null ? new Box
                         {
-                            Layout = new LayoutStyle { Height = 56, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
+                            Layout = new LayoutStyle { Height = line, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
                             Children = [Trailing],
                         }
                         : TrailingIcon is null ? null : new Box
                         {
-                            Layout = new LayoutStyle { Width = 48, Height = 56, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
+                            Layout = new LayoutStyle { Width = 48, Height = line, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
                             Children =
                             [
                                 OnTrailingIconPress is null

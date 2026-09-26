@@ -82,7 +82,9 @@ public class ShortcutTests
         var chord = KeyChord.Command(KeyCode.P, KeyModifiers.Shift);
 
         Assert.AreEqual(OperatingSystem.IsMacOS() ? "⇧⌘P" : "Ctrl+Shift+P", chord.ToString());
-        Assert.AreEqual("Esc", new KeyChord(KeyCode.Escape).ToString());
+        Assert.AreEqual(OperatingSystem.IsMacOS() ? "⎋" : "Esc", new KeyChord(KeyCode.Escape).ToString());
+        Assert.AreEqual(OperatingSystem.IsMacOS() ? "⌘=" : "Ctrl+=", KeyChord.Command(KeyCode.Equal).ToString());
+        Assert.AreEqual(OperatingSystem.IsMacOS() ? "⌥↑" : "Alt+↑", new KeyChord(KeyCode.Up, KeyModifiers.Alt).ToString());
     }
 
     private sealed record Host(Func<BuildContext, Element?> Body) : Component

@@ -95,6 +95,8 @@ public sealed class ResolvedTheme
 
         // Custom families are the primary roles of a scheme seeded with the (harmonised) custom
         // colour: they follow the variant, dark mode, contrast level and spec version like the rest.
+        // A variant that takes the primary's colour away (monochrome, neutral) would leave success
+        // and warning grey, so, like error, they keep their hue there and use tonal spot.
         foreach (var (name, custom) in new[] { (SurfaceName.Success, colors.Success), (SurfaceName.Warning, colors.Warning), (SurfaceName.Info, colors.Info) })
         {
             var argb = (int)custom.ToArgb();
@@ -102,7 +104,7 @@ public sealed class ResolvedTheme
             {
                 argb = Blend.Harmonize(argb, seed);
             }
-            var customScheme = Scheme(argb, colors);
+            var customScheme = Scheme(argb, colors.Variant is Variant.Monochrome or Variant.Neutral ? colors with { Variant = Variant.TonalSpot } : colors);
             Set(name, customScheme, RadiantDynamicColors.Primary(), RadiantDynamicColors.OnPrimary(), RadiantDynamicColors.PrimaryContainer(), RadiantDynamicColors.OnPrimaryContainer());
         }
 

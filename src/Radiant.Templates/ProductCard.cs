@@ -33,7 +33,7 @@ public sealed record ProductCard(Product Product) : Component
                     product.Badge is null ? null : new Box
                     {
                         Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = new Edges(8, 8, Dimension.Undefined, Dimension.Undefined) },
-                        Children = [new Chip(product.Badge) { Selected = true }],
+                        Children = [new Tag(product.Badge)],
                     },
                 ],
             },

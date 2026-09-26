@@ -52,7 +52,7 @@ public sealed record StackedList(IReadOnlyList<ListEntry> Entries) : Component
                             new SurfaceText(entry.Subtitle) { Legibility = Legibility.Medium, MaxLines = 1 },
                         ],
                     },
-                    entry.Status is null ? null : new Chip(entry.Status) { Selected = true },
+                    entry.Status is null ? null : new Tag(entry.Status),
                     entry.Meta is null ? null : new SurfaceText(entry.Meta) { TextType = TextType.LabelMedium, Legibility = Legibility.Medium },
                 ],
             });

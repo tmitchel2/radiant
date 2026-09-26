@@ -89,7 +89,10 @@ public sealed record SnackbarHost(Element? Child) : Component
                             },
                             message.ActionLabel is null ? null : new SurfaceButton(message.ActionLabel, ButtonVariant.Text)
                             {
+                                // Material's inverse primary: the inverse role's container colour itself,
+                                // not the colour on it (which is the snackbar's own).
                                 ContentColor = SurfaceName.Inverse,
+                                ContentOnToggle = true,
                                 ContentContainerToggle = true,
                                 OnPress = () =>
                                 {

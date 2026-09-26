@@ -185,7 +185,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                         [
                             ("Order", DescriptionList.Text("#10482")),
                             ("Placed", DescriptionList.Text("26 September 2026")),
-                            ("Status", new Chip("Shipped") { Icon = "local_shipping", Selected = true }),
+                            ("Status", new Tag("Shipped") { Icon = "local_shipping" }),
                             ("Deliver to", DescriptionList.Text("1 Infinite Loop, Cupertino")),
                         ]) { TermWidth = 110 }) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.Symmetric(20, 4) } },
                         new Card(new Timeline(
