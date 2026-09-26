@@ -35,7 +35,13 @@ internal static class Fixture
     /// </summary>
     public static void AreClose(double expected, double actual, string message)
     {
+        Assert.IsTrue(IsClose(expected, actual), $"{message}: expected {expected:R}, got {actual:R}");
+    }
+
+    /// <summary>Whether two doubles agree to within the tolerance of <see cref="AreClose"/>.</summary>
+    public static bool IsClose(double expected, double actual)
+    {
         var tolerance = 1e-9 * Math.Max(1.0, Math.Abs(expected));
-        Assert.IsTrue(Math.Abs(expected - actual) <= tolerance, $"{message}: expected {expected:R}, got {actual:R}");
+        return Math.Abs(expected - actual) <= tolerance;
     }
 }
