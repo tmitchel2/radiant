@@ -350,10 +350,21 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,
   and on every frame of a transition. The expensive part was text: colour lived in `TextStyle`,
   so a recolour re-shaped and re-measured every paragraph. Plain text now takes its colour at
-  paint, which brought a theme change on a 158-node page from 9.7 ms to 1.2 ms (Release), well
-  inside a 120 fps frame. The plan's goal is still zero rebuilds: render nodes holding symbolic
-  tokens (colour roles, shape roles) resolved at paint time, which needs a token type `Box` can
-  take and a paint-time theme scope, so a dark section can sit inside a light app.
+  paint, which brought a theme change on a 158-node page from 9.7 ms to 1.2 ms (Release).
+  Measured with `--bench N --bench-theme` (the theme animating between light and dark for every
+  frame), a transition on the heaviest gallery page updates in a median 0.65 ms, 99th percentile
+  1.8 ms and slowest 3.5 ms under Native AOT: comfortably inside 120 fps (8.3 ms), so the plan's
+  zero-rebuild design (render nodes holding colour and shape roles resolved at paint, with a
+  paint-time theme scope for a dark section in a light app) isn't needed for speed. It would
+  still cut the 2 MB a frame a transition allocates. Under the JIT, the first seconds of
+  transitions after launch run unoptimised code and reach 5–8 ms; ReadyToRun (or AOT) removes
+  that warm-up.
+- **The bench measured the collector.** `--bench` read each frame back into a new 3 MB array and
+  resolved the colour scheme every frame for the clear colour, which together caused a gen2
+  collection every few frames and swamped the UI's own numbers. It reuses one buffer
+  (`OffscreenReadback.RenderAndRead` into a given array) and resolves once now, and reports
+  update percentiles and allocation per frame. A UI at rest allocates about 140 KB a frame, most
+  of it inside Yoga.Net's layout (`StyleLength` objects) for the one animating progress bar.
 - **Schemes use the Phone platform.** Material's phone and watch are the only platforms upstream;
   check whether a desktop tuning is wanted.
 - **The type scale is sized for phones.** Material 3's body text is 14 px, larger than typical

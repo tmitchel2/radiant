@@ -63,7 +63,9 @@ flows down the tree works out what's readable on it. This is ported from Destash
   children through `ThemeContexts.Surface`.
 - **Transitions:** colours mix in OKLab, so blue to orange doesn't pass through grey, and radii
   interpolate. Type, motion and density switch at once, so text doesn't reflow every frame. With
-  reduced motion, changes are immediate.
+  reduced motion, changes are immediate. Each frame of a transition rebuilds the theme's readers;
+  on the heaviest gallery page that's a 0.65 ms median update and 1.8 ms at the 99th percentile
+  (Native AOT), measured with `radiant-gallery --snapshot x.png --bench 1200 --bench-theme`.
 - **Following the system:** `new ThemeProvider(themes, app) { FollowAppearance = true }` (or
   `themes.FollowAppearance(appearance)`) maps the user's dark mode, accent colour, increased
   contrast and reduced motion onto the theme, before the first frame and whenever they change

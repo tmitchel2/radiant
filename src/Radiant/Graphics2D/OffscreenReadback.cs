@@ -91,7 +91,24 @@ public sealed unsafe class OffscreenReadback : IDisposable
     /// </summary>
     public byte[] RenderAndRead(Vector4 clear, Action<nint> draw)
     {
+        var pixels = new byte[Width * Height * 4];
+        RenderAndRead(clear, draw, pixels);
+        return pixels;
+    }
+
+    /// <summary>
+    /// <see cref="RenderAndRead(Vector4, Action{nint})"/> into <paramref name="pixels"/>
+    /// (<see cref="Width"/> × <see cref="Height"/> × 4 bytes), so a caller reading every frame
+    /// reuses one buffer instead of allocating a large one each time.
+    /// </summary>
+    public void RenderAndRead(Vector4 clear, Action<nint> draw, byte[] pixels)
+    {
         ArgumentNullException.ThrowIfNull(draw);
+        ArgumentNullException.ThrowIfNull(pixels);
+        if (pixels.Length != Width * Height * 4)
+        {
+            throw new ArgumentException($"Expected {Width * Height * 4} bytes, got {pixels.Length}.", nameof(pixels));
+        }
         var encoderDesc = new CommandEncoderDescriptor();
         var encoder = _wgpu.DeviceCreateCommandEncoder(_device, in encoderDesc);
 
@@ -147,7 +164,6 @@ public sealed unsafe class OffscreenReadback : IDisposable
         while (!mapped) _ = _ext?.DevicePoll(_device, false, null);
 
         var srcPtr = (byte*)_wgpu.BufferGetMappedRange(staging, 0, (nuint)bufferSize);
-        var pixels = new byte[Width * Height * 4];
         var rowBytes = Width * 4;
         for (var row = 0; row < Height; row++)
         {
@@ -158,7 +174,6 @@ public sealed unsafe class OffscreenReadback : IDisposable
         _wgpu.BufferRelease(staging);
         _wgpu.CommandBufferRelease(cmd);
         _wgpu.CommandEncoderRelease(encoder);
-        return pixels;
     }
 
     public void Dispose()

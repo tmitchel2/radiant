@@ -11,7 +11,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-12] [--dialog] [--menu] [--palette] [--sheet] [--rtl]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-12] [--dialog] [--menu] [--palette] [--sheet] [--rtl] [--bench N [--bench-theme]]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
@@ -19,6 +19,7 @@ var startWithDialog = false;
 var startWithPalette = false;
 var startWithSheet = false;
 var bench = 0;
+var benchTheme = false;
 var startWithMenu = false;
 var startPage = 0;
 var followSystem = true;
@@ -39,6 +40,8 @@ for (var i = 0; i < args.Length; i++)
         case "--rtl": rightToLeft = true; break;
         case "--sheet": startWithSheet = true; break;
         case "--bench": bench = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
+        // Times frames while the theme animates between light and dark the whole time.
+        case "--bench-theme": benchTheme = true; break;
         case "--menu": startWithMenu = true; break;
         case "--page": startPage = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
@@ -59,9 +62,9 @@ if (snapshot is null)
     return;
 }
 
-Snapshot(app, snapshot, 1200, height, scale, theme, bench);
+Snapshot(app, snapshot, 1200, height, scale, theme, bench, benchTheme ? themes : null);
 
-static unsafe void Snapshot(Element app, string path, int width, int height, float scale, Theme theme, int bench)
+static unsafe void Snapshot(Element app, string path, int width, int height, float scale, Theme theme, int bench, ThemeController? animate)
 {
     var pixelWidth = (int)(width * scale);
     var pixelHeight = (int)(height * scale);
@@ -79,7 +82,7 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
     }
     if (bench > 0)
     {
-        Bench(ui, renderer, target, width, height, pixelWidth, pixelHeight, scale, theme, bench);
+        Bench(ui, renderer, target, width, height, pixelWidth, pixelHeight, scale, theme, bench, animate);
     }
     var pixels = target.RenderAndRead(ResolvedTheme.Resolve(theme).Background, pass =>
     {
@@ -95,18 +98,32 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
 // Times frames as the window loop runs them: advance and update (rebuild, layout), paint
 // (recording the draws), end frame (building and uploading the batches), and the rest: the
 // offscreen pass's setup, the GPU and the readback, which a window doesn't have in the same form.
-static unsafe void Bench(UIRoot ui, Renderer2D renderer, OffscreenReadback target, int width, int height, int pixelWidth, int pixelHeight, float scale, Theme theme, int frames)
+// Update times are also given as percentiles over the frames after the first second, once the
+// JIT has optimised what runs every frame, with the heap allocated per frame.
+static unsafe void Bench(UIRoot ui, Renderer2D renderer, OffscreenReadback target, int width, int height, int pixelWidth, int pixelHeight, float scale, Theme theme, int frames, ThemeController? animate)
 {
+    const int warmUp = 60;
     var clock = System.Diagnostics.Stopwatch.StartNew();
     double update = 0, paint = 0, end = 0, total = 0;
+    var updates = new System.Collections.Generic.List<double>();
+    // One buffer for every frame's pixels: a fresh 3 MB array a frame would time the collector, not the UI.
+    var pixels = new byte[pixelWidth * pixelHeight * 4];
+    var background = ResolvedTheme.Resolve(theme).Background;
+    var allocated = GC.GetAllocatedBytesForCurrentThread();
     for (var frame = 0; frame < frames; frame++)
     {
+        // A 300 ms transition to the other appearance, started again as each ends (18 frames at 60 Hz).
+        if (animate is not null && frame % 18 == 0)
+        {
+            var current = animate.Theme;
+            animate.Set(current with { Colors = current.Colors with { IsDark = !current.Colors.IsDark } }, TimeSpan.FromMilliseconds(300));
+        }
         var start = clock.Elapsed.TotalMilliseconds;
         ui.Advance(1 / 60.0);
         ui.Update(new Vector2(width, height));
         var updated = clock.Elapsed.TotalMilliseconds;
         double began = 0, painted = 0, ended = 0;
-        target.RenderAndRead(ResolvedTheme.Resolve(theme).Background, pass =>
+        target.RenderAndRead(background, pass =>
         {
             began = clock.Elapsed.TotalMilliseconds;
             renderer.BeginFrame((uint)pixelWidth, (uint)pixelHeight, scale);
@@ -114,13 +131,24 @@ static unsafe void Bench(UIRoot ui, Renderer2D renderer, OffscreenReadback targe
             painted = clock.Elapsed.TotalMilliseconds;
             renderer.EndFrame((Silk.NET.WebGPU.RenderPassEncoder*)pass);
             ended = clock.Elapsed.TotalMilliseconds;
-        });
+        }, pixels);
         var done = clock.Elapsed.TotalMilliseconds;
         update += updated - start;
         paint += painted - began;
         end += ended - painted;
         total += done - start;
+        if (frame >= warmUp)
+        {
+            updates.Add(updated - start);
+        }
     }
+    var perFrame = (GC.GetAllocatedBytesForCurrentThread() - allocated) / frames / 1024;
     Console.WriteLine($"{frames} frames: update {update / frames:0.00} ms, paint {paint / frames:0.00} ms, end frame {end / frames:0.00} ms, "
-        + $"GPU, readback and the rest {(total - update - paint - end) / frames:0.00} ms, total {total / frames:0.00} ms");
+        + $"GPU, readback and the rest {(total - update - paint - end) / frames:0.00} ms, total {total / frames:0.00} ms; {perFrame} KB allocated a frame");
+    if (updates.Count > 0)
+    {
+        updates.Sort();
+        double At(double p) => updates[(int)Math.Min(updates.Count - 1, updates.Count * p)];
+        Console.WriteLine($"update after warm-up: median {At(0.5):0.00} ms, 95th {At(0.95):0.00} ms, 99th {At(0.99):0.00} ms, slowest {updates[^1]:0.00} ms");
+    }
 }
