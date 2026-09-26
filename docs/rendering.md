@@ -195,6 +195,11 @@ pixels read back:
 
 On a machine with no GPU adapter these tests are reported inconclusive rather than failed.
 
+`ReferenceSceneGpuTests` draws one scene using every feature (shadows, a gradient, a rounded clip
+over scrolled text, a translucent layer, a rotated bordered card) and compares it with
+`TestData/Golden/Gpu_ReferenceScene.png`. It catches changes no targeted test looks for. After an
+intended change, regenerate with `UPDATE_GOLDEN_IMAGES=true` and review the image.
+
 The older golden-image tests (`Graphics2D/Visual`) rasterize the filled and line vertex streams on
 the CPU. They cannot see text, SDF shapes or images.
 
@@ -202,6 +207,9 @@ the CPU. They cannot see text, SDF shapes or images.
 
 | Item | Why deferred | Trigger to revisit |
 |---|---|---|
+| Nested rounded clips | Only the innermost rounded clip's corners apply | A rounded container inside another visibly overflows the outer corners; clip through a layer mask |
+| Multisampling in windows | `RadiantApplication` renders single-sampled; SDF shapes and text anti-alias analytically, but tessellated circles, polygons and thick lines are aliased | A UI draws tessellated geometry prominently |
+| Backdrop blur | Needs the scene behind a layer as a texture, blurred | A frosted-glass design |
 | Runtime glyph generation, shaping, wrapping, variable fonts | The atlases are fixed at bake time and `DrawText` walks codepoints | The text stack (`ITextShaper`, paragraph layout, atlas / MSDF / Slug renderers) |
 | Material Symbols icons | Nothing draws icons yet, and the full variable icon font is several megabytes to embed for no user | The first icon-bearing components |
 | Premultiplying decoded images | Nothing in Radiant decodes images into a `Texture2D` yet | An image-loading API |
