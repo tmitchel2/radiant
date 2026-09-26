@@ -48,6 +48,16 @@ public unsafe partial class Renderer2D
     public float TextGamma { get; set; } = 1.8f;
 
     /// <summary>
+    /// Whether shape edges (rounded rectangles, borders, circles, arcs) blend as they would in sRGB,
+    /// so a thin border looks as heavy where it curves, over partly covered pixels, as where it
+    /// runs straight and pixel-aligned. Blended in linear light instead, a 1 px dark border on a
+    /// light ground measures about 17% lighter round its corners, and a light one on dark about a
+    /// third heavier. A border blends against its opaque fill; other edges assume the contrasting
+    /// ground (white behind dark, black behind light).
+    /// </summary>
+    public bool SrgbEdges { get; set; } = true;
+
+    /// <summary>
     /// Draws a laid-out paragraph with its top left at <paramref name="position"/>, each run in
     /// its style's colour unless <paramref name="color"/> overrides them all.
     /// </summary>

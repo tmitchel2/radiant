@@ -61,7 +61,8 @@ public class RendererLayerGpuTests
 
         for (var i = 0; i < direct.Length; i++)
         {
-            Assert.IsTrue(Math.Abs(direct[i] - layered[i]) <= 1, $"byte {i}: {direct[i]} vs {layered[i]}");
+            // Edge pixels stored partly transparent in the 8-bit layer lose a level or two.
+            Assert.IsTrue(Math.Abs(direct[i] - layered[i]) <= 2, $"byte {i}: {direct[i]} vs {layered[i]}");
         }
     }
 

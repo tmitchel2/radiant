@@ -913,6 +913,7 @@ namespace Radiant.Graphics2D
             var span = new Span<float>(block, UniformSlotSize / sizeof(float));
             span.Clear();
             SerializeMatrixForGpu(_camera.GetProjectionMatrix(), span[..16]);
+            span[25] = SrgbEdges ? 1f : 0f;
             _wgpu.QueueWriteBuffer(_queue, _uniformBuffer, 0, block, UniformBlockSize);
             foreach (var (clip, slot) in slots)
             {

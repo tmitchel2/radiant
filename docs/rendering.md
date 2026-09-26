@@ -62,6 +62,26 @@ a tab frame can be uploaded and drawn 1:1 without a single channel changing. Ima
 a file (PNG etc.) must be premultiplied before `Update`. `DrawImage`'s tint is a straight-alpha
 colour.
 
+## Shape edges blend as in sRGB
+
+Colour blends in linear light, which is right for overlapping colour but wrong for anti-aliased
+edges: a partly covered pixel of a dark line on a light ground looks lighter than its coverage
+says (and a light line on dark, heavier). A 1 px border sits pixel-aligned, fully covered, on its
+straight sides, but spreads over partly covered pixels round its corners, so blended in linear
+light its corners look faded: about 17% less ink per pixel of length for grey on white, and about
+a third more for light on dark.
+
+So the SDF shape shader (rounded rectangles, borders, circles, arcs) corrects edge coverage to
+the value that, blended in linear light, lands where that coverage would blended in sRGB:
+
+- **A border** blends against its fill when the fill is opaque, which is its ground inside and
+  nearly always matches the ground outside (a card's outline on the page).
+- **Other edges** don't know their ground, so a dark edge is taken to be on white and a light
+  one on black, mixed by how light the edge looks.
+
+`Renderer2D.SrgbEdges` (on by default) turns it off. `RendererEdgeGpuTests` measures a border's
+ink per pixel of length on a curve and on a straight side, and holds them within 5%.
+
 ## Draws happen in the order they are made
 
 Each primitive kind has its own vertex list and pipeline: filled triangles, hairlines, SDF shapes,

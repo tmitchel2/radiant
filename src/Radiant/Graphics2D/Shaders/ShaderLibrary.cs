@@ -12,6 +12,7 @@ struct Uniforms {
     view_projection: mat4x4<f32>,
     // The innermost rounded clip, in device pixels: rect = (left, top, right, bottom),
     // radii = (TopLeft, TopRight, BottomRight, BottomLeft); flags.x > 0.5 while one is in force.
+    // flags.y is 1 while shape edges blend as they would in sRGB (Renderer2D.SrgbEdges).
     clip_rect: vec4<f32>,
     clip_radii: vec4<f32>,
     clip_flags: vec4<f32>,
@@ -384,6 +385,30 @@ fn shadow_mask(p: vec2<f32>, half_size: vec2<f32>, radii: vec4<f32>, sigma: f32)
     return value;
 }
 
+// Partly covered edge pixels blended in linear light look lighter than they should when dark on a
+// light ground (and heavier when light on dark), so a thin border fades wherever it curves while
+// its pixel-aligned straight sides stay solid. Edges are blended as they would be in sRGB instead:
+// this is the coverage that, blended in linear light, lands where coverage `a` would in sRGB, for
+// an edge of luminance `edge` over a ground of luminance `ground` (both linear).
+fn srgb_coverage(a: f32, edge: f32, ground: f32) -> f32 {
+    let difference = edge - ground;
+    let e = srgb_encode(vec3<f32>(edge)).x;
+    let g = srgb_encode(vec3<f32>(ground)).x;
+    let blended = srgb_decode(vec3<f32>(mix(g, e, a))).x;
+    return select(clamp((blended - ground) / difference, 0.0, 1.0), a, abs(difference) < 1e-4);
+}
+
+// As srgb_coverage, with the ground unknown: a dark edge is taken to be on white and a light one
+// on black, mixed by how light the edge looks.
+fn srgb_coverage_unknown_ground(a: f32, edge: f32) -> f32 {
+    let lightness = srgb_encode(vec3<f32>(edge)).x;
+    return mix(srgb_coverage(a, edge, 1.0), srgb_coverage(a, edge, 0.0), lightness);
+}
+
+fn luma(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let half_size = input.misc.xy;
@@ -424,7 +449,22 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let fill_color = select(input.color, gradient_color(input), input.gradientInfo.x > 0.5);
     let fill = vec4<f32>(fill_color.rgb * fill_color.a, fill_color.a);
     let border = vec4<f32>(input.borderColor.rgb * input.borderColor.a, input.borderColor.a);
-    let shape = mix(fill, border, border_factor) * coverage;
+    // A border's opaque fill is its ground inside, and nearly always matches the ground outside
+    // (a card's outline on the page), so the border's edges blend against it. A fill's ground, or
+    // the ground round a clear fill, isn't known.
+    let has_border = border_width > 0.0;
+    let fill_luma = luma(fill_color.rgb);
+    let border_luma = luma(input.borderColor.rgb);
+    let known_ground = fill_color.a > 0.5;
+    let border_outer = select(srgb_coverage_unknown_ground(coverage, border_luma), srgb_coverage(coverage, border_luma, fill_luma), known_ground);
+    let border_inner = select(srgb_coverage_unknown_ground(border_factor, border_luma), srgb_coverage(border_factor, border_luma, fill_luma), known_ground);
+    let corrected_outer = select(srgb_coverage_unknown_ground(coverage, fill_luma), border_outer, has_border);
+    let corrected_inner = select(0.0, border_inner, has_border);
+    // uniforms.clip_flags.y is 1 while edges blend as in sRGB (Renderer2D.SrgbEdges).
+    let srgb_edges = uniforms.clip_flags.y > 0.5;
+    let outer = select(coverage, corrected_outer, srgb_edges);
+    let inner = select(select(0.0, border_factor, has_border), corrected_inner, srgb_edges);
+    let shape = mix(fill, border, inner) * outer;
     return select(shape, fill * shadow, is_shadow) * clip_coverage(input.position.xy);
 }";
 

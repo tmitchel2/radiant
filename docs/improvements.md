@@ -291,6 +291,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Rendering (`Radiant.Graphics2D`)
 
+- **Edge correction guesses the ground.** Shape edges blend as in sRGB against a border's own
+  opaque fill, or else against white (dark edges) or black (light ones). A shape whose real
+  ground differs (a mid-grey outline round a clear fill on a mid-grey page) is corrected against
+  the wrong ground. Reading the destination (framebuffer fetch or a copy) would make it exact.
 - **MSDF text has no gamma correction.** Its edges aren't gamma-corrected as coverage and Slug
   text are; at the sizes it's used for that barely shows.
 - **MSDF can't resolve very thin strokes.** At the 40 px generation em it can't resolve strokes
