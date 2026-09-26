@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -118,5 +120,21 @@ public class FontTests
         Assert.AreSame(Inter, library.FaceFor('A', Inter));
         Assert.AreSame(TestFonts.Arabic, library.FaceFor('م', Inter));
         Assert.AreSame(Inter, library.FaceFor(0x1F600, Inter), "nothing has it: the preferred face draws its missing-glyph box");
+    }
+
+    [TestMethod]
+    public void FontDataSurvivesACompactingCollection()
+    {
+        // HarfBuzz reads the font bytes in place; they must not move when the garbage collector compacts.
+        var face = FontFace.FromBytes(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestFonts", "NotoSansHebrew.ttf")), "Probe");
+        var before = TextShaper.Shape("abc", face.Instance(), 20).Advances.ToArray();
+        for (var i = 0; i < 5; i++)
+        {
+            GC.KeepAlive(new byte[1 << 20]);
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        }
+        var after = TextShaper.Shape("abc", face.Instance(), 20).Advances.ToArray();
+
+        CollectionAssert.AreEqual(before, after);
     }
 }
