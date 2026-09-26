@@ -71,4 +71,7 @@ public enum SemanticsRole
 
     /// <summary>A pop-up tip.</summary>
     Tooltip,
+
+    /// <summary>A movable divider between panes (a splitter); its value is the sized pane's size.</summary>
+    Separator,
 }

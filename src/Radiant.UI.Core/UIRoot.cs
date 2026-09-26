@@ -750,7 +750,10 @@ public sealed class UIRoot : IDisposable
             case TextRenderNode { Element.IsDecorative: true }:
                 break;
             case TextRenderNode text:
-                into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Text }, text.Element.AttributedText.Text, bounds, false, false, []));
+                var textSemantics = text.Element.HeadingLevel > 0
+                    ? new Semantics { Role = SemanticsRole.Heading, HeadingLevel = text.Element.HeadingLevel }
+                    : new Semantics { Role = SemanticsRole.Text };
+                into.Add(new SemanticsNode(textSemantics, text.Element.AttributedText.Text, bounds, false, false, []));
                 break;
             case ImageRenderNode { Element.AltText: { } alt }:
                 into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Image, Label = alt }, alt, bounds, false, false, []));

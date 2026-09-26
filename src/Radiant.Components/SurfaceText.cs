@@ -21,6 +21,9 @@ public sealed partial record SurfaceText : Component, IHasText, IHasLayout
     /// <summary>A legibility to draw at instead of the surface's content legibility.</summary>
     public float? Legibility { get; init; }
 
+    /// <summary>The text's level as a heading (1 is the top), or 0 when it isn't one.</summary>
+    public int HeadingLevel { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -36,6 +39,7 @@ public sealed partial record SurfaceText : Component, IHasText, IHasLayout
             Style = theme.Text(TextType ?? Radiant.Theming.TextType.BodyMedium) with { Color = theme.ContentColor(surface) },
             MaxLines = MaxLines,
             Alignment = Alignment,
+            HeadingLevel = HeadingLevel,
             Layout = Layout ?? default,
         };
     }

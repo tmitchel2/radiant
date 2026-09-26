@@ -62,6 +62,9 @@ public class MoreComponentTests
         Assert.AreEqual(1, removed);
     }
 
+    // A point a fraction along a slider's track, which is inset by the handle's 10 px radius.
+    private static float Along(SemanticsNode slider, float fraction) => slider.Bounds.X + 10 + (slider.Bounds.Width - 20) * fraction;
+
     [TestMethod]
     public void ASliderFollowsThePointerAndTheKeys()
     {
@@ -73,13 +76,13 @@ public class MoreComponentTests
         }));
         var slider = Find(root, SemanticsRole.Slider, "Volume");
 
-        root.PointerDown(new Vector2(slider.Bounds.X + slider.Bounds.Width * 0.25f, Centre(slider).Y));
+        root.PointerDown(new Vector2(Along(slider, 0.25f), Centre(slider).Y));
         Settle(root);
         Assert.AreEqual(0.25f, value.Value, 0.01f);
-        root.PointerMove(new Vector2(slider.Bounds.X + slider.Bounds.Width * 0.75f, Centre(slider).Y));
+        root.PointerMove(new Vector2(Along(slider, 0.75f), Centre(slider).Y));
         Settle(root);
         Assert.AreEqual(0.75f, value.Value, 0.01f);
-        root.PointerUp(new Vector2(slider.Bounds.X + slider.Bounds.Width * 0.75f, Centre(slider).Y));
+        root.PointerUp(new Vector2(Along(slider, 0.75f), Centre(slider).Y));
 
         root.KeyDown(KeyCode.End);
         Settle(root);
@@ -100,7 +103,7 @@ public class MoreComponentTests
         });
         var slider = Find(root, SemanticsRole.Slider, "Stepped");
 
-        root.PointerDown(new Vector2(slider.Bounds.X + slider.Bounds.Width * 0.3f, Centre(slider).Y));
+        root.PointerDown(new Vector2(Along(slider, 0.3f), Centre(slider).Y));
 
         CollectionAssert.AreEqual(new[] { 0.25f }, changes);
     }

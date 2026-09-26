@@ -38,6 +38,18 @@ public class SemanticsTests
     }
 
     [TestMethod]
+    public void TextCanBeAHeading()
+    {
+        using var root = new UIRoot(new Box { Children = [new TextBlock("Settings") { HeadingLevel = 1 }, new TextBlock("Body")] });
+        root.Update(new Vector2(400, 300));
+
+        var nodes = root.GetSemantics().Children;
+
+        Assert.AreEqual((SemanticsRole.Heading, 1, "Settings"), (nodes[0].Role, nodes[0].Semantics.HeadingLevel, nodes[0].Label));
+        Assert.AreEqual(SemanticsRole.Text, nodes[1].Role);
+    }
+
+    [TestMethod]
     public void TheFocusedNodeIsMarked()
     {
         using var root = new UIRoot(new Box { Children = [new Box { Focusable = true }, new Box { Focusable = true }] });

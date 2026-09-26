@@ -83,6 +83,7 @@ public sealed record ListItem(string Headline) : Component
             ShowDisabled = Disabled ? true : null,
             OnPress = OnPress,
             Role = SemanticsRole.ListItem,
+            Selected = Selected,
             Layout = layout,
             Children = children,
         };

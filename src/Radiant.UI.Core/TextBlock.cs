@@ -36,6 +36,9 @@ public sealed record TextBlock : HostElement
     /// <summary>Whether the text is decoration (an icon's name) that assistive technology should skip.</summary>
     public bool IsDecorative { get; init; }
 
+    /// <summary>The text's level as a heading (1 is the top), or 0 when it isn't one.</summary>
+    public int HeadingLevel { get; init; }
+
     /// <summary>Size and placement within the parent.</summary>
     public LayoutStyle Layout { get; init; }
 

@@ -37,6 +37,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
         var theme = context.UseTheme();
         var surface = context.UseSurface();
         var track = context.UseRef(new ElementRef()).Value;
+        var line = context.UseRef(new ElementRef()).Value;
         var dragging = context.UseRef(false);
         var hovered = context.UseState(false);
         var focusRing = context.UseState(false);
@@ -71,7 +72,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
 
         void SetFromPointer(PointerEventArgs e)
         {
-            var bounds = track.Bounds;
+            var bounds = line.Bounds;
             var props = latest.Value;
             if (bounds.Width > 0)
             {
@@ -90,7 +91,8 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 Value = Value.ToString("0.##", CultureInfo.InvariantCulture),
                 Disabled = Disabled,
             },
-            Layout = new LayoutStyle { Height = 44, MinWidth = 120, AlignSelf = Align.Stretch, JustifyContent = Justify.Center },
+            // Inset by the handle's radius, so the handle stays inside the slider at either end.
+            Layout = new LayoutStyle { Height = 44, MinWidth = 120, AlignSelf = Align.Stretch, JustifyContent = Justify.Center, Padding = Edges.Symmetric(10, 0) },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ => hovered.Set(false),
             OnPointerDown = e =>
@@ -139,6 +141,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 // The inactive track, the active part up to the handle, and the handle.
                 new Box
                 {
+                    Ref = line,
                     HitTestVisible = false,
                     Layout = new LayoutStyle { Height = 4 },
                     Background = inactive,
@@ -152,32 +155,32 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                             Background = active,
                             CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
                         },
-                    ],
-                },
-                new Box
-                {
-                    HitTestVisible = false,
-                    Layout = new LayoutStyle
-                    {
-                        Position = PositionType.Absolute,
-                        Width = 40,
-                        Height = 40,
-                        Inset = new Edges(Dimension.Percent(fraction * 100f), 2, Dimension.Undefined, Dimension.Undefined),
-                        Margin = new Edges(-20, 0, 0, 0),
-                        AlignItems = Align.Center,
-                        JustifyContent = Justify.Center,
-                    },
-                    Background = layer > 0f ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, layer) : null,
-                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(20),
-                    Children =
-                    [
                         new Box
                         {
                             HitTestVisible = false,
-                            Layout = new LayoutStyle { Width = 20, Height = 20 },
-                            Background = active,
-                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
-                            Shadows = Disabled ? [] : theme.Elevation(ElevationLevel.Level1),
+                            Layout = new LayoutStyle
+                            {
+                                Position = PositionType.Absolute,
+                                Width = 40,
+                                Height = 40,
+                                Inset = new Edges(Dimension.Percent(fraction * 100f), -18, Dimension.Undefined, Dimension.Undefined),
+                                Margin = new Edges(-20, 0, 0, 0),
+                                AlignItems = Align.Center,
+                                JustifyContent = Justify.Center,
+                            },
+                            Background = layer > 0f ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, layer) : null,
+                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(20),
+                            Children =
+                            [
+                                new Box
+                                {
+                                    HitTestVisible = false,
+                                    Layout = new LayoutStyle { Width = 20, Height = 20 },
+                                    Background = active,
+                                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
+                                    Shadows = Disabled ? [] : theme.Elevation(ElevationLevel.Level1),
+                                },
+                            ],
                         },
                     ],
                 },

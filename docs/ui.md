@@ -150,6 +150,7 @@ flex sizes are overridden.
   - Boxes with semantics or focus appear, and so does text.
   - Other boxes pass their children up.
   - A control without a label is named by the text inside it.
+  - Text with a `HeadingLevel` is a heading (`SurfaceText.HeadingLevel` in components).
 
 ## Style facets
 

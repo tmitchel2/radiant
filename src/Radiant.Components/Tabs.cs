@@ -78,6 +78,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
                         ContentColor = chosen ? SurfaceName.Primary : SurfaceName.SurfaceVariant,
                         ContentOnToggle = chosen ? null : true,
                         Role = SemanticsRole.Tab,
+                        Selected = chosen,
                         OnPress = () => onSelect?.Invoke(index),
                         Layout = new LayoutStyle
                         {

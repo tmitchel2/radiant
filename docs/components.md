@@ -28,8 +28,8 @@ turns a filled button red.
 | Component | What |
 |---|---|
 | `Surface` | Applies its background-colour props to the inherited surface state and draws the surface (colour, corners, elevation, outline); children inherit the new state |
-| `PressableSurface` | A surface that presses: focus, pointer, Enter and Space; hover, focus and pressed state layers; disabled fades and stops responding; a button to assistive technology |
-| `SurfaceText` | Text in the surface's content colour, in a type-scale step, with optional legibility |
+| `PressableSurface` | A surface that presses: focus, pointer, Enter and Space; hover, focus and pressed state layers; disabled fades and stops responding; a button to assistive technology (or another `Role`, with `Selected` and `Expanded` states) |
+| `SurfaceText` | Text in the surface's content colour, in a type-scale step, with optional legibility; `HeadingLevel` makes it a heading to assistive technology |
 | `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a pill-shaped `PressableSurface` with a label |
 | `Card` | Elevated, filled and outlined cards |
 | `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
@@ -58,6 +58,9 @@ turns a filled button red.
 | `SnackbarHost`, `Snackbars` | Brief messages at the bottom: queued, timed, with an optional action; `context.UseSnackbars().Show(…)` |
 | `Avatar` | Initials on a container colour chosen stably from the name, or a person icon |
 | `Skeleton` | A gently pulsing placeholder in the shape of content still loading |
+| `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
+| `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
+| `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
 | `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
@@ -108,4 +111,5 @@ dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2 
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --page 6 --height 900  # one page
 ```
 
-Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 landing page, 6 store.
+Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 landing page, 6 store,
+7 workspace, 8 mail, 9 new project (wizard), 10 preferences.

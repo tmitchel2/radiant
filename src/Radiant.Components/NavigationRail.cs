@@ -38,6 +38,7 @@ public sealed record NavigationRail(IReadOnlyList<NavItem> Items, int Selected, 
             items.Add(new PressableSurface
             {
                 Role = SemanticsRole.Tab,
+                Selected = chosen,
                 Label = item.Label,
                 OnPress = () => select?.Invoke(index),
                 CornerShape = CornerShapeRole.Medium,

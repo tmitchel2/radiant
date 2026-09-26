@@ -50,6 +50,7 @@ public sealed record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected
                 SurfaceContainerToggle = chosen ? true : null,
                 CornerShape = CornerShapeRole.Full,
                 Role = SemanticsRole.Tab,
+                Selected = chosen,
                 OnPress = () => select?.Invoke(index),
                 Layout = new LayoutStyle
                 {

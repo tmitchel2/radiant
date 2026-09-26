@@ -23,6 +23,12 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     /// <summary>A name for assistive technology when the content's text isn't enough (an icon button).</summary>
     public string? Label { get; init; }
 
+    /// <summary>Whether assistive technology should hear it's the chosen one (a tab, a destination).</summary>
+    public bool Selected { get; init; }
+
+    /// <summary>Whether what it shows or hides is showing (a disclosure, a menu button); null if it doesn't.</summary>
+    public bool? Expanded { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -58,7 +64,7 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         return ThemeContexts.Surface.Provide(state, SurfaceBox.For(this, theme, state) with
         {
             Focusable = !disabled,
-            Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled },
+            Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Expanded = Expanded },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ =>
             {
