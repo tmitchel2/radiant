@@ -20,3 +20,11 @@ gen() { python3 "$here/generate.py" --ucd "$ucd" --out "$out" --version "$versio
 conformance() { gzip -9 -n -c "$ucd/$1" > "$tests/$(basename "$1").gz"; }
 
 # Each algorithm adds its tables and conformance files below.
+
+# Text segmentation (UAX #29): word and grapheme cluster boundaries.
+gen --file auxiliary/WordBreakProperty.txt --alias WB --enum WordBreakProperty --table WordBreak
+gen --file auxiliary/GraphemeBreakProperty.txt --alias GCB --enum GraphemeBreakProperty --table GraphemeBreak
+gen --file DerivedCoreProperties.txt --alias InCB --property InCB --enum IndicConjunctBreak --table IndicConjunctBreak
+gen --file emoji/emoji-data.txt --binary Extended_Pictographic --enum ExtendedPictographicValue --table ExtendedPictographic
+conformance auxiliary/WordBreakTest.txt
+conformance auxiliary/GraphemeBreakTest.txt

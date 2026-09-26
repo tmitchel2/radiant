@@ -12,7 +12,9 @@ numbered in alphabetical order of their short names, so regenerating is stable.
 
 --values restricts and orders the enum explicitly (e.g. "A B C"); codepoints whose value is not
 listed take the default. --binary Name generates a yes/no table for one value of a multi-valued
-file such as emoji-data.txt (Extended_Pictographic).
+file such as emoji-data.txt (Extended_Pictographic). --property Name reads one property from a file
+that holds several with a field each ("XXXX ; Name ; Value"), such as InCB in
+DerivedCoreProperties.txt.
 """
 import argparse
 import os
@@ -20,6 +22,9 @@ import re
 
 ENTRY = re.compile(r'^([0-9A-F]{4,6})(?:\.\.([0-9A-F]{4,6}))?\s*;\s*([^#;]+?)\s*(?:[#;]|$)')
 MISSING = re.compile(r'^#\s*@missing:\s*([0-9A-F]{4,6})\.\.([0-9A-F]{4,6})\s*;\s*([^#;]+?)\s*(?:[#;]|$)')
+PROPERTY_ENTRY = re.compile(r'^([0-9A-F]{4,6})(?:\.\.([0-9A-F]{4,6}))?\s*;\s*([^#;]+?)\s*;\s*([^#;]+?)\s*(?:#|$)')
+PROPERTY_MISSING = re.compile(
+    r'^#\s*@missing:\s*([0-9A-F]{4,6})\.\.([0-9A-F]{4,6})\s*;\s*([^#;]+?)\s*;\s*([^#;]+?)\s*(?:#|$)')
 
 
 def aliases(ucd, prop):
@@ -41,21 +46,29 @@ def aliases(ucd, prop):
     return table
 
 
-def parse(path, alias, binary):
+def match(line, plain, named, prop):
+    """(start, end, value) of a line, or None; with prop, only lines naming that property count."""
+    m = (named if prop else plain).match(line)
+    if not m or (prop and m.group(3) != prop):
+        return None
+    return int(m.group(1), 16), int(m.group(2) or m.group(1), 16), m.group(4 if prop else 3)
+
+
+def parse(path, alias, binary, prop):
     points = {}
     defaults = []
     with open(path, encoding='utf-8') as f:
         for line in f:
-            m = MISSING.match(line)
-            if m:
-                defaults.append((int(m.group(1), 16), int(m.group(2), 16), alias.get(m.group(3), m.group(3))))
+            if line.startswith('#'):
+                m = match(line, MISSING, PROPERTY_MISSING, prop)
+                if m:
+                    defaults.append((m[0], m[1], alias.get(m[2], m[2])))
                 continue
-            m = ENTRY.match(line)
+            m = match(line, ENTRY, PROPERTY_ENTRY, prop)
             if not m:
                 continue
-            start = int(m.group(1), 16)
-            end = int(m.group(2) or m.group(1), 16)
-            value = alias.get(m.group(3), m.group(3))
+            start, end = m[0], m[1]
+            value = alias.get(m[2], m[2])
             if binary:
                 if value != binary:
                     continue
@@ -75,12 +88,13 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--values', default='')
     ap.add_argument('--binary', default='')
+    ap.add_argument('--property', default='')
     ap.add_argument('--default', default='')
     ap.add_argument('--version', default='16.0.0')
     args = ap.parse_args()
 
     alias = aliases(args.ucd, args.alias)
-    points, defaults = parse(os.path.join(args.ucd, args.file), alias, args.binary)
+    points, defaults = parse(os.path.join(args.ucd, args.file), alias, args.binary, args.property)
 
     if args.binary:
         default = 'No'
