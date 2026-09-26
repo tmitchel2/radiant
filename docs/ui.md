@@ -122,6 +122,42 @@ a change of order throws.
   - Other boxes pass their children up.
   - A control without a label is named by the text inside it.
 
+## Style facets
+
+A facet is a group of related props, such as corner shape, outline or background colour,
+declared once as a `[StyleFacet]` interface. Components choose which facets they expose, and
+which of them feed each of their parts, as Destash components do.
+
+```csharp
+[StyleFacet]
+public interface IHasCornerShape
+{
+    CornerShapeRole? CornerShape { get; init; }
+}
+
+[ForwardFacets(typeof(PressableSurface), "Container", typeof(IHasCornerShape), typeof(IHasOutline))]
+public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOutline
+{
+    public override Element Build(BuildContext context) =>
+        ForwardContainer(new PressableSurface { Children = [...] }) with { ShowSurface = true };
+}
+```
+
+`Radiant.Generators` (a Roslyn incremental generator; reference it as an analyzer) writes:
+- **Facet properties:** every facet property the partial record doesn't declare itself.
+- **Forwarders:** `Forward{Name}(target)`, which returns the target with the record's facet values
+  copied on. A null value keeps the target's own, and a `with` afterwards overrides what was
+  forwarded.
+- **Errors for mistakes:**
+
+  | Id | Mistake |
+  |---|---|
+  | RAD002 | Forwarding a facet that either side lacks |
+  | RAD004 | A facet record that isn't partial |
+  | RAD005 | A facet type that isn't a record |
+  | RAD006 | A facet member that isn't a `get; init;` property |
+  | RAD007 | Forwarding an interface that isn't a facet |
+
 ## Not yet
 
 - **Host elements:** `Image`, and a canvas for custom drawing.
@@ -129,4 +165,4 @@ a change of order throws.
 - **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
 - **Commands and animation:** commands and shortcuts, and `Presence` for exit animations.
 - **Accessibility:** the platform bridge for semantics comes with P7.
-- **Styling and theming:** the style facets and generated forwarders (P5), and theming (P6).
+- **Theming:** P6.

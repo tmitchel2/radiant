@@ -42,6 +42,22 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
   tree yet, which the P7 accessibility bridge needs.
 
+## Generators (`Radiant.Generators`)
+
+- **Props equality still compares callbacks.** Delegate-ignoring equality isn't generated, because
+  skipping a rebuild when only callbacks differ would leave the old callbacks captured in the
+  subtree built from the old props. It needs a way to read the latest props (a stable callback
+  wrapper or a `UseLatest`) first.
+- **No hook-order analyzer yet.** RAD001, for hooks called conditionally, doesn't exist; the
+  runtime throws when hook order changes.
+- **Forwarders are private.** A derived component can't call them. Records are usually sealed, but
+  an option for `protected` may be wanted.
+- **Some planned generation is missing.** Snapshot structs, `[Lerpable]`, story knob metadata and
+  AOT factories aren't generated yet.
+- **Generation runs whole.** The generator collects every candidate record and dedupes by name,
+  which re-runs output for every record on any change. Fine at this scale; key the pipeline by
+  symbol if large projects feel slow.
+
 ## Text (`Radiant.Text`)
 
 - **Layout speed.** 10k characters lay out in ~6 ms (Release); shaping alone is ~2 ms.
