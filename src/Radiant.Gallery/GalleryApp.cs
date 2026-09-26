@@ -1,3 +1,4 @@
+using System.Linq;
 using Radiant.Components;
 using Radiant.Templates;
 using Radiant.Theming;
@@ -14,9 +15,13 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
 
     public bool StartWithMenu { get; init; }
 
+    public bool StartWithPalette { get; init; }
+
     public override Element? Build(BuildContext context)
     {
         var page = context.UseState(StartPage);
+        var palette = context.UseState(StartWithPalette);
+        context.UseShortcut(KeyChord.Command(KeyCode.K), () => palette.Set(true));
         NavItem[] items =
         [
             new("widgets", "Components"),
@@ -47,14 +52,32 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             11 => ShellPages.Preferences(),
             _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu },
         };
-        return new SnackbarHost(new SidebarLayout("Radiant Gallery", items, page.Value, page.Set, content)
+        var themes = Themes;
+        Command[] commands =
+        [
+            .. items.Select((item, index) => new Command($"page-{index}", $"Go to {item.Label}")
+            {
+                Group = "Pages",
+                Icon = item.Icon,
+                Keywords = item.Section,
+                Run = () => page.Set(index),
+            }),
+            new Command("dark", "Toggle dark theme")
+            {
+                Group = "Theme",
+                Icon = "palette",
+                Keywords = "night light appearance",
+                Run = () => themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = !themes.Theme.Colors.IsDark } }, System.TimeSpan.FromMilliseconds(300)),
+            },
+        ];
+        return new SnackbarHost(new Fragment(new SidebarLayout("Radiant Gallery", items, page.Value, page.Set, content)
         {
             Actions =
             [
-                new Tooltip("Search", new IconButton("search", "Search")),
+                new Tooltip($"Search ({KeyChord.Command(KeyCode.K)})", new IconButton("search", "Search") { OnPress = () => palette.Set(true) }),
                 new Tooltip("Notifications", new IconButton("notifications", "Notifications")),
                 new Avatar("Tom Mitchell") { Size = 32 },
             ],
-        });
+        }, new CommandPalette(palette.Value, () => palette.Set(false), commands)));
     }
 }

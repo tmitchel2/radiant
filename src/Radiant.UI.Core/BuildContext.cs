@@ -56,6 +56,21 @@ public sealed class BuildContext
     }
 
     /// <summary>
+    /// Runs <paramref name="run"/> when <paramref name="chord"/> is pressed anywhere in the UI
+    /// that doesn't handle it itself, while this component is mounted
+    /// (<see cref="UIRoot.AddShortcut"/>): a component deeper in the tree takes the chord from
+    /// one above it. The latest <paramref name="run"/> is used each time.
+    /// </summary>
+    public void UseShortcut(KeyChord chord, Action run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var latest = UseRef(run);
+        latest.Value = run;
+        var (root, depth) = (Node.Root, Node.Depth);
+        UseEffect(() => root.AddShortcut(chord, () => latest.Value(), depth).Dispose, chord);
+    }
+
+    /// <summary>
     /// Runs <paramref name="effect"/> after this build is laid out, and after every later build.
     /// The action it returns, if any, cleans up before the next run and when the component goes.
     /// </summary>

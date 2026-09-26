@@ -146,6 +146,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **Command palettes show matches plainly.** The matched letters aren't highlighted (text spans
+  in `SurfaceText` would do it), there's no ordering by recent use, and a `Command.Shortcut` is
+  text: nothing binds it. A command registry would bind chords, feed menus and the palette, and
+  let the palette show whether a command is available.
+- **Percentage sizes inside overlays resolve against wrappers.** `DismissableLayer` and
+  `FocusScope` add boxes that size to their content, so a `MaxWidth` of 100% inside them resolves
+  against a shrink-wrapped box and collapses. Overlay content uses fixed sizes for now.
 - **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
   multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
   item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every

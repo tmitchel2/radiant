@@ -98,6 +98,10 @@ a change of order throws.
 - **Cursor:** `Box.Cursor` sets the pointer's shape over a box (null inherits). `UIRoot.Cursor`
   is the deepest hovered box's, or the pressed box's while a press is held, and `RadiantUI.Run`
   shows it through the platform.
+- **Shortcuts:** `context.UseShortcut(KeyChord.Command(KeyCode.K), open)` runs while its component
+  is mounted, when the key reaches no focused handler (or nothing is focused). A deeper
+  component's shortcut takes the chord from one above it (a dialog's over the app's).
+  `KeyChord` prints as the platform writes it ("⌘K", "Ctrl+K").
 - **Text input clients:** a focused text field sets `UIRoot.TextInputClient`. Typed text and
   input method compositions then go to it rather than to text events (see
   [platform.md](platform.md#text-input-and-input-methods)).
@@ -231,7 +235,8 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** keyboard scrolling.
-- **Commands:** commands and shortcuts.
+- **Commands:** a command registry that binds each command's chord and lists it in menus and
+  the palette; shortcuts exist (`UseShortcut`), but a `Command`'s shortcut is only display text.
 - **Accessibility:** the platform bridge for semantics comes later in P7 (the platform's other
   services are in [platform.md](platform.md)).
 - **Theming:** P6.

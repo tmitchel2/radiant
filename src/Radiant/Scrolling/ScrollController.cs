@@ -137,6 +137,21 @@ public sealed class ScrollController : IAnimating
         }
     }
 
+    /// <summary>
+    /// Scrolls as little as possible to bring the span from <paramref name="start"/> (in content
+    /// coordinates) of <paramref name="length"/> into view along one axis; nothing if it's in view.
+    /// </summary>
+    public void ScrollIntoView(float start, float length, bool vertical = true, bool animated = false)
+    {
+        var offset = vertical ? Offset.Y : Offset.X;
+        var viewport = vertical ? ViewportSize.Y : ViewportSize.X;
+        var target = start < offset ? start : start + length > offset + viewport ? start + length - viewport : offset;
+        if (target != offset)
+        {
+            ScrollTo(vertical ? new Vector2(Offset.X, target) : new Vector2(target, Offset.Y), animated);
+        }
+    }
+
     /// <summary>Scroll to the content end on the enabled axes.</summary>
     public void ScrollToEnd(bool animated) => ScrollTo(MaxOffset, animated);
 

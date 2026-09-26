@@ -11,11 +11,12 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-11] [--dialog] [--menu]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-11] [--dialog] [--menu] [--palette]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
 var startWithDialog = false;
+var startWithPalette = false;
 var startWithMenu = false;
 var startPage = 0;
 var followSystem = true;
@@ -31,6 +32,7 @@ for (var i = 0; i < args.Length; i++)
         case "--variant": theme = theme with { Colors = theme.Colors with { Variant = Enum.Parse<Variant>(args[++i]) } }; break;
         case "--height": height = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--dialog": startWithDialog = true; break;
+        case "--palette": startWithPalette = true; break;
         case "--menu": startWithMenu = true; break;
         case "--page": startPage = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
@@ -39,7 +41,7 @@ for (var i = 0; i < args.Length; i++)
 }
 
 var themes = new ThemeController(theme);
-var app = new ThemeProvider(themes, new GalleryApp(themes) { StartPage = startPage, StartWithDialog = startWithDialog, StartWithMenu = startWithMenu });
+var app = new ThemeProvider(themes, new GalleryApp(themes) { StartPage = startPage, StartWithDialog = startWithDialog, StartWithMenu = startWithMenu, StartWithPalette = startWithPalette });
 
 if (snapshot is null)
 {

@@ -34,6 +34,8 @@ public sealed class UIRoot : IDisposable
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
     private readonly List<Func<double, bool>> _tickers = [];
+    // Kept most specific last: by depth, then in the order added.
+    private readonly List<(KeyChord Chord, Action Run, int Depth)> _shortcuts = [];
     private readonly List<BoxRenderNode> _focusTraps = [];
     private readonly List<Action<PointerDownObservation>> _pointerDownObservers = [];
     private bool _portalsChanged;
@@ -502,6 +504,21 @@ public sealed class UIRoot : IDisposable
         return new Ticker(() => _tickers.Remove(entry));
     }
 
+    /// <summary>
+    /// Runs <paramref name="run"/> when <paramref name="chord"/> is pressed and nothing focused
+    /// handles it, wherever focus is (or with nothing focused), until the result is disposed. Of
+    /// shortcuts for the same chord, the one with the greatest <paramref name="depth"/> (a
+    /// component's depth in the tree: a dialog's over the app's) runs, then the latest added.
+    /// </summary>
+    public IDisposable AddShortcut(KeyChord chord, Action run, int depth = 0)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var entry = (chord, run, depth);
+        var at = _shortcuts.FindLastIndex(s => s.Depth <= depth) + 1;
+        _shortcuts.Insert(at, entry);
+        return new Ticker(() => _shortcuts.Remove(entry));
+    }
+
     private sealed class Ticker(Action remove) : IDisposable
     {
         private Action? _remove = remove;
@@ -612,11 +629,23 @@ public sealed class UIRoot : IDisposable
         Dispatch(HitPath(position), args, box => null, box => box.OnWheel, (node, e) => node.OnWheel(e));
     }
 
-    /// <summary>A key was pressed. Unhandled, Tab and Shift+Tab move focus.</summary>
+    /// <summary>
+    /// A key was pressed. It goes to the focused box and its ancestors first; left unhandled, it
+    /// runs a matching shortcut (the deepest in the tree first, then the latest added), and Tab and
+    /// Shift+Tab move focus.
+    /// </summary>
     public void KeyDown(KeyCode key, KeyModifiers modifiers = KeyModifiers.None, bool isRepeat = false)
     {
         var args = new KeyEventArgs(key, modifiers, isRepeat);
         Dispatch(FocusPath(), args, box => box.OnKeyDownCapture, box => box.OnKeyDown);
+        for (var i = _shortcuts.Count - 1; i >= 0 && !args.Handled; i--)
+        {
+            if (_shortcuts[i].Chord.Matches(key, modifiers))
+            {
+                _shortcuts[i].Run();
+                args.Handled = true;
+            }
+        }
         if (!args.Handled && key == KeyCode.Tab)
         {
             MoveFocus(forward: (modifiers & KeyModifiers.Shift) == 0);

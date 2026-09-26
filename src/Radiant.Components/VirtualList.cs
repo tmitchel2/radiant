@@ -42,14 +42,7 @@ public sealed record VirtualList(int Count, float ItemHeight, Func<int, Element?
     public static void ScrollToIndex(ScrollController controller, int index, float itemHeight, bool animated = false)
     {
         ArgumentNullException.ThrowIfNull(controller);
-        var top = index * itemHeight;
-        var offset = controller.Offset.Y;
-        var viewport = controller.ViewportSize.Y;
-        var target = top < offset ? top : top + itemHeight > offset + viewport ? top + itemHeight - viewport : offset;
-        if (target != offset)
-        {
-            controller.ScrollTo(new System.Numerics.Vector2(controller.Offset.X, target), animated);
-        }
+        controller.ScrollIntoView(index * itemHeight, itemHeight, animated: animated);
     }
 
     /// <inheritdoc/>
