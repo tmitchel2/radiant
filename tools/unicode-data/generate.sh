@@ -20,3 +20,10 @@ gen() { python3 "$here/generate.py" --ucd "$ucd" --out "$out" --version "$versio
 conformance() { gzip -9 -n -c "$ucd/$1" > "$tests/$(basename "$1").gz"; }
 
 # Each algorithm adds its tables and conformance files below.
+
+# Bidirectional Algorithm (UAX #9): Bidi_Class, Bidi_Mirrored (L4), paired brackets (N0).
+gen --file extracted/DerivedBidiClass.txt --alias bc --enum BidiClass --table BidiClass
+gen --file extracted/DerivedBinaryProperties.txt --binary Bidi_Mirrored --enum BidiMirrored --table BidiMirrored
+python3 "$here/brackets.py" --ucd "$ucd" --out "$out" --version "$version"
+conformance BidiTest.txt
+conformance BidiCharacterTest.txt
