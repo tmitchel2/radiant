@@ -23,6 +23,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
         var row = context.UseRef(new ElementRef()).Value;
+        var rightToLeft = context.UseRightToLeft();
         var refs = context.UseMemo(() => Enumerable.Range(0, Items.Count).Select(_ => new ElementRef()).ToArray(), Items.Count);
         var indicator = context.UseState((Left: 0f, Width: 0f));
         var motion = theme.Theme.Motion;
@@ -115,7 +116,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
                         Position = PositionType.Absolute,
                         Height = 3,
                         Width = width,
-                        Inset = new Edges(left, Dimension.Undefined, Dimension.Undefined, 0),
+                        Inset = Edges.Physical(left, Dimension.Undefined, Dimension.Undefined, 0, rightToLeft),
                     },
                     Background = theme.Get(SurfaceName.Primary),
                     CornerRadii = Radiant.Graphics2D.CornerRadii.Top(3),

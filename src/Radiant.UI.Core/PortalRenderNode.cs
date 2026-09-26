@@ -22,6 +22,25 @@ internal sealed class PortalRenderNode : RenderNode
         {
             YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
         }
+        // Its content is laid out under the root, not where the portal is in the tree: it takes the
+        // direction in force there (a menu in a right-to-left app reads right to left).
+        if (Element.Layout.Direction is null && DirectionHere() is { } direction)
+        {
+            Facebook.Yoga.YGNodeStyleAPI.YGNodeStyleSetDirection(Yoga,
+                direction == Radiant.Text.TextDirection.RightToLeft ? Facebook.Yoga.YGDirection.RTL : Facebook.Yoga.YGDirection.LTR);
+        }
+    }
+
+    private Radiant.Text.TextDirection? DirectionHere()
+    {
+        for (var node = Owner.Parent; node is not null; node = node.Parent)
+        {
+            if (node.Element is Provider<Radiant.Text.TextDirection?> provider && ReferenceEquals(provider.Context, Directionality.Context))
+            {
+                return provider.Value;
+            }
+        }
+        return null;
     }
 
     public override void Dispose()

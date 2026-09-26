@@ -13,7 +13,9 @@ package, MIT). Radiant exposes none of Yoga's types; everything goes through `Ra
   grow, shrink and basis, width and height with their minimums and maximums, margin, padding,
   inset (with absolute positioning), row and column gaps, and aspect ratio. Every property is unset
   by default, so `default(LayoutStyle)` leaves Yoga's defaults. `Dimension` lengths are points,
-  percentages or auto; `Edges` holds four of them.
+  percentages or auto; `Edges` holds four of them: start, top, end and bottom. Start and end
+  follow the layout's direction (`LayoutStyle.Direction`, or `Directionality` for a whole UI; see
+  [ui.md](ui.md#direction)), so a right-to-left UI mirrors without changing any layout.
 - **Merging:** `LayoutStyle.Merge` (and `Edges.Merge`) lays one style's set properties over
   another's. Components use it so a caller's layout adds to theirs: a button told to stretch keeps
   its padding and height.

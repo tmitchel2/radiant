@@ -12,6 +12,12 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   worked out after layout and applied to the children, then the root lays out again (up to four
   passes, for nested grids). A custom layout node, or Yoga gaining grid, would do it in one. There
   are no column spans, explicit rows or per-cell alignment yet.
+- **Physical positions need converting in right-to-left layouts.** `Edges` are logical only, so a
+  box placed at a pointer position or measured bounds has to go through `Edges.Physical`, which
+  needs the direction passed in. `Left`/`Right` insets in `LayoutStyle` (Yoga has them) would let a
+  box say "from the left" directly. A portal also looks up its direction on each update by walking
+  the element tree; a direction change above a portal whose own props didn't change doesn't reach
+  it until it updates.
 - **Layered facets are found by convention.** A facet type with a `T Merge(T over)` method is
   merged over the target's value by the forwarders instead of replacing it. It's implicit; an
   attribute on the facet property (`[Layered]`) would say so where it's declared. Components that

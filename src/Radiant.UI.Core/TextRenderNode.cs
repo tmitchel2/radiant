@@ -33,7 +33,8 @@ internal sealed class TextRenderNode : RenderNode
             ? old is null || old.Style with { Color = Element.Style.Color } != Element.Style
             : old is null || old.Style != Element.Style;
         if (old is null || old.Text != Element.Text || !Equals(old.Content, Element.Content) || styleChanged
-            || old.Alignment != Element.Alignment || old.MaxLines != Element.MaxLines || old.Wrap != Element.Wrap)
+            || old.Alignment != Element.Alignment || old.MaxLines != Element.MaxLines || old.Wrap != Element.Wrap
+            || old.Direction != Element.Direction)
         {
             _shaped = null;
             _laidOut = null;
@@ -49,7 +50,7 @@ internal sealed class TextRenderNode : RenderNode
             width = float.PositiveInfinity;
         }
         _shaped ??= Paragraph.Layout(Element.AttributedText,
-            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.MaxLines },
+            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.MaxLines, Direction = Element.Direction },
             Owner.Root.Fonts);
         if (_laidOut is null || _laidOut.Style.MaxWidth != width)
         {

@@ -73,6 +73,12 @@ public readonly record struct LayoutStyle
     public float? AspectRatio { get; init; }
 
     /// <summary>
+    /// Which way this node and its descendants lay out: rows run from the start side and edges'
+    /// starts are on it (left for left-to-right). Inherited when null.
+    /// </summary>
+    public Radiant.Text.TextDirection? Direction { get; init; }
+
+    /// <summary>
     /// This style with everything <paramref name="over"/> sets replacing this one's, edge by edge
     /// for margin, padding and inset: how a component's own layout takes a caller's additions
     /// (a button told to stretch keeps its padding).
@@ -100,5 +106,6 @@ public readonly record struct LayoutStyle
         RowGap = over.RowGap.IsSet ? over.RowGap : RowGap,
         ColumnGap = over.ColumnGap.IsSet ? over.ColumnGap : ColumnGap,
         AspectRatio = over.AspectRatio ?? AspectRatio,
+        Direction = over.Direction ?? Direction,
     };
 }

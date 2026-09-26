@@ -9,7 +9,7 @@ namespace Radiant.Components;
 /// <summary>
 /// A menu of actions for what's under the pointer: a right-click (or Control-click on macOS) on
 /// <paramref name="Child"/> opens <paramref name="Items"/> at the pointer; with focus inside,
-/// Shift+F10 or the Menu key opens it at the child's top left. Where the platform has its own menus
+/// Shift+F10 or the Menu key opens it at the child's top start corner. Where the platform has its own menus
 /// (macOS), it's the platform's, which looks native and can reach outside the window; otherwise
 /// it's a drawn <see cref="Menu"/>: arrows, a choice, Escape or a press outside.
 /// </summary>
@@ -35,6 +35,7 @@ public sealed record ContextMenu(Element? Child, IReadOnlyList<MenuItem> Items) 
         var at = context.UseState((Vector2?)null);
         var onOpen = OnOpen;
         var menus = context.UsePlatform().Menus;
+        var rightToLeft = context.UseRightToLeft();
         var (items, native) = (Items, PreferPlatformMenu && menus.IsSupported);
 
         void OpenAt(Vector2 position)
@@ -82,8 +83,9 @@ public sealed record ContextMenu(Element? Child, IReadOnlyList<MenuItem> Items) 
                 {
                     if (e.Key == KeyCode.Menu || e.Key == KeyCode.F10 && (e.Modifiers & KeyModifiers.Shift) != 0)
                     {
+                        // At the child's top start corner.
                         var bounds = area.Bounds;
-                        OpenAt(new Vector2(bounds.X, bounds.Y));
+                        OpenAt(new Vector2(rightToLeft ? bounds.X + bounds.Width : bounds.X, bounds.Y));
                         e.Handled = true;
                     }
                 },
@@ -97,7 +99,7 @@ public sealed record ContextMenu(Element? Child, IReadOnlyList<MenuItem> Items) 
                 Layout = new LayoutStyle
                 {
                     Position = PositionType.Absolute,
-                    Inset = new Edges(position.X, position.Y, Dimension.Undefined, Dimension.Undefined),
+                    Inset = Edges.Physical(position.X, position.Y, Dimension.Undefined, Dimension.Undefined, rightToLeft),
                     Width = 1,
                     Height = 1,
                 },

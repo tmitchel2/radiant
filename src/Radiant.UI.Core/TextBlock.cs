@@ -36,6 +36,12 @@ public sealed record TextBlock : HostElement
     /// <summary>Whether the text is decoration (an icon's name) that assistive technology should skip.</summary>
     public bool IsDecorative { get; init; }
 
+    /// <summary>
+    /// The paragraph's base direction, which also decides which side <c>Start</c> alignment is; from
+    /// the text itself (its first strong character) when null.
+    /// </summary>
+    public TextDirection? Direction { get; init; }
+
     /// <summary>The text's level as a heading (1 is the top), or 0 when it isn't one.</summary>
     public int HeadingLevel { get; init; }
 

@@ -187,7 +187,8 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
         return new Box
         {
             Semantics = new Semantics { Role = SemanticsRole.Group, Label = Label },
-            Layout = new LayoutStyle { Width = width, RowGap = 12 },
+            // Hue and tone run left to right in any language, as the plane and strip are drawn.
+            Layout = new LayoutStyle { Width = width, RowGap = 12, Direction = Radiant.Text.TextDirection.LeftToRight },
             Children =
             [
                 new Box

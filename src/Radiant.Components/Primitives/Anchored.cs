@@ -71,6 +71,7 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
         context.UseEffect(() => root.AddTicker(_ => Place()).Dispose, anchor);
 
         var at = position.Value ?? Vector2.Zero;
+        var rightToLeft = context.UseRightToLeft();
         return new Portal(new Box
         {
             Ref = content,
@@ -78,7 +79,8 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
             Layout = new LayoutStyle
             {
                 Position = PositionType.Absolute,
-                Inset = new Edges(at.X, at.Y, Dimension.Undefined, Dimension.Undefined),
+                // Placed at a point measured from the window's left, whichever way the UI reads.
+                Inset = Edges.Physical(at.X, at.Y, Dimension.Undefined, Dimension.Undefined, rightToLeft),
                 MinWidth = MatchAnchorWidth ? anchor.Bounds.Width : Dimension.Undefined,
             },
             Children = [Content],

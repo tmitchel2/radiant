@@ -38,6 +38,7 @@ internal static class YogaStyle
         YGNodeStyleSetFlexGrow(node, 0f);
         YGNodeStyleSetFlexShrink(node, 0f);
         YGNodeStyleSetAspectRatio(node, float.NaN);
+        YGNodeStyleSetDirection(node, YGDirection.Inherit);
         YGNodeStyleSetFlexBasisAuto(node);
         YGNodeStyleSetWidthAuto(node);
         YGNodeStyleSetHeightAuto(node);
@@ -56,7 +57,7 @@ internal static class YogaStyle
         YGNodeStyleSetGap(node, YGGutter.Column, float.NaN);
     }
 
-    private static readonly YGEdge[] s_edges = [YGEdge.Left, YGEdge.Top, YGEdge.Right, YGEdge.Bottom];
+    private static readonly YGEdge[] s_edges = [YGEdge.Start, YGEdge.Top, YGEdge.End, YGEdge.Bottom];
 
     private static void Apply(Node node, in LayoutStyle s)
     {
@@ -69,6 +70,7 @@ internal static class YogaStyle
         if (s.FlexGrow is { } grow) YGNodeStyleSetFlexGrow(node, grow);
         if (s.FlexShrink is { } shrink) YGNodeStyleSetFlexShrink(node, shrink);
         if (s.AspectRatio is { } aspectRatio) YGNodeStyleSetAspectRatio(node, aspectRatio);
+        if (s.Direction is { } direction) YGNodeStyleSetDirection(node, direction == Radiant.Text.TextDirection.RightToLeft ? YGDirection.RTL : YGDirection.LTR);
 
         switch (s.FlexBasis.Unit)
         {
@@ -121,9 +123,10 @@ internal static class YogaStyle
 
     private static void Edges(Node node, Edges e, Action<Node, YGEdge, float> point, Action<Node, YGEdge, float> percent, Action<Node, YGEdge>? setAuto)
     {
-        Edge(node, YGEdge.Left, e.Left, point, percent, setAuto);
+        // Start and end, not left and right: they swap sides in a right-to-left layout.
+        Edge(node, YGEdge.Start, e.Start, point, percent, setAuto);
         Edge(node, YGEdge.Top, e.Top, point, percent, setAuto);
-        Edge(node, YGEdge.Right, e.Right, point, percent, setAuto);
+        Edge(node, YGEdge.End, e.End, point, percent, setAuto);
         Edge(node, YGEdge.Bottom, e.Bottom, point, percent, setAuto);
     }
 

@@ -151,6 +151,31 @@ changed the root lays out again. Each layout reuses the last width, so a second 
 only when the grid's width changes (a resize) or the column count does. A child's own width and
 flex sizes are overridden.
 
+## Direction
+
+A UI reads left to right unless it's wrapped in `Directionality`:
+
+```csharp
+new Directionality(TextDirection.RightToLeft, app)
+```
+
+- **Layout mirrors.** `Edges` are logical: `Start` is the left in a left-to-right UI and the right
+  in a right-to-left one, and the same goes for insets and margins. Rows run from the start, and
+  `Justify.FlexStart` and `Align.FlexStart` in a row mean the start. `LayoutStyle.Direction` sets a
+  subtree's direction, and Yoga passes it down.
+- **Text takes the direction.** `SurfaceText` gives its paragraph the direction in force, so
+  mixed text lays out right to left and `TextAlignment.Start` means the right. Without a
+  `Directionality`, text detects its direction from its first strong character.
+- **Portals take the direction where they are** in the element tree, not the root's.
+- **Points stay physical.** Pointer positions and bounds are measured from the left, whatever the
+  direction. Something placed at one (a popover, a context menu, a tab indicator) uses
+  `Edges.Physical(left, top, right, bottom, rightToLeft)`, which swaps sides in a right-to-left
+  layout.
+- **Components read it** with `context.UseDirection()` (null if nothing set it) or
+  `context.UseRightToLeft()`.
+- **Some things don't mirror.** Charts and the colour picker stay left to right, as their axes
+  do in any language.
+
 ## Portals, refs and semantics
 
 - **`Portal`** shows its children above everything, in the root's coordinates, wherever it is in
