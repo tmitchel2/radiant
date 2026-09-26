@@ -137,6 +137,12 @@ struct VertexInput {
     @location(3) borderColor: vec4<f32>,
     @location(4) misc: vec4<f32>,
     @location(5) params: vec4<f32>,
+    @location(6) color1: vec4<f32>,
+    @location(7) color2: vec4<f32>,
+    @location(8) color3: vec4<f32>,
+    @location(9) stopOffsets: vec4<f32>,
+    @location(10) gradientGeometry: vec4<f32>,
+    @location(11) gradientInfo: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -146,6 +152,12 @@ struct VertexOutput {
     @location(2) borderColor: vec4<f32>,
     @location(3) misc: vec4<f32>,
     @location(4) params: vec4<f32>,
+    @location(5) color1: vec4<f32>,
+    @location(6) color2: vec4<f32>,
+    @location(7) color3: vec4<f32>,
+    @location(8) stopOffsets: vec4<f32>,
+    @location(9) gradientGeometry: vec4<f32>,
+    @location(10) gradientInfo: vec4<f32>,
 }
 
 struct Uniforms {
@@ -164,7 +176,115 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     output.borderColor = input.borderColor;
     output.misc = input.misc;
     output.params = input.params;
+    output.color1 = input.color1;
+    output.color2 = input.color2;
+    output.color3 = input.color3;
+    output.stopOffsets = input.stopOffsets;
+    output.gradientGeometry = input.gradientGeometry;
+    output.gradientInfo = input.gradientInfo;
     return output;
+}
+
+// ---- Gradients -----------------------------------------------------------------------------------
+// Stops are straight-alpha linear-light colors. They are premultiplied, converted to the
+// interpolation space (0 sRGB, 1 linear, 2 OKLab), blended there, and converted back.
+
+fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
+    let lo = c * 12.92;
+    let hi = 1.055 * pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055;
+    return select(hi, lo, c <= vec3<f32>(0.0031308));
+}
+
+fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
+    let lo = c / 12.92;
+    let hi = pow(max((c + 0.055) / 1.055, vec3<f32>(0.0)), vec3<f32>(2.4));
+    return select(hi, lo, c <= vec3<f32>(0.04045));
+}
+
+fn cbrt3(v: vec3<f32>) -> vec3<f32> {
+    return sign(v) * pow(abs(v), vec3<f32>(1.0 / 3.0));
+}
+
+// Björn Ottosson's OKLab, from and to linear sRGB.
+fn linear_to_oklab(c: vec3<f32>) -> vec3<f32> {
+    let lms = vec3<f32>(
+        0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b,
+        0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b,
+        0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b);
+    let l = cbrt3(lms);
+    return vec3<f32>(
+        0.2104542553 * l.x + 0.7936177850 * l.y - 0.0040720468 * l.z,
+        1.9779984951 * l.x - 2.4285922050 * l.y + 0.4505937099 * l.z,
+        0.0259040371 * l.x + 0.7827717662 * l.y - 0.8086757660 * l.z);
+}
+
+fn oklab_to_linear(c: vec3<f32>) -> vec3<f32> {
+    let l = vec3<f32>(
+        c.x + 0.3963377774 * c.y + 0.2158037573 * c.z,
+        c.x - 0.1055613458 * c.y - 0.0638541728 * c.z,
+        c.x - 0.0894841775 * c.y - 1.2914855480 * c.z);
+    let lms = l * l * l;
+    return vec3<f32>(
+        4.0767416621 * lms.x - 3.3077115913 * lms.y + 0.2309699292 * lms.z,
+        -1.2684380046 * lms.x + 2.6097574011 * lms.y - 0.3413193965 * lms.z,
+        -0.0041960863 * lms.x - 0.7034186147 * lms.y + 1.7076147010 * lms.z);
+}
+
+// A straight-alpha linear color, premultiplied in the interpolation space.
+fn to_space(c: vec4<f32>, space: f32) -> vec4<f32> {
+    var rgb = c.rgb;
+    if (space < 0.5) {
+        rgb = srgb_encode(rgb);
+    } else if (space > 1.5) {
+        rgb = linear_to_oklab(rgb);
+    }
+    return vec4<f32>(rgb * c.a, c.a);
+}
+
+// Back from the interpolation space to a straight-alpha linear color.
+fn from_space(c: vec4<f32>, space: f32) -> vec4<f32> {
+    if (c.a <= 0.0) {
+        return vec4<f32>(0.0);
+    }
+    var rgb = c.rgb / c.a;
+    if (space < 0.5) {
+        rgb = srgb_decode(rgb);
+    } else if (space > 1.5) {
+        rgb = oklab_to_linear(rgb);
+    }
+    return vec4<f32>(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)), c.a);
+}
+
+// The gradient's straight-alpha linear color at a point in the shape's local frame.
+fn gradient_color(input: VertexOutput) -> vec4<f32> {
+    let geometry = input.gradientGeometry;
+    let space = input.gradientInfo.z;
+    var t: f32;
+    if (input.gradientInfo.x < 1.5) {
+        let axis = geometry.zw - geometry.xy;
+        t = dot(input.localPos - geometry.xy, axis) / max(dot(axis, axis), 1e-6);
+    } else {
+        t = length(input.localPos - geometry.xy) / max(geometry.z, 1e-6);
+    }
+
+    let count = i32(input.gradientInfo.y + 0.5);
+    var colors = array<vec4<f32>, 4>(input.color, input.color1, input.color2, input.color3);
+    let offsets = input.stopOffsets;
+    var result = colors[0];
+    if (t >= offsets[count - 1]) {
+        result = colors[count - 1];
+    } else if (t > offsets[0]) {
+        for (var i = 1; i < 4; i = i + 1) {
+            if (i < count && t <= offsets[i]) {
+                let span = max(offsets[i] - offsets[i - 1], 1e-6);
+                let f = clamp((t - offsets[i - 1]) / span, 0.0, 1.0);
+                let a = to_space(colors[i - 1], space);
+                let b = to_space(colors[i], space);
+                return from_space(mix(a, b, f), space);
+            }
+        }
+    }
+    return result;
 }
 
 // Signed distance to a rounded box (per-corner radii) centred at the origin. Screen space: y grows
@@ -272,7 +392,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // Mix in premultiplied space: a transparent fill contributes nothing, so a border-only stroke's
     // inner edge fades to clear rather than through the fill's (meaningless) RGB towards black.
-    let fill = vec4<f32>(input.color.rgb * input.color.a, input.color.a);
+    let fill_color = select(input.color, gradient_color(input), input.gradientInfo.x > 0.5);
+    let fill = vec4<f32>(fill_color.rgb * fill_color.a, fill_color.a);
     let border = vec4<f32>(input.borderColor.rgb * input.borderColor.a, input.borderColor.a);
     let shape = mix(fill, border, border_factor) * coverage;
     return select(shape, fill * shadow, is_shadow);

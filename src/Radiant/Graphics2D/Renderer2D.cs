@@ -471,20 +471,25 @@ namespace Radiant.Graphics2D
         {
             _sdfShapeShader = CreateShaderModule(ShaderLibrary.SdfShapeShader);
 
-            // Layout matches SdfShapeVertex2D: position, localPos, color, borderColor, misc, params.
-            var vertexAttributes = stackalloc VertexAttribute[6];
+            // Layout matches SdfShapeVertex2D: position, localPos, color, borderColor, misc, params,
+            // then the gradient: colors 1-3, stop offsets, geometry, info.
+            var vertexAttributes = stackalloc VertexAttribute[12];
             vertexAttributes[0] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 0, ShaderLocation = 0 };
             vertexAttributes[1] = new VertexAttribute { Format = VertexFormat.Float32x2, Offset = 8, ShaderLocation = 1 };
             vertexAttributes[2] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 16, ShaderLocation = 2 };
             vertexAttributes[3] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 32, ShaderLocation = 3 };
             vertexAttributes[4] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 48, ShaderLocation = 4 };
             vertexAttributes[5] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = 64, ShaderLocation = 5 };
+            for (var i = 6; i < 12; i++)
+            {
+                vertexAttributes[i] = new VertexAttribute { Format = VertexFormat.Float32x4, Offset = (ulong)(80 + (i - 6) * 16), ShaderLocation = (uint)i };
+            }
 
             var vertexBufferLayout = new VertexBufferLayout
             {
                 ArrayStride = (ulong)sizeof(SdfShapeVertex2D),
                 StepMode = VertexStepMode.Vertex,
-                AttributeCount = 6,
+                AttributeCount = 12,
                 Attributes = vertexAttributes,
             };
 
@@ -1458,7 +1463,7 @@ namespace Radiant.Graphics2D
             => EmitCircle(center, outerRadius, MathF.Max(0f, innerRadius), 0f, color, color);
 
         private void EmitRoundedRect(float x, float y, float width, float height, CornerRadii radii,
-            float borderWidth, Vector4 fill, Vector4 border)
+            float borderWidth, Vector4 fill, Vector4 border, Gradient? gradient = null)
         {
             if (width <= 0f || height <= 0f) return;
 
@@ -1471,30 +1476,38 @@ namespace Radiant.Graphics2D
                 Math.Clamp(radii.BottomRight, 0f, maxR),
                 Math.Clamp(radii.BottomLeft, 0f, maxR));
             var center = new Vector2(x + halfW, y + halfH);
-            EmitShape(center, new Vector2(halfW, halfH), borderWidth, SdfShapeKind.RoundedRect, clamped, fill, border);
+            EmitShape(center, new Vector2(halfW, halfH), borderWidth, SdfShapeKind.RoundedRect, clamped, fill, border, gradient: gradient);
         }
 
         private void EmitCircle(Vector2 center, float outerRadius, float innerRadius,
-            float borderWidth, Vector4 fill, Vector4 border)
+            float borderWidth, Vector4 fill, Vector4 border, Gradient? gradient = null)
         {
             if (outerRadius <= 0f) return;
             var half = new Vector2(outerRadius, outerRadius);
             var prms = new Vector4(outerRadius, MathF.Min(innerRadius, outerRadius), 0f, 0f);
-            EmitShape(center, half, borderWidth, SdfShapeKind.Circle, prms, fill, border);
+            EmitShape(center, half, borderWidth, SdfShapeKind.Circle, prms, fill, border, gradient: gradient);
         }
 
         private void EmitShape(Vector2 center, Vector2 halfSize, float borderWidth,
-            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border, float pad = 1.5f)
+            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border, float pad = 1.5f, Gradient? gradient = null)
         {
             // Expand the quad by a pad so the outer edge fade (the AA band, or a shadow's blur) isn't
             // clipped by the geometry.
             var ext = new Vector2(halfSize.X + pad, halfSize.Y + pad);
             var misc = new Vector4(halfSize.X, halfSize.Y, borderWidth, (float)(int)kind);
+            var template = new SdfShapeVertex2D(default, default, fill, border, misc, prms);
+            if (gradient is not null)
+            {
+                SetGradient(ref template, gradient, center);
+            }
 
             SdfShapeVertex2D Corner(float sx, float sy)
             {
                 var local = new Vector2(sx * ext.X, sy * ext.Y);
-                return new SdfShapeVertex2D(center + local, local, fill, border, misc, prms);
+                var vertex = template;
+                vertex.Position = center + local;
+                vertex.LocalPos = local;
+                return vertex;
             }
 
             var tl = Corner(-1f, -1f);
@@ -1512,6 +1525,49 @@ namespace Radiant.Graphics2D
             _sdfShapeVertices.Add(tr);
 
             AppendToBatch(BatchKind.SdfShape, start, 6, IntPtr.Zero);
+        }
+
+        // Puts a gradient's stops and geometry into a vertex. Its points are in draw coordinates and
+        // are stored relative to the shape's center: the shape's local frame, which the shader
+        // evaluates in and which a transform leaves alone, so the gradient turns with the shape.
+        private static void SetGradient(ref SdfShapeVertex2D vertex, Gradient gradient, Vector2 center)
+        {
+            var stops = gradient.Stops;
+            var last = stops[^1];
+            GradientStop Stop(int i) => i < stops.Count ? stops[i] : last;
+            vertex.Color = Stop(0).Color;
+            vertex.Color1 = Stop(1).Color;
+            vertex.Color2 = Stop(2).Color;
+            vertex.Color3 = Stop(3).Color;
+            vertex.StopOffsets = new Vector4(Stop(0).Offset, Stop(1).Offset, Stop(2).Offset, Stop(3).Offset);
+            var start = gradient.Start - center;
+            var end = gradient.End - center;
+            vertex.GradientGeometry = gradient.Kind == GradientKind.Linear
+                ? new Vector4(start.X, start.Y, end.X, end.Y)
+                : new Vector4(start.X, start.Y, gradient.Radius, 0f);
+            vertex.GradientInfo = new Vector4((float)(int)gradient.Kind, stops.Count, (float)(int)gradient.Interpolation, 0f);
+        }
+
+        /// <summary>A rounded rectangle filled with a gradient.</summary>
+        public void DrawRoundedRectFilled(float x, float y, float width, float height, CornerRadii radii, Gradient fill)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitRoundedRect(x, y, width, height, radii, 0f, Vector4.Zero, Vector4.Zero, fill);
+        }
+
+        /// <summary>A rounded rectangle filled with a gradient, with a solid border.</summary>
+        public void DrawRoundedRect(float x, float y, float width, float height, CornerRadii radii,
+            float borderWidth, Gradient fill, Vector4 border)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitRoundedRect(x, y, width, height, radii, borderWidth, Vector4.Zero, border, fill);
+        }
+
+        /// <summary>A disc filled with a gradient.</summary>
+        public void DrawDisc(Vector2 center, float radius, Gradient fill)
+        {
+            ArgumentNullException.ThrowIfNull(fill);
+            EmitCircle(center, radius, 0f, 0f, Vector4.Zero, Vector4.Zero, fill);
         }
 
         /// <summary>

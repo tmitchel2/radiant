@@ -33,6 +33,22 @@ namespace Radiant.Graphics2D
         /// </summary>
         public Vector4 Params;
 
+        // Gradient fill (all zero for a solid fill). Stop 0's color is Color; stops 1–3 follow.
+        public Vector4 Color1;
+
+        public Vector4 Color2;
+
+        public Vector4 Color3;
+
+        // The stops' offsets, 0 to 1.
+        public Vector4 StopOffsets;
+
+        // Linear: start.xy, end.xy. Radial: center.xy, radius, 0. In the shape's local frame.
+        public Vector4 GradientGeometry;
+
+        // x: kind (0 solid, 1 linear, 2 radial); y: stop count; z: interpolation space.
+        public Vector4 GradientInfo;
+
         public SdfShapeVertex2D(Vector2 position, Vector2 localPos, Vector4 color, Vector4 borderColor, Vector4 misc, Vector4 @params)
         {
             Position = position;

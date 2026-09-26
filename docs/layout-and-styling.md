@@ -155,7 +155,6 @@ content host should still scroll.
 | Real CSS-text parsing (e.g. ExCSS) | Consumers are C#; a fluent/predicate API is AOT-clean and refactor-safe | Non-C# authors need to edit styles without recompiling |
 | Stylesheet-driven layout (`Style` carrying `LayoutStyle`) | Keeps the style pass and layout pass decoupled (style would have to run before layout) | A real need to set padding/flex from a stylesheet rule |
 | `:focus` pseudo-state + focus management | No focus model exists in the widget tree yet | Keyboard navigation / focusable widgets land |
-| Gradient fills (linear/radial) | Needs a fill-mode + colour-stop params on the shape vertex | A design calls for gradient backgrounds/buttons |
 | Thick AA line/segment + arc/pie shapes | The `DrawLine` 1px primitive covers current needs; new shapes are now just a shader `case` + `Draw*` | Dividers/connectors/circular sliders need crisp strokes |
 | True (non-circular) ellipse SDF | Exact elliptical distance is iterative; circles/rings cover UI; legacy tessellated `DrawEllipse*` remains | A UI genuinely needs an anti-aliased ellipse |
 | Rounded / SDF clipping (vs rectangular scissor) | `PushClip` is a rectangular scissor; rounded panels clip content squarely at the corners | Content visibly overflowing a rounded container's corners |

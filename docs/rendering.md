@@ -99,6 +99,21 @@ integrated in closed form along x and with four samples along y. This is Evan Wa
 Rectangle Shadows". With square corners the result is within 4/255 of the exact Gaussian blur,
 which a GPU test checks pixel by pixel.
 
+## Gradients
+
+`DrawRoundedRectFilled`, `DrawRoundedRect` and `DrawDisc` take a `Gradient` in place of a fill color.
+A gradient is linear (`Gradient.Linear(start, end, …)`) or radial (`Gradient.Radial(center, radius,
+…)`), with two to four stops; before the first stop and after the last, the end colors hold. Its
+points are in draw coordinates, and the gradient turns and scales with its shape.
+
+`GradientInterpolation` chooses the space the stops blend in:
+- `Srgb` (the default) is what CSS and design tools do, so a design matches its mock-up.
+- `Linear` mixes light physically.
+- `Oklab` gives perceptually even steps.
+
+Alpha always blends premultiplied, so a fade from transparent keeps its hue. The stops travel in the
+SDF shape's vertices, so a gradient needs no texture and batches with plain shapes.
+
 ## Text
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.
