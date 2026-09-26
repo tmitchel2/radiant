@@ -81,10 +81,12 @@ turns a filled button red.
 | `ToggleButton`, `ToggleGroup` | Icon buttons that stay on; groups of one-of (alignment) or any (bold, italic) |
 | `Toolbar` | A row of controls where Left/Right/Home/End move focus, stopping at its ends |
 | `SplitButton` | The usual action with a joined arrow dropping its alternatives |
+| `NumberField` | A number typed in the culture's format or stepped by its arrows, Up/Down and Page Up/Down; min, max, step, decimals, suffix |
+| `RangeSlider` | Two handles on one track: a press moves the nearer, each is a keyboard slider, they can't cross |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
-| `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
+| `TextField` | Filled and outlined fields (a `Trailing` element can replace the trailing icon): the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
 React's: they show the value they're given and report presses with the value they should become.

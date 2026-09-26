@@ -46,6 +46,9 @@ public sealed record TextField(string Label) : Component
     /// <summary>A trailing icon.</summary>
     public string? TrailingIcon { get; init; }
 
+    /// <summary>Anything at the field's end in place of <see cref="TrailingIcon"/> (a number field's stepper).</summary>
+    public Element? Trailing { get; init; }
+
     /// <summary>What pressing the trailing icon does (clear the text, reveal a password).</summary>
     public Action? OnTrailingIconPress { get; init; }
 
@@ -183,7 +186,12 @@ public sealed record TextField(string Label) : Component
                                 },
                             ],
                         },
-                        TrailingIcon is null ? null : new Box
+                        Trailing is not null ? new Box
+                        {
+                            Layout = new LayoutStyle { Height = 56, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
+                            Children = [Trailing],
+                        }
+                        : TrailingIcon is null ? null : new Box
                         {
                             Layout = new LayoutStyle { Width = 48, Height = 56, AlignItems = Align.Center, JustifyContent = Justify.Center, Margin = new Edges(0, 0, 4, 0) },
                             Children =

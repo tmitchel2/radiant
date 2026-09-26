@@ -40,6 +40,9 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var menu = context.UseState(StartWithMenu);
         var sheet = context.UseState(StartWithSheet);
         var pageNumber = context.UseState(7);
+        var quantity = context.UseState(2.0);
+        var width = context.UseState(1280.0);
+        var price = context.UseState((50f, 250f));
         var formats = context.UseState((IReadOnlySet<int>)new HashSet<int> { 0 });
         var align = context.UseState((IReadOnlySet<int>)new HashSet<int> { 0 });
         var popover = context.UseState(false);
@@ -158,6 +161,18 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     new Alert("Saved") { Kind = AlertKind.Success, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
                     new Alert("Low disk space") { Kind = AlertKind.Warning, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
                     new Alert("Sync failed") { Kind = AlertKind.Error, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } }) { Gap = 12 },
+                new Row(
+                    new NumberField("Quantity", quantity.Value, quantity.Set) { Min = 0, Max = 99, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 180 } },
+                    new NumberField("Width", width.Value, width.Set) { Min = 0, Max = 4000, Step = 10, Suffix = "px", Layout = new LayoutStyle { Width = 180 } },
+                    new Box
+                    {
+                        Layout = new LayoutStyle { Width = 300, RowGap = 4 },
+                        Children =
+                        [
+                            new SurfaceText($"Price ${price.Value.Item1:0} to ${price.Value.Item2:0}") { TextType = TextType.LabelLarge },
+                            new RangeSlider(price.Value.Item1, price.Value.Item2, (l, h) => price.Set((l, h))) { Min = 0, Max = 500, Step = 5, Label = "Price" },
+                        ],
+                    }) { Gap = 16 },
                 new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
                 new Row(
                     new SearchField("Search components") { Layout = new LayoutStyle { Width = 260 } },
