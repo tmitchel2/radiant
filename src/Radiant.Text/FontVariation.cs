@@ -16,4 +16,7 @@ public readonly record struct FontVariation(string Tag, float Value)
 
     /// <summary>The width axis, as a percentage of normal.</summary>
     public const string Width = "wdth";
+
+    /// <summary>Fill: 0 outlined to 1 filled, in icon fonts such as Material Symbols.</summary>
+    public const string Fill = "FILL";
 }

@@ -17,6 +17,7 @@ Components share props through style facets, generated onto each component by
 | `IHasText` | `Text`, `TextType` |
 | `IHasPressable` | `OnPress` |
 | `IHasLayout` | `Layout` |
+| `IHasIcon` | `Icon`, `IconFilled`, `IconSize` |
 
 A component forwards the facets each part needs with `[ForwardFacets]`. Facets set on the
 component override its presets: `new SurfaceButton("Delete") { SurfaceColor = SurfaceName.Error }`
@@ -31,6 +32,19 @@ turns a filled button red.
 | `SurfaceText` | Text in the surface's content colour, in a type-scale step, with optional legibility |
 | `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a pill-shaped `PressableSurface` with a label |
 | `Card` | Elevated, filled and outlined cards |
+| `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
+| `IconButton` | Standard, filled, tonal and outlined icon buttons, named by a required label |
+
+Buttons take a leading icon (`Icon = "add"`).
+
+## Icons
+
+Icons are Material Symbols Rounded (Apache-2.0), drawn as text: an icon's name, set in
+`FontLibrary.Icons`, becomes the icon through the font's ligatures. FILL, weight and optical size
+are variable (`TextStyle.Variations`).
+- **Embedded set:** Radiant embeds 272 common icons (408 KB). The list is `tools/icons/icons.txt`;
+  `tools/icons/subset.sh` rebuilds the font from a pinned upstream commit.
+- **All icons:** register the full font under `FontLibrary.Icons` for the rest.
 
 ## Primitives (`Radiant.Components.Primitives`)
 

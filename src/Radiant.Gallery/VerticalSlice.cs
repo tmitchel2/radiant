@@ -44,10 +44,17 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     Layout = new LayoutStyle { MaxWidth = 640, Padding = Edges.All(20), RowGap = 12 },
                 },
                 new Row(
-                    new SurfaceButton("Shuffle theme", ButtonVariant.Tonal) { OnPress = () => Shuffle(themes) },
+                    new SurfaceButton("Shuffle theme", ButtonVariant.Tonal) { Icon = "palette", OnPress = () => Shuffle(themes) },
                     new SurfaceButton("Error") { SurfaceColor = SurfaceName.Error },
                     new SurfaceButton("Success") { SurfaceColor = SurfaceName.Success },
                     new SurfaceButton("Disabled") { ShowDisabled = true }),
+                new Row(
+                    new SurfaceButton("Add", ButtonVariant.Filled) { Icon = "add" },
+                    new SurfaceButton("Download", ButtonVariant.Outlined) { Icon = "download" },
+                    new IconButton("search", "Search"),
+                    new IconButton("favorite", "Favourite", IconButtonVariant.Filled) { IconFilled = true },
+                    new IconButton("settings", "Settings", IconButtonVariant.Tonal),
+                    new IconButton("delete", "Delete", IconButtonVariant.Outlined)),
                 new Row(
                     new Card(new SurfaceText("Filled card")) { Variant = CardVariant.Filled },
                     new Card(new SurfaceText("Outlined card")) { Variant = CardVariant.Outlined },

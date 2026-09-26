@@ -53,7 +53,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   PNG, so it could start from there.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
-- **No icons.** Material Symbols isn't embedded yet, so buttons have no icon slot.
+- **Only 272 icons are embedded.** They're curated in `tools/icons/icons.txt`, to keep the font
+  at 408 KB rather than 15 MB. An app wanting icons outside the list must register the full font
+  itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
 - **Button heights are fixed.** They are 40 px plus density; Material 3's newer button sizes

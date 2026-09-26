@@ -37,6 +37,12 @@ public sealed record TextStyle
     /// <summary>OpenType features to turn on or off, e.g. <see cref="FontFeature.TabularNumbers"/>.</summary>
     public IReadOnlyList<FontFeature> Features { get; init; } = [];
 
+    /// <summary>
+    /// Other variable-font axes to set, such as an icon font's fill (<c>FILL</c>). Weight and
+    /// optical size come from <see cref="Weight"/> and <see cref="Size"/>.
+    /// </summary>
+    public IReadOnlyList<FontVariation> Variations { get; init; } = [];
+
     /// <summary>A BCP 47 language for language-specific forms (Turkish i, Serbian italics), or null.</summary>
     public string? Language { get; init; }
 }

@@ -12,7 +12,8 @@ namespace Radiant.Components;
 [ForwardFacets(typeof(PressableSurface), "Container",
     typeof(IHasBackgroundColor), typeof(IHasCornerShape), typeof(IHasElevation), typeof(IHasOutline), typeof(IHasLayout), typeof(IHasPressable))]
 [ForwardFacets(typeof(SurfaceText), "Label", typeof(IHasText))]
-public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHasCornerShape, IHasElevation, IHasOutline, IHasLayout, IHasPressable, IHasText
+[ForwardFacets(typeof(SurfaceIcon), "LeadingIcon", typeof(IHasIcon))]
+public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHasCornerShape, IHasElevation, IHasOutline, IHasLayout, IHasPressable, IHasText, IHasIcon
 {
     /// <summary>A button with a label.</summary>
     public SurfaceButton(string text, ButtonVariant variant = ButtonVariant.Filled)
@@ -30,6 +31,7 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
         System.ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
         var horizontal = Variant == ButtonVariant.Text ? 12f : 24f;
+        var hasIcon = Icon is not null;
         var container = Preset(Variant) with
         {
             CornerShape = CornerShapeRole.Full,
@@ -39,12 +41,18 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
                 AlignItems = Align.Center,
                 JustifyContent = Justify.Center,
                 MinHeight = 40f + theme.DensityOffset,
-                Padding = Edges.Symmetric(horizontal, 0),
+                // With an icon, the leading side tightens by 8 (Material's 16/24).
+                Padding = new Edges(hasIcon ? horizontal - 8f : horizontal, 0, horizontal, 0),
+                ColumnGap = 8,
             },
         };
         return ForwardContainer(container) with
         {
-            Children = [ForwardLabel(new SurfaceText { TextType = Radiant.Theming.TextType.LabelLarge })],
+            Children =
+            [
+                hasIcon ? ForwardLeadingIcon(new SurfaceIcon { IconSize = 18f }) : null,
+                ForwardLabel(new SurfaceText { TextType = Radiant.Theming.TextType.LabelLarge }),
+            ],
         };
     }
 

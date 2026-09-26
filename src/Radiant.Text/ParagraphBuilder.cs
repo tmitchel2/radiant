@@ -25,7 +25,7 @@ internal sealed class ParagraphBuilder
     private readonly IReadOnlyList<LineBreakOpportunity> _breaks;
     private readonly float[] _prefix;
     private readonly Dictionary<(string Family, bool Italic), FontFace> _faces = [];
-    private readonly Dictionary<(FontFace Face, float Weight, float Size), FontInstance> _instances = [];
+    private readonly Dictionary<(FontFace Face, float Weight, float Size, IReadOnlyList<FontVariation> Variations), FontInstance> _instances = [];
     private int[]? _words;
 
     public ParagraphBuilder(AttributedText text, ParagraphStyle style, FontLibrary fonts)
@@ -251,12 +251,16 @@ internal sealed class ParagraphBuilder
 
     private FontInstance Instance(FontFace face, TextStyle style)
     {
-        var key = (face, style.Weight, style.Size);
+        var key = (face, style.Weight, style.Size, style.Variations);
         if (!_instances.TryGetValue(key, out var instance))
         {
-            instance = face.Instance(
+            FontVariation[] variations =
+            [
                 new FontVariation(FontVariation.Weight, style.Weight),
-                new FontVariation(FontVariation.OpticalSize, style.Size));
+                new FontVariation(FontVariation.OpticalSize, style.Size),
+                .. style.Variations,
+            ];
+            instance = face.Instance(variations);
             _instances[key] = instance;
         }
         return instance;

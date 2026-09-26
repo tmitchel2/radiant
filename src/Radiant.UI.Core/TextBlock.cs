@@ -33,6 +33,9 @@ public sealed record TextBlock : HostElement
     /// <summary>Whether lines wrap at the block's width; false keeps each line whole.</summary>
     public bool Wrap { get; init; } = true;
 
+    /// <summary>Whether the text is decoration (an icon's name) that assistive technology should skip.</summary>
+    public bool IsDecorative { get; init; }
+
     /// <summary>Size and placement within the parent.</summary>
     public LayoutStyle Layout { get; init; }
 

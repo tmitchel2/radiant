@@ -687,6 +687,8 @@ public sealed class UIRoot : IDisposable
         var bounds = new System.Drawing.RectangleF(position.X, position.Y, node.Size.X, node.Size.Y);
         switch (node)
         {
+            case TextRenderNode { Element.IsDecorative: true }:
+                break;
             case TextRenderNode text:
                 into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Text }, text.Element.AttributedText.Text, bounds, false, false, []));
                 break;

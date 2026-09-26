@@ -18,6 +18,13 @@ public sealed class FontLibrary : IDisposable
     /// <summary>JetBrains Mono: Radiant's fixed-width typeface.</summary>
     public const string JetBrainsMono = "JetBrains Mono";
 
+    /// <summary>
+    /// Material Symbols Rounded: icons, drawn by setting an icon's name as text ("check",
+    /// "arrow_back"), which the font's ligatures turn into the icon. Radiant embeds a subset
+    /// (tools/icons/icons.txt); register the full font under this name for all of them.
+    /// </summary>
+    public const string Icons = "Material Symbols Rounded";
+
     private static readonly Lazy<FontLibrary> s_default = new(CreateDefault);
 
     private readonly Dictionary<string, (FontFace? Upright, FontFace? Italic)> _families = new(StringComparer.OrdinalIgnoreCase);
@@ -146,6 +153,8 @@ public sealed class FontLibrary : IDisposable
         library.Register(Embedded("InterVariable-Italic.ttf", Inter, italic: true));
         library.Register(Embedded("JetBrainsMonoVariable.ttf", JetBrainsMono, italic: false));
         library.Register(Embedded("JetBrainsMonoVariable-Italic.ttf", JetBrainsMono, italic: true));
+        // Icons are only ever asked for by name: they must never stand in for missing letters.
+        library.Register(Embedded("MaterialSymbolsRounded.ttf", Icons, italic: false), fallback: false);
         return library;
     }
 

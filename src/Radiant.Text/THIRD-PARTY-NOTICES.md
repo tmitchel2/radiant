@@ -58,3 +58,6 @@ through HarfBuzzSharp, both under the MIT licence.
 ## Fonts
 
 Inter and JetBrains Mono are under the SIL Open Font License 1.1; their licences are in `Fonts/`.
+
+Material Symbols Rounded (a subset: `tools/icons/icons.txt`, built by `tools/icons/subset.sh`) is
+Copyright Google LLC under the Apache License 2.0; the licence is `Fonts/MaterialSymbols-LICENSE.txt`.

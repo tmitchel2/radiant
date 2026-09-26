@@ -184,4 +184,27 @@ public class ComponentTests
 
         Assert.AreEqual(0f, FirstBox(root).Element.CornerRadii.TopLeft);
     }
+
+    [TestMethod]
+    public void AnIconButtonIsNamedByItsLabelNotItsIconName()
+    {
+        using var root = Mount(new IconButton("delete", "Delete"));
+
+        var node = root.GetSemantics().Children.Single();
+
+        Assert.AreEqual((SemanticsRole.Button, "Delete"), (node.Role, node.Label));
+    }
+
+    [TestMethod]
+    public void AButtonWithAnIconShowsItBeforeTheLabel()
+    {
+        using var root = Mount(new SurfaceButton("Add") { Icon = "add" });
+
+        var texts = All(root.RootRenderNode).OfType<TextRenderNode>().Select(t => t.Element).ToArray();
+
+        Assert.AreEqual(2, texts.Length);
+        Assert.AreEqual(("add", true), (texts[0].Text, texts[0].IsDecorative));
+        Assert.IsTrue(texts[0].Style.FontFamily == Radiant.Text.FontLibrary.Icons);
+        Assert.AreEqual("Add", texts[1].Text);
+    }
 }
