@@ -52,6 +52,7 @@ These are whole windows. The gallery shows each one in a framed preview.
 
 | Block | What it is |
 |---|---|
+| `EditorLayout(title, content)` | A document editor's window: a header across the top with the title, `Meta` (tags) and `Actions`, then a side `Panel` (a chat, an outline) beside the main area, set apart by lines |
 | `WorkspaceLayout(activities, activity, onActivity, editor)` | An IDE-style docked workspace: an activity bar choosing the side bar's content, the side bar, the editor with a panel under it and an inspector beside it, each behind a `Splitter`, and a status bar. Any part left null goes, with its splitter. |
 | `MasterDetail(items, selected, onSelect, detail)` | A searchable list beside the chosen item's detail (mail, notes). Up and Down move through the list; searching keeps indices in the full list. With nothing chosen the detail shows an empty state. |
 | `InspectorSection(title, rows)` / `PropertyRow(label, control)` | An inspector's collapsible property groups, names in a fixed column. |

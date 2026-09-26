@@ -49,6 +49,7 @@ public sealed partial record IconButton : Component, IHasBackgroundColor, IHasCo
         return ForwardContainer(SurfaceLooks.Pressable(look) with
         {
             CornerShape = style.Shape,
+            ScaleOnPress = true,
             Label = Label,
             Layout = new LayoutStyle { Width = size, Height = size, AlignItems = Align.Center, JustifyContent = Justify.Center },
         }) with

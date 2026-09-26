@@ -70,7 +70,7 @@ public sealed partial record TextField(string Label) : Component
     /// <summary>Whether Enter adds a line.</summary>
     public bool Multiline { get; init; }
 
-    /// <summary>Called when Enter is pressed in a one-line field.</summary>
+    /// <summary>Called when Enter is pressed in a one-line field, or ⌘Enter (Ctrl+Enter) in a multi-line one.</summary>
     public Action? OnSubmit { get; init; }
 
     /// <summary>Called with true when the field takes focus and false when it loses it.</summary>

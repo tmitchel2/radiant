@@ -12,6 +12,9 @@ namespace Radiant.Components;
 /// <param name="Text">What it says.</param>
 public sealed record Tag(string Text) : Component
 {
+    /// <summary>A value set bolder before the text, which then goes quieter ("<b>611</b> pieces").</summary>
+    public string? Value { get; init; }
+
     /// <summary>An icon before the text.</summary>
     public string? Icon { get; init; }
 
@@ -36,7 +39,7 @@ public sealed record Tag(string Text) : Component
                 preset with
         {
             CornerShape = style.TagShape,
-            Semantics = new Semantics { Role = SemanticsRole.None, Label = Text },
+            Semantics = new Semantics { Role = SemanticsRole.None, Label = Value is null ? Text : $"{Value} {Text}" },
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,
@@ -49,10 +52,27 @@ public sealed record Tag(string Text) : Component
             Children =
             [
                 Icon is null ? null : new SurfaceIcon(Icon) { IconSize = 16 },
-                new SurfaceText(Text) { TextType = TextType.LabelMedium, MaxLines = 1 },
+                Value is null ? null : new Emphasis(Value),
+                new SurfaceText(Text) { TextType = TextType.LabelMedium, MaxLines = 1, Legibility = Value is null ? null : Legibility.Medium },
             ],
         },
             ],
         };
+    }
+
+    // The value: the label's style, a weight heavier.
+    private sealed record Emphasis(string Value) : Component
+    {
+        public override Element? Build(BuildContext context)
+        {
+            var theme = context.UseTheme();
+            var style = theme.Text(TextType.LabelMedium);
+            return new TextBlock(Value)
+            {
+                IsDecorative = true,
+                Wrap = false,
+                Style = style with { Weight = System.MathF.Min(style.Weight + 200f, 900f), Color = theme.ContentColor(context.UseSurface()) },
+            };
+        }
     }
 }

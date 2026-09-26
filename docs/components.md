@@ -39,7 +39,8 @@ turns a filled button red.
 | `Surface` | Applies its background-colour props to the inherited surface state and draws the surface (colour, corners, elevation, outline); children inherit the new state |
 | `PressableSurface` | A surface that presses: focus, pointer, Enter and Space; hover, focus and pressed state layers; disabled fades and stops responding; a button to assistive technology (or another `Role`, with `Selected` and `Expanded` states) |
 | `SurfaceText` | Text in the surface's content colour, in a type-scale step, with optional legibility; `HeadingLevel` makes it a heading to assistive technology |
-| `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a `PressableSurface` with a label, shaped by the theme's `Control` corners (a pill by default) |
+| `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a `PressableSurface` with a label, shaped by the theme's `Control` corners (a pill by default); a leading icon, a `TrailingIcon` ("Send →") and a `Trailing` element (an inline count) |
+| `Composer` | A framed box for a message or prompt: an optional header (a mode switch), text that grows, actions and a send button disabled until there's text; ⌘Enter sends |
 | `Card` | Elevated, filled and outlined cards |
 | `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
 | `IconButton` | Standard, filled, tonal and outlined icon buttons, named by a required label |
@@ -55,6 +56,7 @@ turns a filled button red.
 | `Dialog` | Modal: scrim, focus trap, Escape and scrim close (unless it must be answered), focus restored, fade and scale |
 | `Tooltip` | After the pointer rests 600 ms, a small inverse-surface label beside its child |
 | `Chip` | Assist, filter (tick and tonal fill when chosen) and input (trailing ×) chips, elevated or outlined |
+| `Tag` | A small label tinted in a colour family, or outlined in themes that outline them; a bolder `Value` before its text ("**611** pieces") |
 | `Badge` | A dot or a count (99+) in the error colour on the top right of its child; `Inline`, a quiet count after it in a row |
 | `LinearProgress` | Determinate, or an indeterminate sliding segment |
 | `CircularProgress` | A ring filling clockwise from the top, or a spinner whose arc turns as it grows and shrinks |

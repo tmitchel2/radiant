@@ -194,6 +194,34 @@ public class ThemePresetsTests
     }
 
     [TestMethod]
+    public void AShadeLayerDarkensEvenAFilledControlOnALightTheme()
+    {
+        var theme = ResolvedTheme.Resolve(ThemePresets.Linen);
+        var filled = SurfaceState.Default.With(new SurfaceChange { Surface = SurfaceName.Primary });
+
+        var hovered = theme.StateLayerColor(filled, 0.1f);
+
+        Assert.IsTrue(Tone(hovered) < Tone(theme.Get(SurfaceName.Primary)), "the shade darkens the accent");
+        var content = ResolvedTheme.Resolve(ThemePresets.Quartz).StateLayerColor(filled, 0.1f);
+        Assert.IsTrue(Tone(content) > Tone(ThemePresets.Quartz.Colors.Light!.Primary.Color), "content layers lighten a filled control");
+    }
+
+    [TestMethod]
+    public void AShadeLayerLightensOnADarkTheme()
+    {
+        var theme = ResolvedTheme.Resolve(Dark(ThemePresets.Linen));
+
+        Assert.IsTrue(Tone(theme.StateLayerColor(SurfaceState.Default, 0.1f)) > Tone(theme.Get(SurfaceName.Surface)));
+    }
+
+    [TestMethod]
+    public void OnlyHairlineButtonsShrinkWhenPressed()
+    {
+        Assert.AreEqual(1f, ComponentStyles.Tonal.Interaction.PressScale);
+        Assert.IsTrue(ComponentStyles.Hairline.Interaction.PressScale is > 0.9f and < 1f);
+    }
+
+    [TestMethod]
     public void OverlinesAreSmallAndSpacedOut()
     {
         var overline = new Theme().Typography[TextType.Overline];

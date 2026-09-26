@@ -42,7 +42,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
     /// <summary>The selection's colour.</summary>
     public Vector4 SelectionColor { get; init; } = new(0.2f, 0.4f, 1f, 0.3f);
 
-    /// <summary>Called when Enter is pressed in a one-line input.</summary>
+    /// <summary>Called when Enter is pressed in a one-line input, or ⌘Enter (Ctrl+Enter) in a multi-line one.</summary>
     public Action? OnSubmit { get; init; }
 
     /// <summary>Called when the input gains (true) or loses (false) focus.</summary>
@@ -244,7 +244,12 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                     Change(TextEditing.DeleteForward(state, byWord: alt));
                     break;
                 case KeyCode.Enter or KeyCode.KeypadEnter:
-                    if (props.Multiline && Editable())
+                    // Enter submits a one-line field; a multi-line one takes a new line, and submits with ⌘ (Ctrl) held.
+                    if (props.Multiline && command && props.OnSubmit is { } send)
+                    {
+                        send();
+                    }
+                    else if (props.Multiline && Editable())
                     {
                         Change(TextEditing.Insert(state, "\n"));
                     }

@@ -70,6 +70,40 @@ public class ActionBitsTests
     }
 
     [TestMethod]
+    public void AComposerSendsOnlyWhenThereIsText()
+    {
+        var sent = new List<string>();
+        using var empty = Mount(new Composer(TextEditState.From("  "), _ => { }) { OnSend = sent.Add });
+        using var full = Mount(new Composer(TextEditState.From("A windmill"), _ => { }) { OnSend = sent.Add });
+
+        Click(empty, Find(empty, SemanticsRole.Button, "Send"));
+        Click(full, Find(full, SemanticsRole.Button, "Send"));
+
+        Assert.IsTrue(Find(empty, SemanticsRole.Button, "Send").Semantics.Disabled);
+        CollectionAssert.AreEqual(new[] { "A windmill" }, sent);
+    }
+
+    [TestMethod]
+    public void ATagsValueIsReadWithItsText()
+    {
+        using var root = Mount(new Tag("pieces") { Value = "611" });
+
+        Assert.IsTrue(All(root).Any(n => n.Label == "611 pieces"));
+    }
+
+    [TestMethod]
+    public void AButtonsTrailingPartsFollowItsLabel()
+    {
+        using var root = Mount(new SurfaceButton("Versions") { Trailing = new Badge(null) { Inline = true, Count = 3 } });
+
+        var button = Find(root, SemanticsRole.Button, "Versions");
+        var count = All(root).First(n => n.Label == "3");
+
+        Assert.IsTrue(count.Bounds.X > button.Bounds.X + button.Bounds.Width / 2, "the count sits at the button's end");
+        Assert.IsTrue(count.Bounds.X + count.Bounds.Width <= button.Bounds.X + button.Bounds.Width, "inside the button");
+    }
+
+    [TestMethod]
     public void AnExtendedFabShowsItsLabel()
     {
         using var small = Mount(new Fab("edit", "Compose"));

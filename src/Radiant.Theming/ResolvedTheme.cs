@@ -201,14 +201,17 @@ public sealed class ResolvedTheme
     }
 
     /// <summary>
-    /// A state layer over a state's surface, opaque: its content colour mixed in at
-    /// <paramref name="opacity"/> (hover, focus, pressed), in sRGB for the same reason as
-    /// <see cref="ContentColor"/>.
+    /// A state layer over a state's surface, opaque: its content colour (or, with
+    /// <see cref="StateLayerLook.Shade"/>, black or white) mixed in at <paramref name="opacity"/>
+    /// (hover, focus, pressed), in sRGB for the same reason as <see cref="ContentColor"/>.
     /// </summary>
     public Color StateLayerColor(SurfaceState state, float opacity)
     {
         ArgumentNullException.ThrowIfNull(state);
-        return MixSrgb(SurfaceColor(state), Get(state.Content with { Opacity = null }), opacity);
+        var over = Theme.Components.Interaction.StateLayer == StateLayerLook.Shade
+            ? Theme.Colors.IsDark ? Color.White : Color.Black
+            : Get(state.Content with { Opacity = null });
+        return MixSrgb(SurfaceColor(state), over, opacity);
     }
 
     /// <summary>Mixes two colours in sRGB (gamma-encoded) space, as CSS and Material blend.</summary>

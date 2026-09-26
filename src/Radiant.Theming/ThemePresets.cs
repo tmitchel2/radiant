@@ -76,10 +76,11 @@ public static class ThemePresets
             Exit = new Easing(0.4f, 0f, 1f, 1f),
         },
         Density = -1,
-        // Squarer chips and tags than the pill-shaped default.
         Components = ComponentStyles.Hairline with
         {
+            // Squarer chips and tags, and an accent that lightens under the pointer.
             Chip = ComponentStyles.Hairline.Chip with { Shape = CornerShapeRole.Small, TagShape = CornerShapeRole.Small },
+            Interaction = ComponentStyles.Hairline.Interaction with { StateLayer = StateLayerLook.Content },
         },
     };
 

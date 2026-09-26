@@ -54,7 +54,15 @@ public sealed record ComponentStyles
     /// </summary>
     public static ComponentStyles Hairline { get; } = new()
     {
-        Interaction = new InteractionStyle { FocusRingWidth = 2f, FocusRingGap = 2f, FocusRingColor = SurfaceName.Primary, Disabled = DisabledLook.Fade },
+        Interaction = new InteractionStyle
+        {
+            FocusRingWidth = 2f,
+            FocusRingGap = 2f,
+            FocusRingColor = SurfaceName.Primary,
+            Disabled = DisabledLook.Fade,
+            StateLayer = StateLayerLook.Shade,
+            PressScale = 0.98f,
+        },
         Icons = new IconStyle { Size = 20f, Weight = 300f, FillChosen = false },
         Button = new ButtonStyle
         {

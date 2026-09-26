@@ -337,6 +337,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `DataTable` headers and rows, `TreeView` rows, `DocumentTabs`, `Pagination`'s sizes,
   `MenuBar`, `StatusBar` and the templates' own blocks (a hero's corners, a pricing tier's
   highlight). Each wants its sizes and looks moved into a style record.
+- **Fine icons are an approximation.** Hairline draws Material Symbols at weight 300 and 20 px,
+  close to a thin outline set but not the same drawing. Another icon font would need a map from
+  names to its characters, since icons are drawn by ligature name.
 - **Component styles are theme-wide.** A `SurfaceLook` or a `TabsLook` applies to every instance;
   there's no way to give one screen's tabs a different structure than another's except by
   providing a different theme below it. A per-instance override (a `Look` prop) would be the

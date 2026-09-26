@@ -70,10 +70,11 @@ family, and components read it instead of constants. Two sets are built in:
 | Tracks | Secondary container | The highest surface container (a neutral grey) |
 | Icons | 24 px, weight 400, chosen ones filled | 20 px, weight 300, never filled |
 | Focus ring | 3 px, 2 out, secondary | 2 px, 2 out, primary |
+| Hover and press | The content colour laid over the control | A shade (black on light, white on dark), so filled controls darken too; buttons shrink to 98% while pressed |
 
 The records:
 
-- `InteractionStyle`: the focus ring (width, gap, colour family) and the `DisabledLook`.
+- `InteractionStyle`: the focus ring (width, gap, colour family), the `DisabledLook`, the `StateLayerLook` (content colour or shade) and how far buttons shrink when pressed.
 - `IconStyle`: default size, stroke weight, and whether chosen icons fill.
 - `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, and a `SurfaceLook` per variant.
 - `ChipStyle`: chips' and tags' sizes, corners and looks.

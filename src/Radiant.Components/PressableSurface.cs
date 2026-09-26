@@ -25,6 +25,9 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     /// </summary>
     public bool InsetFocusRing { get; init; }
 
+    /// <summary>Whether it shrinks a little while pressed, as far as the theme says (<see cref="InteractionStyle.PressScale"/>): for buttons, not rows.</summary>
+    public bool ScaleOnPress { get; init; }
+
     /// <summary>What the surface is, for assistive technology (a button unless told otherwise).</summary>
     public SemanticsRole Role { get; init; } = SemanticsRole.Button;
 
@@ -67,6 +70,8 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
             : 0f;
         var motion = theme.Theme.Motion;
         var opacity = context.UseTransition(target, motion.Reduced ? TimeSpan.Zero : motion.ShortDuration, motion.Standard);
+        var scale = context.UseTransition(ScaleOnPress && pressed.Value && !disabled ? interaction.PressScale : 1f,
+            motion.Reduced ? TimeSpan.Zero : TimeSpan.FromMilliseconds(100), motion.Standard);
         // The layer is opaque (mixed in sRGB with the surface it covers), so it sits inside any
         // outline rather than over it.
         var border = ShowOutline == true ? OutlineWidth ?? 1f : 0f;
@@ -96,6 +101,7 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         return ThemeContexts.Surface.Provide(state, SurfaceBox.For(this, theme, state) with
         {
             Opacity = fade ? interaction.DisabledOpacity : 1f,
+            Transform = scale < 1f ? System.Numerics.Matrix3x2.CreateScale(scale) : null,
             Focusable = !disabled,
             TabIndex = TabIndex,
             Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Checked = Checked, Expanded = Expanded },

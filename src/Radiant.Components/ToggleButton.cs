@@ -41,6 +41,7 @@ public sealed record ToggleButton(string Icon, string Label, bool On, Action<boo
         return (On ? SurfaceLooks.Pressable(theme.Components.Button.ToggleOn) : new PressableSurface()) with
         {
             ShowDisabled = Disabled ? true : null,
+            ScaleOnPress = true,
             CornerShape = CornerShapeRole.Small,
             Label = Label,
             TabIndex = TabIndex,

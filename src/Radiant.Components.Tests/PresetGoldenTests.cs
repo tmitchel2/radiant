@@ -27,7 +27,7 @@ public class PresetGoldenTests
 
     [TestMethod]
     [DynamicData(nameof(AllPresets))]
-    public void Structures(string preset) => InPreset(preset, "Structures", 640, 620, () => Column(16,
+    public void Structures(string preset) => InPreset(preset, "Structures", 640, 740, () => Column(16,
         new Box
         {
             Layout = new LayoutStyle { Width = 420 },
@@ -42,10 +42,18 @@ public class PresetGoldenTests
             new TextField("Name") { Variant = TextFieldVariant.Outlined, InitialText = "Alpine Chalet", SupportingText = "Shown on the cover", Layout = new LayoutStyle { Width = 220 } },
             new TextField("Code") { Variant = TextFieldVariant.Outlined, InitialText = "12345", Error = "That code has expired", Layout = new LayoutStyle { Width = 220 } }),
         Row(
-            new Card(new TextField("Prompt") { Variant = TextFieldVariant.Plain, Placeholder = "Describe what to build…" }) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Width = 260, Padding = Edges.All(12) } },
-            new SurfaceText("Try one") { TextType = TextType.Overline, Legibility = Legibility.Medium },
-            new Badge(new SurfaceText("Versions")) { Inline = true, Count = 3 },
-            new Tag("611 pieces")),
+            new Composer(Radiant.UI.Core.TextEditState.From(""), _ => { }) { Placeholder = "Describe what to build…", Actions = [new IconButton("image", "Attach")], Layout = new LayoutStyle { Width = 300 } },
+            new Box
+            {
+                Layout = new LayoutStyle { RowGap = 8 },
+                Children =
+                [
+                    new SurfaceText("Try one") { TextType = TextType.Overline, Legibility = Legibility.Medium },
+                    new Tag("pieces") { Value = "611" },
+                    new SurfaceButton("Versions", ButtonVariant.Text) { Icon = "history", Trailing = new Badge(null) { Inline = true, Count = 3 } },
+                    new SurfaceButton("Next", ButtonVariant.Outlined) { TrailingIcon = "arrow_forward" },
+                ],
+            }),
         Row(
             new Box { Layout = new LayoutStyle { Width = 240 }, Children = [new Slider(0.4f, _ => { }) { Label = "Volume" }] },
             new Box { Layout = new LayoutStyle { Width = 160 }, Children = [new LinearProgress { Value = 0.3f, Label = "Progress" }] },

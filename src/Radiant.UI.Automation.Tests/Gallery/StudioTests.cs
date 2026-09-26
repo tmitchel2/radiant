@@ -14,12 +14,39 @@ public sealed class StudioTests : GalleryTest
     {
         Themes.Set(Themes.Theme.WithStyle(ThemePresets.Find(preset)!));
         await GoToAsync("Studio");
-        await Driver.StudioPage().Send().Expect().ToBeDisabledAsync();
+        await Driver.StudioPage().Prompt().Send().Expect().ToBeDisabledAsync();
 
         await Driver.StudioPage().Suggestion().WithLabel("A retro rocket").TapAsync();
 
-        await Driver.StudioPage().Prompt().Input().Expect().ToHaveValueAsync("A retro rocket");
-        await Driver.StudioPage().Send().Expect().ToBeEnabledAsync();
+        await Driver.StudioPage().Prompt().Field().Input().Expect().ToHaveValueAsync("A retro rocket");
+        await Driver.StudioPage().Prompt().Send().Expect().ToBeEnabledAsync();
+    }
+
+    [TestMethod]
+    public async Task CommandEnterSendsThePromptAndClearsIt()
+    {
+        await GoToAsync("Studio");
+        var input = Driver.StudioPage().Prompt().Field().Input();
+        await input.TapAsync();
+        await Driver.TypeAsync("A windmill");
+
+        await Driver.KeyAsync("Cmd+Enter");
+
+        await input.Expect().ToHaveValueAsync("");
+        await Driver.StudioPage().Prompt().Send().Expect().ToBeDisabledAsync();
+    }
+
+    [TestMethod]
+    public async Task EnterAloneStartsANewLine()
+    {
+        await GoToAsync("Studio");
+        var input = Driver.StudioPage().Prompt().Field().Input();
+        await input.TapAsync();
+        await Driver.TypeAsync("A windmill");
+
+        await Driver.KeyAsync("Enter");
+
+        await input.Expect().ToHaveValueAsync("A windmill\n");
     }
 
     [TestMethod]

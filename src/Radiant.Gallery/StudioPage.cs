@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Numerics;
 using Radiant.Components;
+using Radiant.Templates;
 using Radiant.Layout;
 using Radiant.Theming;
 using Radiant.UI.Core;
@@ -24,9 +25,8 @@ internal sealed partial record StudioPage : Component
     [TestId<Tabs>] public static partial string ViewTabs { get; }
     [TestId<Chip>] public static partial string Suggestion { get; }
     [TestId<SegmentedButton>] public static partial string Mode { get; }
-    [TestId<TextField>] public static partial string Prompt { get; }
+    [TestId<Composer>] public static partial string Prompt { get; }
     [TestId<IconButton>] public static partial string Attach { get; }
-    [TestId<SurfaceButton>] public static partial string Send { get; }
     [TestId<SurfaceButton>] public static partial string Angle { get; }
     [TestId<SurfaceButton>] public static partial string Front { get; }
     [TestId<SurfaceButton>] public static partial string Top { get; }
@@ -46,13 +46,13 @@ internal sealed partial record StudioPage : Component
         var panel = context.UseState(0);
         var view = context.UseState(0);
         var mode = context.UseState((IReadOnlySet<int>)new HashSet<int> { 1 });
-        var prompt = context.UseState(Radiant.UI.Core.TextEditState.From(""));
+        var prompt = context.UseState(TextEditState.From(""));
         var spin = context.UseState(true);
         var playing = context.UseState(true);
         var step = context.UseState(1f);
         return new Surface
         {
-            SurfaceColor = SurfaceName.SurfaceBright,
+            SurfaceColor = SurfaceName.Surface,
             ShowOutline = true,
             OutlineVariant = true,
             CornerShape = CornerShapeRole.Large,
@@ -60,45 +60,28 @@ internal sealed partial record StudioPage : Component
             Layout = new LayoutStyle { Height = 720, Padding = Edges.All(1) },
             Children =
             [
-                Header(),
-                new Divider(),
-                new Box
+                new EditorLayout("Alpine Chalet", Canvas(view.Value, view.Set, spin.Value, spin.Set, playing.Value, () => playing.Set(!playing.Value), step.Value, step.Set))
                 {
-                    Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, FlexGrow = 1, FlexShrink = 1 },
-                    Children =
+                    Meta = [new Tag("pieces") { Value = "611" }, new Tag("steps") { Value = "118" }, new Tag("studs") { Value = "32×32" }],
+                    Actions =
                     [
-                        SidePanel(panel.Value, panel.Set, mode.Value, mode.Set, prompt.Value, prompt.Set),
-                        new Divider { Vertical = true },
-                        Canvas(view.Value, view.Set, spin.Value, spin.Set, playing.Value, () => playing.Set(!playing.Value), step.Value, step.Set),
+                        new IconButton("undo", "Undo") { TestId = Undo },
+                        new IconButton("redo", "Redo") { TestId = Redo },
+                        new SurfaceButton("Versions", ButtonVariant.Text) { TestId = Versions, Icon = "history", Trailing = new Badge(null) { Inline = true, Count = 1 } },
+                        new SurfaceButton("Save", ButtonVariant.Text) { TestId = Save, Icon = "cloud_upload" },
+                        new SurfaceButton("Download") { TestId = Download, Icon = "download" },
                     ],
+                    Panel = SidePanel(panel.Value, panel.Set, mode.Value, mode.Set, prompt.Value, prompt.Set),
                 },
             ],
         };
     }
 
-    private static Box Header() => new()
-    {
-        Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, Height = 56, Padding = Edges.Symmetric(16, 0), ColumnGap = 8 },
-        Children =
-        [
-            new SurfaceText("Alpine Chalet") { TextType = TextType.TitleMedium, Layout = new LayoutStyle { Margin = new Edges(0, 0, 8, 0) } },
-            new Tag("611 pieces"),
-            new Tag("118 steps"),
-            new Tag("32×32 studs"),
-            new Box { Layout = new LayoutStyle { FlexGrow = 1 } },
-            new IconButton("undo", "Undo") { TestId = Undo },
-            new IconButton("redo", "Redo") { TestId = Redo },
-            new Badge(new SurfaceButton("Versions", ButtonVariant.Text) { TestId = Versions, Icon = "history" }) { Inline = true, Count = 1 },
-            new SurfaceButton("Save", ButtonVariant.Text) { TestId = Save, Icon = "cloud_upload" },
-            new SurfaceButton("Download") { TestId = Download, Icon = "download" },
-        ],
-    };
-
     private static Box SidePanel(int panel, System.Action<int> choose, IReadOnlySet<int> mode, System.Action<IReadOnlySet<int>> setMode,
         TextEditState prompt, System.Action<TextEditState> setPrompt) => new()
-        {
-            Layout = new LayoutStyle { Width = 360, Padding = Edges.All(16), RowGap = 12 },
-            Children =
+    {
+        Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, RowGap = 12 },
+        Children =
         [
             new ScrollArea
             {
@@ -106,50 +89,33 @@ internal sealed partial record StudioPage : Component
                 ContentLayout = new LayoutStyle { RowGap = 12 },
                 Children =
                 [
-            new Tabs([new Tab("Chat") { Icon = "chat" }, new Tab("Library") { Icon = "library_books" }], panel, choose) { TestId = PanelTabs },
-            new SurfaceText("What should we build?") { TextType = TextType.HeadlineSmall, HeadingLevel = 1, Layout = new LayoutStyle { Margin = new Edges(0, 12, 0, 0) } },
-            new SurfaceText("Describe a model or drop in a photo. We design it in bricks, check that every part holds, and write the building manual.") { Legibility = Legibility.Medium },
-            new SurfaceText("Try one") { TextType = TextType.Overline, Legibility = Legibility.Medium },
-            new Row([.. s_ideas.Select(idea => (Element?)new Chip(idea) { TestId = Suggestion, OnPress = () => setPrompt(TextEditState.From(idea)) })]),
-            new SurfaceText("Or") { TextType = TextType.Overline, Legibility = Legibility.Medium },
-            new Row(
-                new Chip("Turn a photo into bricks") { TestId = Suggestion, Icon = "image" },
-                new Chip("Browse examples") { TestId = Suggestion, Icon = "library_books" }),
+                    new Tabs([new Tab("Chat") { Icon = "chat" }, new Tab("Library") { Icon = "library_books" }], panel, choose) { TestId = PanelTabs },
+                    new SurfaceText("What should we build?") { TextType = TextType.HeadlineSmall, HeadingLevel = 2, Layout = new LayoutStyle { Margin = new Edges(0, 12, 0, 0) } },
+                    new SurfaceText("Describe a model or drop in a photo. We design it in bricks, check that every part holds, and write the building manual.") { Legibility = Legibility.Medium },
+                    new SurfaceText("Try one") { TextType = TextType.Overline, Legibility = Legibility.Medium },
+                    new Row([.. s_ideas.Select(idea => (Element?)new Chip(idea) { TestId = Suggestion, OnPress = () => setPrompt(TextEditState.From(idea)) })]),
+                    new SurfaceText("Or") { TextType = TextType.Overline, Legibility = Legibility.Medium },
+                    new Row(
+                        new Chip("Turn a photo into bricks") { TestId = Suggestion, Icon = "image" },
+                        new Chip("Browse examples") { TestId = Suggestion, Icon = "library_books" }),
                 ],
             },
-            // The composer: a framed card holding a mode switch, the prompt and its actions.
-            new Card(
-                new SegmentedButton([new Segment("Change this build"), new Segment("Start a new build")], mode, setMode) { TestId = Mode },
-                new TextField("Prompt")
-                {
-                    TestId = Prompt,
-                    Variant = TextFieldVariant.Plain,
-                    Placeholder = "Describe what to build, or how to change it…",
-                    Multiline = true,
-                    Value = prompt,
-                    OnChange = setPrompt,
-                    Layout = new LayoutStyle { MinHeight = 44 },
-                },
-                new Box
-                {
-                    Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, JustifyContent = Justify.SpaceBetween },
-                    Children =
-                    [
-                        new IconButton("image", "Attach a photo") { TestId = Attach },
-                        new SurfaceButton("Send") { TestId = Send, Icon = "send", ShowDisabled = prompt.Text.Length == 0 ? true : null },
-                    ],
-                })
+            new Composer(prompt, setPrompt)
             {
-                Variant = CardVariant.Outlined,
-                Layout = new LayoutStyle { Padding = Edges.All(12), RowGap = 8 },
+                TestId = Prompt,
+                Label = "Prompt",
+                Placeholder = "Describe what to build, or how to change it…",
+                Header = new SegmentedButton([new Segment("Change this build"), new Segment("Start a new build")], mode, setMode) { TestId = Mode },
+                Actions = [new IconButton("image", "Attach a photo") { TestId = Attach }],
+                OnSend = _ => setPrompt(TextEditState.From("")),
             },
         ],
-        };
+    };
 
     private static Box Canvas(int view, System.Action<int> choose, bool spin, System.Action<bool> setSpin, bool playing, System.Action playPause,
         float step, System.Action<float> setStep) => new()
         {
-            Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, Padding = Edges.All(16), RowGap = 12 },
+            Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, RowGap = 12 },
             Children =
         [
             new Tabs([new Tab("Model") { Icon = "view_in_ar" }, new Tab("Manual") { Icon = "menu_book" }, new Tab("Parts") { Icon = "category" }, new Tab("Design") { Icon = "code" }], view, choose) { TestId = ViewTabs },

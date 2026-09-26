@@ -26,6 +26,12 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
     /// <summary>How prominent the button is.</summary>
     public ButtonVariant Variant { get; init; }
 
+    /// <summary>An icon after the label ("Send →", a menu's chevron).</summary>
+    public string? TrailingIcon { get; init; }
+
+    /// <summary>Anything after the label and trailing icon: an inline <see cref="Badge"/> count ("Versions 3").</summary>
+    public Element? Trailing { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -34,17 +40,20 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
         var style = theme.Theme.Components.Button;
         var horizontal = Variant == ButtonVariant.Text ? style.TextPadding : style.Padding;
         var hasIcon = Icon is not null;
+        var hasTrailing = TrailingIcon is not null || Trailing is not null;
+        // An icon tightens its side by a third of the padding (Material's 16/24).
+        var tight = System.MathF.Max(4f, horizontal - style.Padding / 3f);
         var container = SurfaceLooks.Pressable(Look(style, Variant)) with
         {
             CornerShape = style.Shape,
+            ScaleOnPress = true,
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,
                 AlignItems = Align.Center,
                 JustifyContent = Justify.Center,
                 MinHeight = style.Height + theme.DensityOffset,
-                // With an icon, the leading side tightens by a third of the padding (Material's 16/24).
-                Padding = new Edges(hasIcon ? System.MathF.Max(4f, horizontal - style.Padding / 3f) : horizontal, 0, horizontal, 0),
+                Padding = new Edges(hasIcon ? tight : horizontal, 0, hasTrailing ? tight : horizontal, 0),
                 ColumnGap = 8,
             },
         };
@@ -54,6 +63,8 @@ public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHa
             [
                 hasIcon ? ForwardLeadingIcon(new SurfaceIcon { IconSize = style.IconSize }) : null,
                 ForwardLabel(new SurfaceText { TextType = style.Label }),
+                TrailingIcon is null ? null : new SurfaceIcon(TrailingIcon) { IconSize = style.IconSize },
+                Trailing,
             ],
         };
     }
