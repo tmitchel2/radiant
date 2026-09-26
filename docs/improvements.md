@@ -234,6 +234,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   width, but its corners still cross the frame's rounded outline; clipping children to the shape
   inside the border would fix it generally.
 
+- **Forms take text fields only.** `Form` fields are text with string checks; check boxes, selects,
+  dates and numbers keep their own state beside the form, and there are no checks across fields
+  (a password confirmation), no checks that wait on a server, and no summary of errors.
 - **The password field is masked by the form.** `TextField` has no password mode, so
   `SignInForm` shows a dot per character and maps edits on the dots back onto the real text. That
   works for typing and deleting, but copy would copy dots, the platform isn't told it's secure

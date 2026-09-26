@@ -86,6 +86,7 @@ turns a filled button red.
 | `LineChart`, `BarChart`, `DonutChart` | Charts: lines (or areas), grouped or stacked bars, and a donut of shares; round-numbered axes (`ChartScale`), legends, a hover tooltip of every series' value, and the values as text for assistive technology |
 | `DescriptionList` | Terms beside their details, divided by lines; details wrap under their terms when narrow |
 | `Timeline`, `TimelineEvent` | Events down a line with markers (dots or icons), times and detail |
+| `UseForm`, `Form`, `FormField`, `Validators` | Form state and checks: fields keep their text and show their first failing check once left; `Submit` shows every error and focuses the first bad field, or hands over the values |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

@@ -23,27 +23,41 @@ public sealed record SignInForm(Action<string, string, bool> OnSignIn) : Compone
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var email = context.UseState(TextEditState.Empty);
-        var password = context.UseState(TextEditState.Empty);
+        var form = context.UseForm();
+        var email = form.Field("email", "", Validators.Required("Enter your email"), Validators.Email());
+        var password = form.Field("password", "", Validators.Required("Enter your password"));
         var reveal = context.UseState(false);
         var remember = context.UseState(true);
         var signIn = OnSignIn;
-        void Submit() => signIn(email.Value.Text, password.Value.Text, remember.Value);
-        // Hidden, the field shows a dot per character; the real text lives in the state.
-        var shown = reveal.Value ? password.Value : password.Value with { Text = new string('•', password.Value.Text.Length) };
+        // Nothing is signed in with until both fields pass; the first that doesn't takes focus.
+        void Submit() => form.Submit(values => signIn(values["email"], values["password"], remember.Value));
+        // Hidden, the field shows a dot per character; the real text lives in the form.
+        var shown = reveal.Value ? password.State : password.State with { Text = new string('•', password.Text.Length) };
         return new Card(
             new SurfaceText(Title) { TextType = TextType.HeadlineSmall },
-            new TextField("Email") { Value = email.Value, OnChange = email.Set, LeadingIcon = "mail", Variant = TextFieldVariant.Outlined },
+            new TextField("Email")
+            {
+                Value = email.State,
+                OnChange = email.Set,
+                OnFocusChange = email.FocusChanged,
+                InputRef = email.InputRef,
+                Error = email.Error,
+                LeadingIcon = "mail",
+                Variant = TextFieldVariant.Outlined,
+                OnSubmit = Submit,
+            },
             new TextField("Password")
             {
                 Value = shown,
-                OnChange = next => password.Set(reveal.Value ? next : Unmask(password.Value, next)),
+                OnChange = next => password.Set(reveal.Value ? next : Unmask(password.State, next)),
+                OnFocusChange = password.FocusChanged,
+                InputRef = password.InputRef,
                 LeadingIcon = "lock",
                 TrailingIcon = reveal.Value ? "visibility_off" : "visibility",
                 OnTrailingIconPress = () => reveal.Set(!reveal.Value),
                 TrailingIconLabel = reveal.Value ? "Hide password" : "Show password",
                 Variant = TextFieldVariant.Outlined,
-                Error = Error,
+                Error = password.Error ?? Error,
                 OnSubmit = Submit,
             },
             new Box

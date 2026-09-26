@@ -42,6 +42,7 @@ public class ApplicationTemplateTests
     {
         var signedIn = new List<string>();
         using var root = Mount(new SignInForm((_, password, _) => signedIn.Add(password)));
+        Type(root, Find(root, SemanticsRole.TextField, "Email"), "ada@example.com");
         Type(root, Find(root, SemanticsRole.TextField, "Password"), "engin");
 
         root.TextInput("e");
@@ -49,6 +50,35 @@ public class ApplicationTemplateTests
         Settle(root);
 
         CollectionAssert.AreEqual(new[] { "engine" }, signedIn);
+    }
+
+    [TestMethod]
+    public void SigningInWithMissingDetailsShowsWhatsWrongAndSignsNothingIn()
+    {
+        var signedIn = 0;
+        using var root = Mount(new SignInForm((_, _, _) => signedIn++));
+        Type(root, Find(root, SemanticsRole.TextField, "Email"), "ada@");
+
+        Click(root, Find(root, SemanticsRole.Button, "Sign in"));
+
+        Assert.AreEqual(0, signedIn);
+        Assert.IsTrue(Shows(root, "Enter an email address, like name@example.com"));
+        Assert.IsTrue(Shows(root, "Enter your password"));
+        Assert.IsTrue(Find(root, SemanticsRole.TextField, "Email").IsFocused, "the first field with a problem takes focus");
+    }
+
+    [TestMethod]
+    public void AFieldShowsItsErrorOnlyOnceItsBeenLeft()
+    {
+        using var root = Mount(new SignInForm((_, _, _) => { }));
+        Type(root, Find(root, SemanticsRole.TextField, "Email"), "ada");
+        var whileTyping = Shows(root, "Enter an email address, like name@example.com");
+
+        Click(root, Find(root, SemanticsRole.TextField, "Password"));
+
+        Assert.IsFalse(whileTyping);
+        Assert.IsTrue(Shows(root, "Enter an email address, like name@example.com"));
+        Assert.IsFalse(Shows(root, "Enter your password"), "the password hasn't been left yet");
     }
 
     [TestMethod]
