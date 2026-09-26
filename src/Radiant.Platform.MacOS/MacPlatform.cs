@@ -18,6 +18,7 @@ public sealed class MacPlatform : IPlatform
     private readonly MacAppearance _appearance;
     private readonly MacFileDialogs _dialogs;
     private readonly ITextInput _textInput;
+    private readonly MacWindowChrome _chrome;
 
     private MacPlatform(nint window)
     {
@@ -26,6 +27,7 @@ public sealed class MacPlatform : IPlatform
         _cursors = new MacCursorService();
         _appearance = new MacAppearance();
         _dialogs = new MacFileDialogs(window);
+        _chrome = new MacWindowChrome(window);
         Window = window;
         using (ObjC.Pool())
         {
@@ -74,6 +76,9 @@ public sealed class MacPlatform : IPlatform
 
     /// <inheritdoc/>
     public string Name => "macOS";
+
+    /// <inheritdoc/>
+    public IWindowChrome Chrome => _chrome;
 
     /// <inheritdoc/>
     public IClipboard Clipboard => _clipboard;

@@ -30,4 +30,7 @@ public interface IPlatform : IDisposable
 
     /// <summary>Text input, including input methods that compose text before committing it.</summary>
     ITextInput TextInput { get; }
+
+    /// <summary>The window's frame: drawing the app's own title bar, and moving the window from it.</summary>
+    IWindowChrome Chrome { get; }
 }

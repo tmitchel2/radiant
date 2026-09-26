@@ -93,6 +93,21 @@ internal static unsafe class SelfTest
         Check(events.Contains("text:x"), $"without a client, typed text is a UI text event again ({string.Join(",", events)})");
 
         Check(platform.Appearance.AccentColor >> 24 == 0xFF, $"the accent colour is read (#{platform.Appearance.AccentColor:X8})");
+        // The app's own title bar: the content reaches the window's top under the traffic lights.
+        var chrome = platform.Chrome;
+        Check(chrome.IsSupported && !chrome.ExtendsIntoTitleBar, "the window starts with the system's title bar");
+        var before = ObjC.GetRect(view, "frame");
+        chrome.ExtendIntoTitleBar(true);
+        var windowFrame = ObjC.GetRect(window, "frame");
+        var extendedFrame = ObjC.GetRect(view, "frame");
+        Check(chrome.ExtendsIntoTitleBar, "extending into the title bar takes effect");
+        Check(Math.Abs(extendedFrame.Height - windowFrame.Height) < 0.5 && extendedFrame.Height > before.Height,
+            $"the content fills the window, title bar included ({before.Height} → {extendedFrame.Height} of {windowFrame.Height})");
+        Check(chrome.TitleBarHeight is > 20 and < 60, $"the title bar's height is the system's ({chrome.TitleBarHeight})");
+        Check(chrome.LeadingInset is > 50 and < 130, $"the traffic lights' width is reported ({chrome.LeadingInset})");
+        chrome.ExtendIntoTitleBar(false);
+        Check(!chrome.ExtendsIntoTitleBar && Math.Abs(ObjC.GetRect(view, "frame").Height - before.Height) < 0.5, "giving the title bar back restores the content's size");
+
         return failures;
     }
 

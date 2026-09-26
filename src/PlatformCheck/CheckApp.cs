@@ -33,56 +33,71 @@ internal sealed record CheckApp(ImeFieldModel Field) : Component
         }, appearance);
         var field = Field;
 
+        // The app draws its own title bar: drag it to move the window, double-click it to zoom.
         return new Box
         {
-            Layout = new LayoutStyle { FlexGrow = 1, Padding = Edges.All(24), RowGap = 16 },
+            Layout = new LayoutStyle { FlexGrow = 1 },
             Background = theme.Background,
             Children =
             [
-                new SurfaceText($"Radiant platform check ({platform.Name})") { TextType = TextType.HeadlineSmall },
-                Section("Input method",
-                    "Switch to a Japanese (Romaji) or Chinese (Pinyin) input source, type in the field, and check the "
-                    + "candidate window opens under the underlined text. Space converts, Enter commits, Escape cancels.",
-                    new ImeField(field),
-                    new SurfaceText(field.Log.Count == 0 ? "No input yet." : string.Join("  ·  ", field.Log))
-                    {
-                        TextType = TextType.BodySmall,
-                        Legibility = Legibility.Medium,
-                    }),
-                Section("Cursors", "Hover each tile.",
-                    new Row([.. Enum.GetValues<CursorShape>().Select(shape => (Element?)new CursorSwatch(shape))])),
-                Section("Appearance",
-                    "Change dark mode, the accent colour, or Accessibility › Display settings; the theme follows.",
-                    new SurfaceText(
-                        $"Dark {appearance.IsDark}  ·  accent #{appearance.AccentColor & 0xFFFFFF:X6}  ·  "
-                        + $"increase contrast {appearance.IncreaseContrast}  ·  reduce motion {appearance.ReduceMotion}  ·  "
-                        + $"{appearanceChanges.Value} changes")),
-                Section("Clipboard and dialogs", status.Value,
-                    new Row(
-                        new SurfaceButton("Copy field", ButtonVariant.Tonal)
-                        {
-                            OnPress = () =>
-                            {
-                                platform.Clipboard.SetText(field.Text);
-                                status.Set($"Copied \"{field.Text}\".");
-                            },
-                        },
-                        new SurfaceButton("Paste into field", ButtonVariant.Tonal)
-                        {
-                            OnPress = () =>
-                            {
-                                var text = platform.Clipboard.GetText();
-                                if (text is not null)
-                                {
-                                    field.Replace(text);
-                                }
-                                status.Set(text is null ? "The clipboard has no text." : $"Pasted \"{text}\".");
-                            },
-                        },
-                        new SurfaceButton("Open…", ButtonVariant.Outlined) { OnPress = () => _ = Open(platform, status) },
-                        new SurfaceButton("Save…", ButtonVariant.Outlined) { OnPress = () => _ = Save(platform, status) })),
+                new TitleBar("Radiant platform check")
+                {
+                    Trailing = [new IconButton("info", "About") { OnPress = () => status.Set("The title bar's buttons press without moving the window.") }],
+                },
+                new ScrollArea
+                {
+                    Layout = new LayoutStyle { FlexGrow = 1 },
+                    ContentLayout = new LayoutStyle { Padding = Edges.All(24), RowGap = 16 },
+                    Children = [.. Body()],
+                },
             ],
         };
+
+        Element?[] Body() =>
+        [
+            new SurfaceText($"Radiant platform check ({platform.Name})") { TextType = TextType.HeadlineSmall },
+            Section("Input method",
+                "Switch to a Japanese (Romaji) or Chinese (Pinyin) input source, type in the field, and check the "
+                + "candidate window opens under the underlined text. Space converts, Enter commits, Escape cancels.",
+                new ImeField(field),
+                new SurfaceText(field.Log.Count == 0 ? "No input yet." : string.Join("  ·  ", field.Log))
+                {
+                    TextType = TextType.BodySmall,
+                    Legibility = Legibility.Medium,
+                }),
+            Section("Cursors", "Hover each tile.",
+                new Row([.. Enum.GetValues<CursorShape>().Select(shape => (Element?)new CursorSwatch(shape))])),
+            Section("Appearance",
+                "Change dark mode, the accent colour, or Accessibility › Display settings; the theme follows.",
+                new SurfaceText(
+                    $"Dark {appearance.IsDark}  ·  accent #{appearance.AccentColor & 0xFFFFFF:X6}  ·  "
+                    + $"increase contrast {appearance.IncreaseContrast}  ·  reduce motion {appearance.ReduceMotion}  ·  "
+                    + $"{appearanceChanges.Value} changes")),
+            Section("Clipboard and dialogs", status.Value,
+                new Row(
+                    new SurfaceButton("Copy field", ButtonVariant.Tonal)
+                    {
+                        OnPress = () =>
+                        {
+                            platform.Clipboard.SetText(field.Text);
+                            status.Set($"Copied \"{field.Text}\".");
+                        },
+                    },
+                    new SurfaceButton("Paste into field", ButtonVariant.Tonal)
+                    {
+                        OnPress = () =>
+                        {
+                            var text = platform.Clipboard.GetText();
+                            if (text is not null)
+                            {
+                                field.Replace(text);
+                            }
+                            status.Set(text is null ? "The clipboard has no text." : $"Pasted \"{text}\".");
+                        },
+                    },
+                    new SurfaceButton("Open…", ButtonVariant.Outlined) { OnPress = () => _ = Open(platform, status) },
+                    new SurfaceButton("Save…", ButtonVariant.Outlined) { OnPress = () => _ = Save(platform, status) })),
+        ];
     }
 
     private static Card Section(string title, string description, params Element?[] content) =>

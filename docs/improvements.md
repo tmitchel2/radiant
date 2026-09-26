@@ -74,6 +74,12 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `Radiant.Host.MacObjc` and a private copy in `RadiantApplication` predate it. They were left
   alone so P7 didn't disturb the host. Point both at one shared interop, either
   `Radiant.Platform.MacOS` or a small interop assembly that both it and `Radiant` reference.
+- **A title bar drag hides the release.** `performWindowDragWithEvent:` runs AppKit's own loop
+  until the button comes up, so GLFW never sees the release and the UI still thinks the press is
+  held (its pressed path lingers until the next press). Sending the UI a release when
+  `BeginDrag` returns would tidy it.
+- **Chrome is macOS only.** Windows' caption buttons (`TrailingInset`), snap layouts on hover
+  and dragging through `WM_NCHITTEST` need the Windows platform.
 - **Drops arrive without a drag.** GLFW's drop callback gives only the dropped paths, so a drop
   zone can't highlight while files hover over it or refuse a drop it won't take, and nothing can
   be dragged out. Registering the content view for dragging (`NSDraggingDestination` on macOS,

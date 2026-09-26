@@ -26,6 +26,9 @@ public sealed class HeadlessPlatform : IPlatform
     /// <inheritdoc cref="IPlatform.TextInput"/>
     public HeadlessTextInput TextInput { get; } = new();
 
+    /// <inheritdoc cref="IPlatform.Chrome"/>
+    public HeadlessWindowChrome Chrome { get; } = new();
+
     IClipboard IPlatform.Clipboard => Clipboard;
 
     ICursorService IPlatform.Cursors => Cursors;
@@ -35,6 +38,8 @@ public sealed class HeadlessPlatform : IPlatform
     IFileDialogs IPlatform.Dialogs => Dialogs;
 
     ITextInput IPlatform.TextInput => TextInput;
+
+    IWindowChrome IPlatform.Chrome => Chrome;
 
     /// <summary>Nothing to release.</summary>
     public void Dispose()

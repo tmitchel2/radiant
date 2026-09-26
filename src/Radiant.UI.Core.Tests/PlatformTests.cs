@@ -291,6 +291,8 @@ public class PlatformTests
 
         ITextInput IPlatform.TextInput => TextInput;
 
+        public IWindowChrome Chrome => _inner.Chrome;
+
         public void Dispose() => Disposals++;
     }
 }

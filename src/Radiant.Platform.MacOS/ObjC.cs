@@ -94,6 +94,10 @@ internal static unsafe class ObjC
     public static void SendBool(nint receiver, string selector, bool arg) =>
         ((delegate* unmanaged<nint, nint, byte, void>)MsgSend)(receiver, Sel(selector), arg ? (byte)1 : (byte)0);
 
+    /// <summary><c>[receiver selector:rect with:flag]</c>, as <c>setFrame:display:</c>.</summary>
+    public static void SendRectBool(nint receiver, string selector, NSRect rect, bool flag) =>
+        ((delegate* unmanaged<nint, nint, NSRect, byte, void>)MsgSend)(receiver, Sel(selector), rect, flag ? (byte)1 : (byte)0);
+
     /// <summary><c>[receiver selector]</c> returning a <c>BOOL</c>.</summary>
     public static bool GetBool(nint receiver, string selector) =>
         ((delegate* unmanaged<nint, nint, byte>)MsgSend)(receiver, Sel(selector)) != 0;

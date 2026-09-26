@@ -95,6 +95,21 @@ chosen paths (empty when they cancel) or the save path (null when they cancel).
 - **Filters:** they become the panel's allowed content types (`UTType`s from their extensions).
   macOS has no filter menu, so every filter's files are allowed at once.
 
+## Window chrome
+
+`IPlatform.Chrome` lets the app draw its own title bar. On macOS, `ExtendIntoTitleBar(true)`
+gives the window a full-size content view under a transparent, untitled title bar: the window
+keeps its frame, the content grows by the bar's height (28 px), and the traffic lights stay where
+they are. `TitleBarHeight` and `LeadingInset` (68 px, past the zoom button) say how much room to
+leave; `BeginDrag` moves the window from a press (`performWindowDragWithEvent:` with the press
+AppKit is handling), and `TitleBarDoubleClick` does what the user chose in System Settings (zoom,
+minimise or nothing). The `TitleBar` component does all of this while it's shown.
+
+The self-test checks the content fills the window when extended and gets its size back after. By
+hand, run `PlatformCheck`: its title bar is the app's own. Drag it by its empty space or title to
+move the window, double-click it to zoom, and press its ⓘ button: the status line changes and the
+window doesn't move.
+
 ## Dropped files
 
 Files dropped on the window (from the Finder or another app) arrive through GLFW's drop callback
