@@ -25,6 +25,10 @@ namespace Radiant
         private bool _disposed;
         private bool _resizing; // re-entrancy guard for the live-resize render driven from OnFramebufferResize
         private volatile bool _frameRequested;
+        // While a frame holds the surface's texture, a resize can't reconfigure the surface: one that
+        // arrives then (code in the frame resizing the window) waits here until the frame is presented.
+        private bool _holdingSurface;
+        private Vector2D<int>? _deferredResize;
         private Handedness _handedness;
         private Vector4 _backgroundColor;
         private RadiantWindowStyle _style = RadiantWindowStyle.Default;
@@ -555,6 +559,11 @@ namespace Radiant
         private void OnFramebufferResize(Vector2D<int> size)
         {
             if (_disposed || _engineState == null || _camera == null || _window == null) return;
+            if (_holdingSurface)
+            {
+                _deferredResize = size;
+                return;
+            }
 
             // The event delivers the PHYSICAL framebuffer size (used to resize the swapchain). The 2D camera
             // is in LOGICAL units (created from _window.Size at load; OnRender applies pixelScale =
@@ -595,7 +604,26 @@ namespace Radiant
 
             SurfaceTexture surfaceTexture;
             _engineState._wgpu.SurfaceGetCurrentTexture(_engineState._surface, &surfaceTexture);
+            _holdingSurface = true;
+            try
+            {
+                RenderInto(surfaceTexture);
+            }
+            finally
+            {
+                _holdingSurface = false;
+            }
+            if (_deferredResize is { } resize)
+            {
+                _deferredResize = null;
+                OnFramebufferResize(resize);
+            }
+        }
 
+        // Draws the frame into the surface's current texture and presents it.
+        private void RenderInto(SurfaceTexture surfaceTexture)
+        {
+            if (_engineState == null || _renderer == null) return;
             switch (surfaceTexture.Status)
             {
                 case SurfaceGetCurrentTextureStatus.Timeout:
