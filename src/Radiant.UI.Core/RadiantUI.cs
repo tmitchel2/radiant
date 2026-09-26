@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Radiant.Graphics;
 using Radiant.Input;
+using Radiant.Platform;
 
 namespace Radiant.UI.Core;
 
@@ -19,6 +20,17 @@ public static class RadiantUI
         options ??= new UIAppOptions();
         using var app = new RadiantApplication();
         using var ui = new UIRoot(root, options.Fonts);
+        using var platform = new PlatformBinding(ui);
+
+        // The platform needs the native window, so it's made once the window is open; the tree
+        // isn't mounted until the first frame, after this.
+        app.Loaded += () =>
+        {
+            var created = options.Platform?.Invoke(new NativeWindow { Cocoa = app.CocoaWindow, Glfw = app.GlfwWindow })
+                ?? new HeadlessPlatform();
+            platform.Attach(created);
+            ui.SetRoot(PlatformContext.Platform.Provide(created, root));
+        };
 
         app.PointerMoved += position => ui.PointerMove(position, Modifiers(app.Input));
         app.PointerPressed += button => ui.PointerDown(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
@@ -32,6 +44,7 @@ public static class RadiantUI
         app.Run(options.Title, options.Width, options.Height, Handedness.RightHanded, renderer =>
         {
             ui.Update(new Vector2(app.WindowWidth, app.WindowHeight));
+            platform.AfterUpdate();
             ui.Paint(renderer);
         }, ui.Advance, options.Background);
     }

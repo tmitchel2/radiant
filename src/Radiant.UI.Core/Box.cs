@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Graphics2D;
 using Radiant.Layout;
+using Radiant.Platform;
 
 namespace Radiant.UI.Core;
 
@@ -51,6 +52,13 @@ public sealed record Box : HostElement
 
     /// <summary>Whether the pointer can hit the box itself; false lets it through to what is below.</summary>
     public bool HitTestVisible { get; init; } = true;
+
+    /// <summary>
+    /// The pointer's shape over the box, or null to use its parent's. The deepest hovered box
+    /// with a shape wins (<see cref="UIRoot.Cursor"/>); while a press is held, the box it began
+    /// on keeps deciding, so a drag keeps its cursor wherever the pointer goes.
+    /// </summary>
+    public CursorShape? Cursor { get; init; }
 
     /// <summary>Whether the box can take keyboard focus (by click, or by Tab if <see cref="TabIndex"/> is not negative).</summary>
     public bool Focusable { get; init; }

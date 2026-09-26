@@ -236,7 +236,7 @@ public sealed class ResolvedTheme
     }
 
     private static DynamicScheme Scheme(int argb, ThemeColors colors) =>
-        new(Hct.FromInt(argb), colors.Variant, colors.IsDark, colors.ContrastLevel, Platform.Phone, colors.SpecVersion);
+        new(Hct.FromInt(argb), colors.Variant, colors.IsDark, colors.ContrastLevel, ColorSystem.Platform.Phone, colors.SpecVersion);
 
     private static Color Argb(DynamicScheme scheme, DynamicColor color) => Color.FromArgb(scheme.GetArgb(color));
 }

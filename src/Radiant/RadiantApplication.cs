@@ -58,6 +58,18 @@ namespace Radiant
         /// <summary>A character was typed.</summary>
         public event Action<char>? CharacterTyped;
 
+        /// <summary>
+        /// The window is open and rendering is set up: raised once, before the first frame. The
+        /// place to attach anything that needs the native window, such as the platform services.
+        /// </summary>
+        public event Action? Loaded;
+
+        /// <summary>The window's <c>NSWindow*</c> on macOS; zero elsewhere, or before it opens.</summary>
+        public nint CocoaWindow => _window?.Native?.Cocoa ?? 0;
+
+        /// <summary>The window's <c>GLFWwindow*</c>; zero before it opens.</summary>
+        public nint GlfwWindow => _window?.Native?.Glfw ?? 0;
+
         /// <summary>Gets the window width in logical pixels.</summary>
         public int WindowWidth => _window?.Size.X ?? 0;
 
@@ -292,6 +304,8 @@ namespace Radiant
             }
 
             TryPinLayerTopLeft();
+
+            Loaded?.Invoke();
         }
 
         // The CAMetalLayer's default contentsGravity (`resize`) SCALES the rendered drawable to fill the

@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Radiant.ColorSystem\Radiant.ColorSystem.csproj" />
     <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
     <ProjectReference Include="..\Radiant.UI.Core\Radiant.UI.Core.csproj" />
+    <ProjectReference Include="..\Radiant.Platform\Radiant.Platform.csproj" />
   </ItemGroup>
 
 </Project>
