@@ -329,10 +329,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 - **Hand-picked palettes only raise contrast roughly.** For `ColorRoles`, a raised contrast level
   moves quiet text and borders towards stronger ones, but accents and containers stay as picked
-  and a reduced level does nothing. A palette could carry its own high-contrast `ColorRoles`. The
-  seed and variant don't touch a palette either, so the gallery hides its colour picker there;
-  deriving a palette's primary family from the seed would let the user pick an accent while
-  keeping the palette's neutrals.
+  and a reduced level does nothing. A palette could carry its own high-contrast `ColorRoles`.
+  With `AccentFromSeed`, only the primary family comes from the seed: the secondary and tertiary
+  accents stay as picked, which can clash with a very different seed.
 - **A few desktop components share one look.** `DocumentTabs` (a strip with the chosen tab's
   accent line), `StatusBar`, and `DataTable`'s header and row heights draw the same in every
   preset: they're neutral already, but a theme can't size or recolour them beyond the colour
@@ -340,11 +339,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Fine icons are an approximation.** Hairline draws Material Symbols at weight 300 and 20 px,
   close to a thin outline set but not the same drawing. Another icon font would need a map from
   names to its characters, since icons are drawn by ligature name.
-- **Component styles are theme-wide.** A `SurfaceLook` or a `TabsLook` applies to every instance;
-  there's no way to give one screen's tabs a different structure than another's except by
-  providing a different theme below it. A per-instance override (a `Look` prop) would be the
-  next step if apps need it. Templates in the full sense (a style supplying its own build
-  function) aren't exposed.
+- **Component styles change by subtree, not by instance.** `ThemeScope` restyles everything below
+  it; a single component can't take another look except by wrapping it in one. A per-instance
+  `Look` prop would be the next step if apps need it. Templates in the full sense (a style
+  supplying its own build function) aren't exposed.
 - **Segmented trays and pills are worked out, not roles.** The tray is the surface tinted 6%
   towards its content and the pill white (light) or tinted 14% (dark), so they read on any
   surface. Named roles would let a palette choose them.

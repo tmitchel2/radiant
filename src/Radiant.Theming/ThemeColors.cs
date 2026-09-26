@@ -48,6 +48,13 @@ public sealed record ThemeColors
     /// <summary>Hand-picked colours for the dark appearance, used instead of the seed's scheme when <see cref="IsDark"/>.</summary>
     public ColorRoles? Dark { get; init; }
 
+    /// <summary>
+    /// With hand-picked colours, whether the primary family (and the inverse primary) comes from the
+    /// seed's scheme instead, so the user's or the system's accent colours a fixed palette while its
+    /// neutrals, status colours and other accents stay as picked.
+    /// </summary>
+    public bool AccentFromSeed { get; init; }
+
     /// <summary>The hand-picked colours in force for the appearance, or null if they come from the seed.</summary>
     public ColorRoles? Roles => IsDark ? Dark : Light;
 }

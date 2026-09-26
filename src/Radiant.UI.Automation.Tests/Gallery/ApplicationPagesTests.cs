@@ -48,6 +48,19 @@ public sealed class ApplicationPagesTests : GalleryTest
     }
 
     [TestMethod]
+    public async Task AFixedPaletteCanTakeItsAccentFromTheChosenColour()
+    {
+        Themes.Set(Themes.Theme.WithStyle(Radiant.Theming.ThemePresets.Linen));
+        await GoToAsync("Settings");
+        await Driver.SettingsPage().Accent().Expect().ToBeGoneAsync();
+
+        await Driver.SettingsPage().OwnAccent().TapAsync();
+
+        await Driver.SettingsPage().Accent().Expect().ToExistAsync();
+        Assert.IsTrue(Themes.Theme.Colors.AccentFromSeed);
+    }
+
+    [TestMethod]
     public async Task TheDensityIsChosenFromAList()
     {
         await GoToAsync("Settings");

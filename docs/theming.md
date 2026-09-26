@@ -104,6 +104,14 @@ Components = ComponentStyles.Hairline with
 
 Component styles switch at the start of an animated theme change; colours and corners animate.
 
+To restyle part of an app, wrap it in a `ThemeScope`: everything below sees the theme changed by
+its function, with the app's colours kept (`ResolvedTheme.Restyled`), so it follows even a theme
+transition part way through.
+
+```csharp
+new ThemeScope(t => t with { Components = t.Components with { Navigation = t.Components.Navigation with { Tabs = TabsLook.Underline } } }, settingsPage)
+```
+
 ## Shapes: controls and circles
 
 `CornerShapeRole.Full` is a pill or a circle whatever the theme: avatars, radio buttons, switch
@@ -119,8 +127,11 @@ For a theme whose colours aren't worked out from a seed, set `ThemeColors.Light`
 and each family as a `ColorFamily` (colour, on, container, on container). The one for the
 appearance (`IsDark`) replaces the seed's scheme role for role, so components look the same
 either way. The fixed families default to their family's container colours. The seed and
-variant don't change a fixed palette; a raised contrast level (following "increase contrast")
-moves quiet text towards the full text colour and borders towards stronger ones. The presets' palettes
+variant don't change a fixed palette, unless `AccentFromSeed` is on: then its primary family
+comes from the seed's scheme, so the user's (or the system's) accent colours it while its
+neutrals and other colours stay as picked. `WithStyle` carries that choice across presets. A
+raised contrast level (following "increase contrast") moves quiet text towards the full text
+colour and borders towards stronger ones. The presets' palettes
 are tested to keep every family's content at 4.5:1 or more, light and dark.
 
 ## Colour: surfaces, not swatches

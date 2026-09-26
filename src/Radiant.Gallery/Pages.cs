@@ -31,6 +31,7 @@ internal static partial class Pages
     {
         [TestId<SelectField>] public static partial string Style { get; }
         [TestId<Switch>] public static partial string DarkTheme { get; }
+        [TestId<Switch>] public static partial string OwnAccent { get; }
         [TestId<SelectField>] public static partial string Density { get; }
         [TestId<ColorPicker>] public static partial string Accent { get; }
         [TestId<Switch>] public static partial string Notifications { get; }
@@ -50,6 +51,7 @@ internal static partial class Pages
                 style = names[i] == theme.Theme.Name ? i : style;
             }
             var seeded = theme.Theme.Colors.Roles is null;
+            var ownAccent = theme.Theme.Colors.AccentFromSeed;
             return new Box
             {
                 Layout = new LayoutStyle { RowGap = 32 },
@@ -71,10 +73,15 @@ internal static partial class Pages
                         {
                             Description = "Use dark colours everywhere",
                         },
+                        seeded ? null : new SettingsRow("Accent from my colour", new Switch(ownAccent, on =>
+                            themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { AccentFromSeed = on } }, System.TimeSpan.FromMilliseconds(300))) { TestId = OwnAccent })
+                        {
+                            Description = "Colour this theme's accent with the colour below",
+                        },
                         new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], theme.Theme.Density < 0 ? 1 : 0, i =>
                             themes.Set(themes.Theme with { Density = -i })) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
                     ]) { Description = "How Radiant looks on this device." },
-                    !seeded ? null : new SettingsSection("Theme colour",
+                    !seeded && !ownAccent ? null : new SettingsSection("Theme colour",
                     [
                         new Box
                         {
@@ -89,7 +96,7 @@ internal static partial class Pages
                                 },
                             ],
                         },
-                    ]) { Description = "Every colour in the app is worked out from this one, in light and dark." },
+                    ]) { Description = seeded ? "Every colour in the app is worked out from this one, in light and dark." : "The accent is worked out from this one, in light and dark." },
                     new SettingsSection("Notifications",
                     [
                         new SettingsRow("Push notifications", new Switch(notifications.Value, notifications.Set) { TestId = Notifications }) { Description = "Alerts for mentions and replies" },

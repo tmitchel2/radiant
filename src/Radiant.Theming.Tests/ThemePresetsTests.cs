@@ -99,6 +99,64 @@ public class ThemePresetsTests
     }
 
     [TestMethod]
+    public void AFixedPaletteCanTakeItsAccentFromTheSeed()
+    {
+        var seed = Color.FromArgb(0xFF1B7F3A);
+        var quartz = ThemePresets.Quartz with { Colors = ThemePresets.Quartz.Colors with { Seed = seed, AccentFromSeed = true } };
+        var scheme = new DynamicScheme(Hct.FromInt(unchecked((int)seed.ToArgb())), Variant.TonalSpot, false, 0, ColorSystem.Platform.Phone, SpecVersion.Spec2021);
+
+        var theme = ResolvedTheme.Resolve(quartz);
+
+        Assert.AreEqual((uint)scheme.GetArgb(RadiantDynamicColors.Primary()), theme.Get(SurfaceName.Primary).ToArgb());
+        Assert.AreEqual(ThemePresets.Quartz.Colors.Light!.Surface, theme.Get(SurfaceName.Surface), "the neutrals stay");
+        Assert.AreEqual(ThemePresets.Quartz.Colors.Light.Error.Color, theme.Get(SurfaceName.Error), "and the status colours");
+    }
+
+    [TestMethod]
+    public void SeededAccentsAreReadableInEveryPresetLightAndDark()
+    {
+        var random = new Random(7);
+        foreach (var preset in new[] { ThemePresets.Quartz, ThemePresets.Linen })
+        {
+            for (var i = 0; i < 12; i++)
+            {
+                var seed = Color.FromArgb(Hct.From(random.NextDouble() * 360, 30 + random.NextDouble() * 60, 50).ToInt());
+                foreach (var dark in new[] { false, true })
+                {
+                    var theme = ResolvedTheme.Resolve(preset with { Colors = preset.Colors with { Seed = seed, AccentFromSeed = true, IsDark = dark } });
+                    foreach (var container in new[] { false, true })
+                    {
+                        var ratio = ContrastOf(theme.Get(SurfaceName.Primary, false, container), theme.Get(SurfaceName.Primary, true, container));
+                        Assert.IsTrue(ratio >= 4.5, $"{preset.Name} {seed} dark={dark} container={container}: {ratio:0.0}");
+                    }
+                }
+            }
+        }
+    }
+
+    [TestMethod]
+    public void WithStyleKeepsTakingTheAccentFromTheSeed()
+    {
+        var mine = ThemePresets.Quartz with { Colors = ThemePresets.Quartz.Colors with { AccentFromSeed = true } };
+
+        Assert.IsTrue(mine.WithStyle(ThemePresets.Linen).Colors.AccentFromSeed);
+    }
+
+    [TestMethod]
+    public void RestylingKeepsTheColoursAndTakesTheRest()
+    {
+        var quartz = ResolvedTheme.Resolve(ThemePresets.Quartz);
+
+        var restyled = quartz.Restyled(ThemePresets.Tonal with { Density = -2 });
+
+        Assert.AreEqual(quartz.Get(SurfaceName.Primary), restyled.Get(SurfaceName.Primary));
+        Assert.AreEqual(quartz.Background, restyled.Background);
+        Assert.AreEqual(TabsLook.Underline, restyled.Theme.Components.Navigation.Tabs);
+        Assert.AreEqual(-2, restyled.Theme.Density);
+        Assert.AreSame(ThemePresets.Quartz.Colors, restyled.Theme.Colors);
+    }
+
+    [TestMethod]
     public void HandPickedColoursIgnoreTheSeed()
     {
         var quartz = ThemePresets.Quartz;

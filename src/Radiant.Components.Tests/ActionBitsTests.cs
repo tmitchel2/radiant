@@ -104,6 +104,28 @@ public class ActionBitsTests
     }
 
     [TestMethod]
+    public void AThemeScopeRestylesOnlyWhatItHolds()
+    {
+        Tabs Tabs() => new([new Tab("One"), new Tab("Two")], 0, _ => { });
+        using var root = new UIRoot(new ThemeProvider(new ThemeController(ThemePresets.Quartz), new Box
+        {
+            Layout = new LayoutStyle { Width = 600 },
+            Children =
+            [
+                Tabs(),
+                new ThemeScope(t => t with { Components = t.Components with { Navigation = t.Components.Navigation with { Tabs = TabsLook.Underline } } }, Tabs()),
+            ],
+        }));
+        Settle(root);
+
+        var lists = All(root).Where(n => n.Role == SemanticsRole.TabList).ToList();
+
+        Assert.AreEqual(2, lists.Count);
+        Assert.IsTrue(lists[0].Bounds.Width < 300, "segmented tabs keep to their labels");
+        Assert.AreEqual(600f, lists[1].Bounds.Width, 0.5f, "underlined tabs share the width");
+    }
+
+    [TestMethod]
     public void AnExtendedFabShowsItsLabel()
     {
         using var small = Mount(new Fab("edit", "Compose"));

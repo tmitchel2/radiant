@@ -40,14 +40,15 @@ public sealed record Theme
     /// <summary>
     /// <paramref name="style"/> (a preset, say) with this theme's user settings carried over: light
     /// or dark, the contrast level, the seed (the accent the user or system chose, for themes
-    /// that use it) and reduced motion. For switching styles without undoing the user's choices.
+    /// that use it), whether a fixed palette takes its accent from the seed, and reduced motion.
+    /// For switching styles without undoing the user's choices.
     /// </summary>
     public Theme WithStyle(Theme style)
     {
         System.ArgumentNullException.ThrowIfNull(style);
         return style with
         {
-            Colors = style.Colors with { IsDark = Colors.IsDark, ContrastLevel = Colors.ContrastLevel, Seed = Colors.Seed },
+            Colors = style.Colors with { IsDark = Colors.IsDark, ContrastLevel = Colors.ContrastLevel, Seed = Colors.Seed, AccentFromSeed = Colors.AccentFromSeed },
             Motion = style.Motion with { Reduced = Motion.Reduced },
         };
     }

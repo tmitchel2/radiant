@@ -125,6 +125,25 @@ public sealed class ResolvedTheme
     private static ResolvedTheme FromRoles(Theme theme, ColorRoles c)
     {
         var level = (float)Math.Clamp(theme.Colors.ContrastLevel, 0, 1);
+        if (theme.Colors.AccentFromSeed)
+        {
+            var scheme = Scheme((int)theme.Colors.Seed.ToArgb(), theme.Colors);
+            var primary = new ColorFamily(
+                Argb(scheme, RadiantDynamicColors.Primary()),
+                Argb(scheme, RadiantDynamicColors.OnPrimary()),
+                Argb(scheme, RadiantDynamicColors.PrimaryContainer()),
+                Argb(scheme, RadiantDynamicColors.OnPrimaryContainer()));
+            c = c with
+            {
+                Primary = primary,
+                PrimaryFixed = new ColorFamily(
+                    Argb(scheme, RadiantDynamicColors.PrimaryFixed()),
+                    Argb(scheme, RadiantDynamicColors.OnPrimaryFixed()),
+                    Argb(scheme, RadiantDynamicColors.PrimaryFixedDim()),
+                    Argb(scheme, RadiantDynamicColors.OnPrimaryFixedVariant())),
+                InversePrimary = Argb(scheme, RadiantDynamicColors.InversePrimary()),
+            };
+        }
         if (level > 0f)
         {
             c = c with
@@ -174,6 +193,18 @@ public sealed class ResolvedTheme
         Family(SurfaceName.Warning, c.Warning);
         Family(SurfaceName.Info, c.Info);
         return new ResolvedTheme(theme, roles, c.Outline, c.OutlineVariant, c.Scrim, c.Shadow, c.Background);
+    }
+
+    /// <summary>
+    /// This theme with <paramref name="theme"/>'s shapes, type, elevation, state layers, motion,
+    /// density and component styles, but the colours already worked out here: for restyling part
+    /// of an app (<see cref="ThemeScope"/>) without working the colours out again, so it follows
+    /// the app's colours even part way through a transition.
+    /// </summary>
+    public ResolvedTheme Restyled(Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        return new ResolvedTheme(theme with { Colors = Theme.Colors }, _roles, Outline, OutlineVariant, Scrim, Shadow, Background);
     }
 
     /// <summary>A family's colour, "on" colour, container or content on the container.</summary>
