@@ -81,8 +81,7 @@ public sealed class FontLibrary : IDisposable
     /// </summary>
     public FontInstance Resolve(string family, float weight, bool italic, float size)
     {
-        var face = FindFace(family, italic) ?? FirstFace()
-            ?? throw new InvalidOperationException("The font library has no fonts.");
+        var face = ResolveFace(family, italic);
         return face.Instance(
             new FontVariation(FontVariation.Weight, weight),
             new FontVariation(FontVariation.OpticalSize, size));
@@ -126,6 +125,11 @@ public sealed class FontLibrary : IDisposable
             _fallbacks.Clear();
         }
     }
+
+    /// <summary>The face for a family, or the first registered family's if it isn't registered.</summary>
+    internal FontFace ResolveFace(string family, bool italic) =>
+        FindFace(family, italic) ?? FirstFace()
+            ?? throw new InvalidOperationException("The font library has no fonts.");
 
     private FontFace? FirstFace()
     {

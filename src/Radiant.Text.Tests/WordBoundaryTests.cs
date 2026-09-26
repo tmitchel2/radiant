@@ -31,7 +31,7 @@ public class WordBoundaryTests
     [TestMethod]
     public void EmojiSequencesAndFlagsAreNotSplit()
     {
-        const string Family = "\U0001F468‍\U0001F469‍\U0001F467";
+        const string Family = "\U0001F468\u200D\U0001F469\u200D\U0001F467";
         const string Flags = "\U0001F1EC\U0001F1E7\U0001F1EB\U0001F1F7";
 
         CollectionAssert.AreEqual(new[] { Family }, Segments(Family));

@@ -10,7 +10,7 @@ public class GraphemeBoundaryTests
     [TestMethod]
     public void AnEmojiZwjSequenceIsOneCharacter()
     {
-        const string Family = "\U0001F468‍\U0001F469‍\U0001F467‍\U0001F466";
+        const string Family = "\U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466";
 
         CollectionAssert.AreEqual(new[] { 0, Family.Length }, GraphemeBoundaries.Get(Family).ToArray());
     }
@@ -27,7 +27,7 @@ public class GraphemeBoundaryTests
     [TestMethod]
     public void CombiningMarksSkinTonesAndSurrogatePairsStayWithTheirBase()
     {
-        CollectionAssert.AreEqual(new[] { 0, 2, 3 }, GraphemeBoundaries.Get("éx").ToArray());
+        CollectionAssert.AreEqual(new[] { 0, 2, 3 }, GraphemeBoundaries.Get("e\u0301x").ToArray());
         CollectionAssert.AreEqual(new[] { 0, 4 }, GraphemeBoundaries.Get("\U0001F44D\U0001F3FD").ToArray());
         CollectionAssert.AreEqual(new[] { 0, 2, 4 }, GraphemeBoundaries.Get("\U0001D400\U0001D401").ToArray());
     }
@@ -56,7 +56,7 @@ public class GraphemeBoundaryTests
     [TestMethod]
     public void PreviousAndNextStepOverWholeCharacters()
     {
-        const string Text = "é\U0001F44D\U0001F3FDx";
+        const string Text = "e\u0301\U0001F44D\U0001F3FDx";
 
         Assert.AreEqual(2, GraphemeBoundaries.Next(Text, 0));
         Assert.AreEqual(2, GraphemeBoundaries.Next(Text, 1));

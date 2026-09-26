@@ -149,6 +149,9 @@ SDF shape's vertices, so a gradient needs no texture and batches with plain shap
 
 ## Text
 
+Shaping, Unicode and paragraph layout live in `Radiant.Text`; see [text.md](text.md). This
+section covers what the renderer draws text with today.
+
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.
 `EmbeddedFonts` names them:
 

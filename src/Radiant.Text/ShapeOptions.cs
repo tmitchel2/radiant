@@ -22,4 +22,7 @@ public sealed record ShapeOptions
 
     /// <summary>Extra space after every glyph, in ems (tracking, letter-spacing): 0.01 is 1%.</summary>
     public float Tracking { get; init; }
+
+    /// <summary>How wide a tab is, in spaces of the run's font.</summary>
+    public float TabSize { get; init; } = 4f;
 }

@@ -11,9 +11,20 @@ namespace Radiant.Text;
 /// </summary>
 public sealed class ShapedRun
 {
+    private readonly uint[] _glyphs;
+    private readonly int[] _clusters;
+    private readonly float[] _advances;
+    private readonly Vector2[] _offsets;
+    private readonly bool[] _unsafeToBreak;
+
     internal ShapedRun(FontInstance font, float size, TextDirection direction, int start, int length,
-        uint[] glyphs, int[] clusters, float[] advances, Vector2[] offsets)
+        uint[] glyphs, int[] clusters, float[] advances, Vector2[] offsets, bool[] unsafeToBreak)
     {
+        _glyphs = glyphs;
+        _clusters = clusters;
+        _advances = advances;
+        _offsets = offsets;
+        _unsafeToBreak = unsafeToBreak;
         Font = font;
         Size = size;
         Direction = direction;
@@ -77,6 +88,86 @@ public sealed class ShapedRun
             yield return x;
             x += advance;
         }
+    }
+
+    /// <summary>
+    /// The glyphs for <c>text[start..end)</c>, a part of this run, taken without shaping again:
+    /// null where HarfBuzz says cutting there could change the glyphs (say, a ligature or joining
+    /// letters across the cut), so the part must be reshaped.
+    /// </summary>
+    internal ShapedRun? Slice(int start, int end)
+    {
+        if (!IsSafeCut(start) || !IsSafeCut(end))
+        {
+            return null;
+        }
+        // Clusters are monotonic (HarfBuzz's default cluster level), rising in left-to-right runs
+        // and falling in right-to-left ones, so a range of text is a contiguous range of glyphs.
+        var from = Direction == TextDirection.LeftToRight ? FirstGlyphAtOrAfter(start) : FirstGlyphBefore(end);
+        var to = Direction == TextDirection.LeftToRight ? FirstGlyphAtOrAfter(end) : FirstGlyphBefore(start);
+        return new ShapedRun(Font, Size, Direction, start, end - start,
+            _glyphs[from..to], _clusters[from..to], _advances[from..to], _offsets[from..to], _unsafeToBreak[from..to]);
+    }
+
+    // A cut is safe at the run's ends, or at the start of a cluster none of whose glyphs HarfBuzz
+    // flagged unsafe to break before.
+    private bool IsSafeCut(int index)
+    {
+        if (index <= Start || index >= Start + Length)
+        {
+            return true;
+        }
+        var first = Direction == TextDirection.LeftToRight ? FirstGlyphAtOrAfter(index) : FirstGlyphBefore(index + 1);
+        if (first >= _clusters.Length || _clusters[first] != index)
+        {
+            return false; // the cut is inside a cluster
+        }
+        for (var i = first; i < _clusters.Length && _clusters[i] == index; i++)
+        {
+            if (_unsafeToBreak[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // In a left-to-right run: the first glyph whose cluster is at or after the index.
+    private int FirstGlyphAtOrAfter(int index)
+    {
+        int lo = 0, hi = _clusters.Length;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) >>> 1;
+            if (_clusters[mid] < index)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+        return lo;
+    }
+
+    // In a right-to-left run: the first glyph whose cluster is before the index.
+    private int FirstGlyphBefore(int index)
+    {
+        int lo = 0, hi = _clusters.Length;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) >>> 1;
+            if (_clusters[mid] >= index)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+        return lo;
     }
 
     /// <summary>For debugging: the run's font, size, span and glyph count.</summary>
