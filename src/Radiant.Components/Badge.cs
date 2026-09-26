@@ -28,6 +28,10 @@ public sealed record Badge(Element? Child) : Component
         if (Visible)
         {
             var text = Count is { } count ? (count > 99 ? "99+" : count.ToString(CultureInfo.InvariantCulture)) : null;
+            var style = theme.Text(TextType.LabelSmall) with { Color = theme.Get(SurfaceName.Error, on: true) };
+            // Sized from its text: placed against the child's corner, it would otherwise be held
+            // to the child's width, and "99+" is wider than an icon.
+            var width = text is null ? 0f : MathF.Max(16f, MathF.Ceiling(Radiant.Text.Paragraph.Layout(text, style, fonts: context.Root.Fonts).LongestLine) + 8f);
             marker = new Box
             {
                 HitTestVisible = false,
@@ -36,7 +40,7 @@ public sealed record Badge(Element? Child) : Component
                     : new LayoutStyle
                     {
                         Position = PositionType.Absolute,
-                        MinWidth = 16,
+                        Width = width,
                         Height = 16,
                         Padding = Edges.Symmetric(4, 0),
                         AlignItems = Align.Center,
@@ -46,7 +50,7 @@ public sealed record Badge(Element? Child) : Component
                 Background = theme.Get(SurfaceName.Error),
                 CornerRadii = Radiant.Graphics2D.CornerRadii.All(8),
                 Semantics = text is null ? null : new Semantics { Role = SemanticsRole.None, Label = text },
-                Children = text is null ? [] : [new TextBlock(text) { Style = theme.Text(TextType.LabelSmall) with { Color = theme.Get(SurfaceName.Error, on: true) }, Wrap = false }],
+                Children = text is null ? [] : [new TextBlock(text) { Style = style, Wrap = false }],
             };
         }
         return new Box { Layout = new LayoutStyle { AlignSelf = Align.FlexStart }, Children = [Child, marker] };

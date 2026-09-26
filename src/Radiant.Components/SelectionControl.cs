@@ -45,7 +45,9 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
         {
             Focusable = !disabled,
             Semantics = new Semantics { Role = Role, Label = AccessibleLabel ?? Label, Checked = Checked, Disabled = disabled },
-            Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 4 },
+            // A check box or radio sits in its 40-wide state-layer ring, which spaces its label; a
+            // switch is wider than the ring, so its label needs the space itself.
+            Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = IndicatorWidth >= ringSize ? 12 : 4 },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ =>
             {

@@ -9,7 +9,8 @@ namespace Radiant.Components;
 /// <summary>
 /// A <see cref="Surface"/> that can be pressed: it takes focus, answers the pointer and Enter or
 /// Space, and shows hover, focus and pressed states as a state layer (its content colour laid
-/// over it at the theme's state-layer opacity). Disabled (<see cref="IHasBackgroundColor.ShowDisabled"/>),
+/// over it at the theme's state-layer opacity), with a ring just outside it while it has keyboard
+/// focus. Disabled (<see cref="IHasBackgroundColor.ShowDisabled"/>),
 /// it fades and stops responding.
 /// </summary>
 public sealed partial record PressableSurface : Component, IHasBackgroundColor, IHasCornerShape, IHasElevation, IHasOutline, IHasLayout, IHasPressable
@@ -64,6 +65,18 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
             HitTestVisible = false,
         };
 
+        // Keyboard focus also shows a ring just outside the control, as Material's focus indicator
+        // does: 3 wide, 2 out, in the secondary colour.
+        const float ringWidth = 3f, ringGap = 2f;
+        var ring = !focusRing.Value || disabled ? null : new Box
+        {
+            Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = Edges.All(-(ringWidth + ringGap)) },
+            BorderWidth = ringWidth,
+            BorderColor = theme.Get(SurfaceName.Secondary),
+            CornerRadii = Radiant.Graphics2D.CornerRadii.All(radius + ringWidth + ringGap),
+            HitTestVisible = false,
+        };
+
         return ThemeContexts.Surface.Provide(state, SurfaceBox.For(this, theme, state) with
         {
             Focusable = !disabled,
@@ -101,7 +114,7 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
             },
             OnFocus = e => focusRing.Set(e.IsFocusVisible),
             OnBlur = _ => focusRing.Set(false),
-            Children = [stateLayer, .. Children],
+            Children = [stateLayer, .. Children, ring],
         });
     }
 }
