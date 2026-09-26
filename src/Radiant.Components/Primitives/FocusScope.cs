@@ -20,6 +20,12 @@ public sealed record FocusScope(Element? Child) : Component
     /// <summary>Whether focus returns to where it was when the scope goes.</summary>
     public bool RestoreFocus { get; init; } = true;
 
+    /// <summary>
+    /// The layout of the box it wraps its content in: none by default, so the box sizes to its
+    /// content; a panel that must fill its parent (a side sheet) asks it to grow.
+    /// </summary>
+    public Radiant.Layout.LayoutStyle Layout { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -36,6 +42,6 @@ public sealed record FocusScope(Element? Child) : Component
             }
             return restore ? saved.Restore : null;
         }, default(ValueTuple));
-        return new Box { Ref = scope, TrapFocus = Trap, HitTestVisible = false, Children = [Child] };
+        return new Box { Ref = scope, TrapFocus = Trap, HitTestVisible = false, Layout = Layout, Children = [Child] };
     }
 }

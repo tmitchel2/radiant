@@ -21,6 +21,8 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
     /// <summary>Open the menu on the first frame (for snapshots).</summary>
     public bool StartWithMenu { get; init; }
 
+    public bool StartWithSheet { get; init; }
+
     private static readonly Variant[] s_variants = [Variant.TonalSpot, Variant.Vibrant, Variant.Expressive, Variant.Fidelity, Variant.Content, Variant.Neutral];
     private static readonly float[] s_corners = [0f, 0.5f, 1f, 1.5f, 2f];
 
@@ -36,6 +38,10 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var size = context.UseState("Medium");
         var dialog = context.UseState(StartWithDialog);
         var menu = context.UseState(StartWithMenu);
+        var sheet = context.UseState(StartWithSheet);
+        var popover = context.UseState(false);
+        var alert = context.UseState(false);
+        var popoverAnchor = context.UseRef(new ElementRef()).Value;
         var menuAnchor = context.UseRef(new ElementRef()).Value;
         var last = context.UseState("nothing yet");
         var volume = context.UseState(0.4f);
@@ -132,6 +138,46 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                 new Row(
                     new DatePicker("Start date", date.Value, date.Set) { Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
                     new Card(new Calendar(date.Value, d => date.Set(d))) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(0) } }) { Gap = 16 },
+                new Row(
+                    new SurfaceButton("Open sheet", ButtonVariant.Tonal) { Icon = "tune", OnPress = () => sheet.Set(true) },
+                    new Box { Ref = popoverAnchor, Children = [new SurfaceButton("Popover", ButtonVariant.Outlined) { OnPress = () => popover.Set(true) }] },
+                    new SurfaceButton("Delete…", ButtonVariant.Text) { Icon = "delete", OnPress = () => alert.Set(true) },
+                    new ContextMenu(new Card(new SurfaceText("Right-click here") { Legibility = Legibility.Medium }) { Variant = CardVariant.Filled },
+                    [
+                        new MenuItem("Copy", () => last.Set("Copy")) { Icon = "content_copy" },
+                        new MenuItem("Paste", () => last.Set("Paste")) { Icon = "content_paste" },
+                    ])) { Gap = 12 },
+                new Sheet(sheet.Value, () => sheet.Set(false), new Box
+                {
+                    Layout = new LayoutStyle { RowGap = 16 },
+                    Children =
+                    [
+                        new TextField("Search") { LeadingIcon = "search", Variant = TextFieldVariant.Outlined },
+                        new Checkbox(filters.Value.Item2, v => filters.Set(filters.Value with { Item2 = v })) { Label = "In stock" },
+                        new Checkbox(filters.Value.Item3, v => filters.Set(filters.Value with { Item3 = v })) { Label = "On sale" },
+                    ],
+                })
+                {
+                    Title = "Filters",
+                    Actions = [new SurfaceButton("Reset", ButtonVariant.Text), new SurfaceButton("Apply") { OnPress = () => sheet.Set(false) }],
+                },
+                new Popover(popoverAnchor, popover.Value, () => popover.Set(false), new Box
+                {
+                    Layout = new LayoutStyle { RowGap = 8, Width = 240 },
+                    Children =
+                    [
+                        new SurfaceText("Popovers hold any content") { TextType = TextType.TitleSmall },
+                        new SurfaceText("They close on Escape or a press outside, and give focus back.") { Legibility = Legibility.Medium },
+                        new SurfaceButton("Got it", ButtonVariant.Text) { OnPress = () => popover.Set(false) },
+                    ],
+                }) { Label = "About popovers" },
+                new AlertDialog(alert.Value, "Delete this project?", () => alert.Set(false), () => alert.Set(false))
+                {
+                    Text = "Its files and history go for good.",
+                    ConfirmText = "Delete",
+                    Destructive = true,
+                    Icon = "delete",
+                },
                 new Card(
                     new ListItem("Inbox") { LeadingIcon = "inbox", TrailingText = "24", OnPress = () => { }, Selected = true },
                     new ListItem("Starred") { LeadingIcon = "star", SupportingText = "Messages you marked", OnPress = () => { } },

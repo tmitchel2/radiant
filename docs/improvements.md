@@ -166,9 +166,15 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   in `SurfaceText` would do it), there's no ordering by recent use, and a `Command.Shortcut` is
   text: nothing binds it. A command registry would bind chords, feed menus and the palette, and
   let the palette show whether a command is available.
-- **Percentage sizes inside overlays resolve against wrappers.** `DismissableLayer` and
-  `FocusScope` add boxes that size to their content, so a `MaxWidth` of 100% inside them resolves
-  against a shrink-wrapped box and collapses. Overlay content uses fixed sizes for now.
+- **Overlay primitives add boxes.** `DismissableLayer` and `FocusScope` each wrap their content in
+  a box that sizes to it, so a panel inside can't simply fill or be a percentage of its parent.
+  Both now take a `Layout` for their box (a side sheet has its layer stretch and its scope grow),
+  but every overlay has to know about them. Layout-transparent host elements (a box that passes
+  its children straight to its parent's flex layout, like CSS `display: contents`) would remove
+  the problem.
+- **Context menus are drawn in the window.** They're Radiant menus at the pointer, not the
+  platform's (NSMenu on macOS), so they can't extend past the window and don't get system
+  services items. A platform menu service (P7's `IMenuService`) would give native ones.
 - **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
   multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
   item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every

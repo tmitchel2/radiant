@@ -18,6 +18,12 @@ public sealed record DismissableLayer(Element? Child, Action OnDismiss) : Compon
     /// <summary>Whether Escape dismisses.</summary>
     public bool DismissOnEscape { get; init; } = true;
 
+    /// <summary>
+    /// The layout of the box it wraps its content in: none by default, so the box sizes to its
+    /// content; a panel that must fill its parent (a side sheet) asks it to grow.
+    /// </summary>
+    public Radiant.Layout.LayoutStyle Layout { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -41,6 +47,7 @@ public sealed record DismissableLayer(Element? Child, Action OnDismiss) : Compon
         {
             Ref = layer,
             HitTestVisible = false,
+            Layout = Layout,
             OnKeyDown = e =>
             {
                 if (escape && e.Key == KeyCode.Escape)

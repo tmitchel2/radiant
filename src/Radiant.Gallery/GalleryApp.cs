@@ -15,6 +15,8 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
 
     public bool StartWithMenu { get; init; }
 
+    public bool StartWithSheet { get; init; }
+
     public bool StartWithPalette { get; init; }
 
     public override Element? Build(BuildContext context)
@@ -50,7 +52,7 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
             9 => ShellPages.Mail(),
             10 => ShellPages.NewProject(),
             11 => ShellPages.Preferences(),
-            _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu },
+            _ => new VerticalSlice(Themes) { StartWithDialog = StartWithDialog, StartWithMenu = StartWithMenu, StartWithSheet = StartWithSheet },
         };
         var themes = Themes;
         Command[] commands =
