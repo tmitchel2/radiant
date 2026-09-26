@@ -29,6 +29,18 @@ public unsafe partial class Renderer2D
     internal GlyphAtlas? GlyphAtlas => _glyphAtlas;
 
     /// <summary>
+    /// How <see cref="DrawGlyphRun"/> and <see cref="DrawParagraph"/> draw glyphs. Coverage, the
+    /// default, is sharpest at text sizes; see <see cref="Graphics2D.TextRendering"/>.
+    /// </summary>
+    public TextRendering TextRendering { get; set; } = TextRendering.Coverage;
+
+    /// <summary>
+    /// For <see cref="TextRendering.Hybrid"/>: the largest size, in device pixels, drawn from the
+    /// coverage atlas. Larger text, and text under a rotation, is drawn with MSDF.
+    /// </summary>
+    public float HybridThreshold { get; set; } = 24f;
+
+    /// <summary>
     /// The gamma glyph edges are blended as if in, so text has the weight it was designed with
     /// (see the coverage shader): 1 blends edges in linear light as they are, which makes dark
     /// text on a light ground look thin. The default, 1.8, is close to how macOS draws text.
@@ -55,22 +67,49 @@ public unsafe partial class Renderer2D
     /// Draws a run of glyphs from a paragraph, moved by <paramref name="offset"/> (the
     /// paragraph's top left), in the run's colour unless <paramref name="color"/> is given.
     /// <para>
-    /// Under a transform that only moves and scales, glyphs snap to the pixel grid: the baseline
-    /// to a whole pixel, the pen to a quarter. Under a rotation they are drawn unsnapped, which is
-    /// softer; text that turns or zooms is better drawn with MSDF.
+    /// How depends on <see cref="TextRendering"/>. From the coverage atlas, under a transform that
+    /// only moves and scales, glyphs snap to the pixel grid: the baseline to a whole pixel, the pen
+    /// to a quarter. Under a rotation they are drawn unsnapped, which is softer; text that turns
+    /// or zooms is better drawn with MSDF or Slug.
     /// </para>
     /// </summary>
     public void DrawGlyphRun(GlyphRun run, Vector2 offset, Vector4? color = null)
     {
         ArgumentNullException.ThrowIfNull(run);
+        var tint = color ?? run.Style.Color;
+        var transform = CurrentTransform();
+        var mode = TextRendering;
+        if (mode == TextRendering.Hybrid)
+        {
+            var deviceSize = run.Shaped.Size * _pixelScale * MathF.Sqrt(MathF.Abs(transform.GetDeterminant()));
+            mode = deviceSize <= HybridThreshold && IsAxisAligned(transform) ? TextRendering.Coverage : TextRendering.Msdf;
+        }
+        switch (mode)
+        {
+            case TextRendering.Msdf:
+                DrawGlyphRunMsdf(run, offset, tint, transform);
+                break;
+            case TextRendering.Slug:
+                DrawGlyphRunSlug(run, offset, tint, transform);
+                break;
+            default:
+                DrawGlyphRunCoverage(run, offset, tint, transform);
+                break;
+        }
+    }
+
+    /// <summary>Whether a transform only moves and scales (positively), so glyphs can snap to pixels.</summary>
+    private static bool IsAxisAligned(Matrix3x2 transform) =>
+        transform.M12 == 0f && transform.M21 == 0f && transform.M11 > 0f && transform.M22 > 0f;
+
+    private void DrawGlyphRunCoverage(GlyphRun run, Vector2 offset, Vector4 tint, Matrix3x2 transform)
+    {
         if (_glyphAtlas is not { } atlas)
         {
             return; // no device: a CPU-only renderer has nowhere to rasterize to
         }
 
         var shaped = run.Shaped;
-        var tint = color ?? run.Style.Color;
-        var transform = CurrentTransform();
         var scale = MathF.Sqrt(MathF.Abs(transform.GetDeterminant()));
         var deviceScale = _pixelScale * scale;
         // Sizes are rounded to a sixteenth of a pixel so an animated scale doesn't make a new
@@ -80,7 +119,7 @@ public unsafe partial class Renderer2D
         {
             return;
         }
-        var snap = transform.M12 == 0f && transform.M21 == 0f && transform.M11 > 0f && transform.M22 > 0f;
+        var snap = IsAxisAligned(transform);
 
         var pen = run.Origin + offset;
         for (var i = 0; i < shaped.Count; i++)
