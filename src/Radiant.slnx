@@ -22,6 +22,8 @@
   <Project Path="Radiant.Generators.Tests/Radiant.Generators.Tests.csproj" />
   <Project Path="Radiant.Theming/Radiant.Theming.csproj" />
   <Project Path="Radiant.Theming.Tests/Radiant.Theming.Tests.csproj" />
+  <Project Path="Radiant.Testing/Radiant.Testing.csproj" />
+  <Project Path="Radiant.Testing.Tests/Radiant.Testing.Tests.csproj" />
   <Project Path="Radiant.Components/Radiant.Components.csproj" />
   <Project Path="Radiant.Components.Tests/Radiant.Components.Tests.csproj" />
   <Project Path="Radiant.Templates.Tests/Radiant.Templates.Tests.csproj" />

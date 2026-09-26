@@ -1,7 +1,8 @@
 # Radiant Components
 
 `Radiant.Components` is the component catalogue, built on `Radiant.UI.Core` (elements and hooks),
-`Radiant.Theming` (the theme and surface state) and `Radiant.Generators` (style facets).
+`Radiant.Theming` (the theme and surface state) and `Radiant.Generators` (style facets). Their look is
+kept by golden images of every variant and state, light and dark (see [testing.md](testing.md)).
 
 ## Facets
 

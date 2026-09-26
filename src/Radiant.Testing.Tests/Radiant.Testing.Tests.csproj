@@ -2,18 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Radiant.Components.Tests</RootNamespace>
+    <RootNamespace>Radiant.Testing.Tests</RootNamespace>
     <Nullable>enable</Nullable>
     <DebugType>embedded</DebugType>
     <IsPackable>false</IsPackable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <NoWarn>CA1707,CA2263,CA1847,CA1861,CA1859</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Radiant.Components\Radiant.Components.csproj" />
     <ProjectReference Include="..\Radiant.Testing\Radiant.Testing.csproj" />
   </ItemGroup>
 
@@ -28,4 +26,3 @@
   </ItemGroup>
 
 </Project>
-

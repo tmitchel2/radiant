@@ -156,9 +156,24 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `TextBlock` sized to its text gave trailing spaces no width, so a composition after "a " sat
   against the "a"; the real field needs the caret from text layout, spaces included.
 
-- **No golden images yet.** The plan's matrix (variants × enabled, hover, focus, pressed,
-  disabled × light and dark) doesn't exist yet. The gallery's `--snapshot` renders offscreen to
-  PNG, so it could start from there.
+- **Goldens cover the core controls only.** `ComponentGoldenTests` has buttons and their states,
+  selection controls, fields and a few display components, in light and dark. Menus, dialogs,
+  navigation, lists, tables and the templates (the plan's three widths × two densities) have no
+  goldens yet, and neither do contrast levels or scheme variants.
+- **A missing golden passes.** `Golden.AssertMatches` writes a golden that isn't there and passes,
+  so a forgotten `git add` goes unnoticed; a switch that fails instead (for a pre-commit run)
+  would catch it.
+- **Two GPU test helpers.** `Radiant.Tests`' `GpuFrame` (linked into the UI tests) predates
+  `Radiant.Testing.GpuCanvas` and does the same with BGRA bytes; the renderer's tests could move
+  to the canvas, and `GoldenImageHelper` to `Golden`.
+- **Keyboard focus had no ring.** Found by the state goldens: a focused `PressableSurface` showed
+  only the 10% state layer, the same as pressed. It now draws Material's focus indicator (3 wide,
+  2 outside, in the secondary colour); clipped surfaces (`ClipContent`) clip it.
+- **Absolutely placed boxes are held to their container's width.** Yoga gives an absolute child
+  with one horizontal inset its container's width as the most it can be, and a non-wrapping
+  `TextBlock` then overflows the box it's in. `Badge` measured "99+" and sized its pill to fit;
+  a `TextBlock` with `Wrap = false` that always measured its full width (as CSS `nowrap` does)
+  would fix it everywhere.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
 - **Sliders are single-valued.** No range slider, no value label while dragging, and no tick marks
