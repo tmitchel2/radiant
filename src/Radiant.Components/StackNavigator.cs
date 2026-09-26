@@ -24,6 +24,7 @@ public sealed record StackNavigator(string RootTitle, Element Root) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var pages = context.UseState<IReadOnlyList<NavigatorPage>>(() => [new NavigatorPage(RootTitle, Root)]);
         var navigator = context.UseRef<Navigator?>(null);
         navigator.Value ??= new Navigator(() => pages.Value, pages.Set);
@@ -41,7 +42,7 @@ public sealed record StackNavigator(string RootTitle, Element Root) : Component
         var direction = depth >= previousDepth.Value ? 1f : -1f;
         previousDepth.Value = depth;
 
-        context.UseShortcut(OperatingSystem.IsMacOS() ? KeyChord.Command(KeyCode.LeftBracket) : new KeyChord(KeyCode.Left, KeyModifiers.Alt), nav.Pop);
+        context.UseShortcut(OperatingSystem.IsMacOS() ? KeyChord.Command(KeyCode.LeftBracket) : new KeyChord(KeyCode.Left.ForDirection(rightToLeft), KeyModifiers.Alt), nav.Pop);
 
         var top = pages.Value[^1];
         return NavigatorHooks.Context.Provide(nav, new Box

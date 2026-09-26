@@ -30,7 +30,6 @@ public sealed partial record SurfaceText : Component, IHasText, IHasLayout
         System.ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
         var surface = context.UseSurface();
-        var direction = context.UseDirection();
         if (Legibility is { } legibility)
         {
             surface = surface with { Content = surface.Content with { Opacity = legibility } };
@@ -41,7 +40,6 @@ public sealed partial record SurfaceText : Component, IHasText, IHasLayout
             MaxLines = MaxLines,
             Alignment = Alignment,
             HeadingLevel = HeadingLevel,
-            Direction = direction,
             Layout = Layout ?? default,
         };
     }

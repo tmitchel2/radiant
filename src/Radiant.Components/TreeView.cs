@@ -53,6 +53,7 @@ public sealed record TreeView(IReadOnlyList<TreeNode> Roots) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var ownSelected = context.UseState((string?)null);
         var ownExpanded = context.UseState(() => (IReadOnlySet<string>)new HashSet<string>(InitialExpanded ?? new HashSet<string>()));
@@ -137,7 +138,7 @@ public sealed record TreeView(IReadOnlyList<TreeNode> Roots) : Component
         {
             var at = selectedRow;
             var handled = true;
-            switch (e.Key)
+            switch (e.Key.ForDirection(rightToLeft))
             {
                 case KeyCode.Down: Select(at < 0 ? 0 : at + 1); break;
                 case KeyCode.Up: Select(at < 0 ? 0 : at - 1); break;

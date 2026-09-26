@@ -33,6 +33,7 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var surface = context.UseSurface();
         var line = context.UseRef(new ElementRef()).Value;
@@ -70,7 +71,8 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
         {
             var bounds = line.Bounds;
             var props = latest.Value;
-            return bounds.Width <= 0 ? props.Min : props.Min + (e.Position.X - bounds.X) / bounds.Width * (props.Max - props.Min);
+            var along = rightToLeft ? bounds.X + bounds.Width - e.Position.X : e.Position.X - bounds.X;
+            return bounds.Width <= 0 ? props.Min : props.Min + along / bounds.Width * (props.Max - props.Min);
         }
 
         Element Handle(int index, float fraction, float value, bool ring) => new Box
@@ -100,7 +102,7 @@ public sealed record RangeSlider(float Low, float High, Action<float, float>? On
                 var step = props.Step ?? (props.Max - props.Min) / 100f;
                 var current = index == 0 ? props.Low : props.High;
                 var handled = true;
-                switch (e.Key)
+                switch (e.Key.ForDirection(rightToLeft))
                 {
                     case KeyCode.Right or KeyCode.Up: Set(index, current + step); break;
                     case KeyCode.Left or KeyCode.Down: Set(index, current - step); break;

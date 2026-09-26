@@ -34,6 +34,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var surface = context.UseSurface();
         var track = context.UseRef(new ElementRef()).Value;
@@ -76,7 +77,9 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
             var props = latest.Value;
             if (bounds.Width > 0)
             {
-                Set(props.Min + (e.Position.X - bounds.X) / bounds.Width * (props.Max - props.Min));
+                // Measured from the start: the right, reading right to left.
+                var along = rightToLeft ? bounds.X + bounds.Width - e.Position.X : e.Position.X - bounds.X;
+                Set(props.Min + along / bounds.Width * (props.Max - props.Min));
             }
         }
 
@@ -122,7 +125,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 var props = latest.Value;
                 var step = props.Step ?? (props.Max - props.Min) / 100f;
                 var handled = true;
-                switch (e.Key)
+                switch (e.Key.ForDirection(rightToLeft))
                 {
                     case KeyCode.Right or KeyCode.Up: Set(props.Value + step); break;
                     case KeyCode.Left or KeyCode.Down: Set(props.Value - step); break;

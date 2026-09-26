@@ -37,8 +37,18 @@ internal sealed class ScrollRenderNode : RenderNode
 
     public ScrollController Controller => Element.Controller ?? (_own ??= new ScrollController(Element.Behaviour));
 
-    public override Vector2 ChildOffset =>
-        new Vector2(YGNodeLayoutGetLeft(_content), YGNodeLayoutGetTop(_content)) - Controller.Offset;
+    // Offsets count from the content's start: in a right-to-left area that's its right, and
+    // scrolling on moves the content rightwards.
+    public override Vector2 ChildOffset
+    {
+        get
+        {
+            var offset = Controller.Offset;
+            return new Vector2(YGNodeLayoutGetLeft(_content) + (RightToLeft ? offset.X : -offset.X), YGNodeLayoutGetTop(_content) - offset.Y);
+        }
+    }
+
+    private bool RightToLeft => YGNodeLayoutGetDirection(Yoga) == YGDirection.RTL;
 
     public override bool ClipsChildren => true;
 
@@ -106,6 +116,10 @@ internal sealed class ScrollRenderNode : RenderNode
     public override void OnWheel(PointerEventArgs args)
     {
         var delta = args.WheelDelta;
+        if (RightToLeft)
+        {
+            delta.X = -delta.X;
+        }
         var controller = Controller;
         // Scroll only along an axis that can still move that way; otherwise an enclosing area should.
         var canY = delta.Y != 0f && controller.CanScrollVertical
@@ -135,7 +149,7 @@ internal sealed class ScrollRenderNode : RenderNode
         }
         var size = Size;
         var controller = Controller;
-        if (controller.CanScrollVertical && point.X >= size.X - GripWidth)
+        if (controller.CanScrollVertical && (RightToLeft ? point.X <= GripWidth : point.X >= size.X - GripWidth))
         {
             return true;
         }
@@ -185,7 +199,7 @@ internal sealed class ScrollRenderNode : RenderNode
         var controller = Controller;
         return vertical
             ? (local.Y, Size.Y, controller.ContentSize.Y, controller.Offset.Y)
-            : (local.X, Size.X, controller.ContentSize.X, controller.Offset.X);
+            : (RightToLeft ? Size.X - local.X : local.X, Size.X, controller.ContentSize.X, controller.Offset.X);
     }
 
     // Puts the thumb's start at the pointer less the grab point, and scrolls to match.
@@ -223,13 +237,15 @@ internal sealed class ScrollRenderNode : RenderNode
         if (controller.CanScrollVertical)
         {
             var (start, length) = Thumb(size.Y, controller.ContentSize.Y, controller.Offset.Y);
-            renderer.DrawRoundedRectFilled(origin.X + size.X - IndicatorThickness - IndicatorInset, origin.Y + start,
+            // At the end edge: the left, reading right to left.
+            var x = RightToLeft ? IndicatorInset : size.X - IndicatorThickness - IndicatorInset;
+            renderer.DrawRoundedRectFilled(origin.X + x, origin.Y + start,
                 IndicatorThickness, length, IndicatorThickness / 2f, color);
         }
         if (controller.CanScrollHorizontal)
         {
             var (start, length) = Thumb(size.X, controller.ContentSize.X, controller.Offset.X);
-            renderer.DrawRoundedRectFilled(origin.X + start, origin.Y + size.Y - IndicatorThickness - IndicatorInset,
+            renderer.DrawRoundedRectFilled(origin.X + (RightToLeft ? size.X - start - length : start), origin.Y + size.Y - IndicatorThickness - IndicatorInset,
                 length, IndicatorThickness, IndicatorThickness / 2f, color);
         }
     }

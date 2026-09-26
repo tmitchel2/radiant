@@ -137,7 +137,7 @@ internal sealed record CartesianFrame(
         return new Box
         {
             Semantics = new Semantics { Role = SemanticsRole.Image, Label = Title ?? "Chart", Description = summary },
-            // A chart's x axis runs left to right in any language; its labels still read the UI's way.
+            // A chart's x axis runs left to right in any language.
             Layout = new LayoutStyle { AlignSelf = Align.Stretch, RowGap = 8, Direction = Radiant.Text.TextDirection.LeftToRight },
             Children =
             [

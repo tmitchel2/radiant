@@ -1,6 +1,8 @@
+using System.Linq;
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Radiant.Layout;
+using Radiant.Scrolling;
 using Radiant.Text;
 
 namespace Radiant.UI.Core.Tests;
@@ -128,4 +130,48 @@ public class DirectionTests
 
         Assert.AreEqual(TextDirection.RightToLeft, seen);
     }
+
+    [TestMethod]
+    public void AHorizontalScrollAreaStartsAtTheRightAndScrollsLeftwards()
+    {
+        var (first, last) = (new ElementRef(), new ElementRef());
+        var controller = new ScrollController(new ScrollBehaviour { Axes = ScrollAxes.Horizontal });
+        using var root = new UIRoot(new Directionality(TextDirection.RightToLeft, new ScrollArea
+        {
+            Controller = controller,
+            Behaviour = controller.Behaviour,
+            Layout = new LayoutStyle { Width = 400, Height = 50 },
+            ContentLayout = new LayoutStyle { FlexDirection = FlexDirection.Row },
+            Children = [Sized(first, 500), Sized(last, 500)],
+        }));
+        root.Update(Viewport);
+        Assert.AreEqual(-100f, first.Bounds.X);
+
+        controller.ScrollTo(new Vector2(600, 0), animated: false);
+        root.Update(Viewport);
+
+        // Scrolled to the end, the last item's left edge is the area's.
+        Assert.AreEqual(0f, last.Bounds.X);
+    }
+
+    [TestMethod]
+    public void TextTakesTheDirectionItIsLaidOutIn()
+    {
+        using var root = new UIRoot(new Directionality(TextDirection.RightToLeft, new Box
+        {
+            Children =
+            [
+                new TextBlock("Right to left"),
+                new Box { Layout = new LayoutStyle { Direction = TextDirection.LeftToRight }, Children = [new TextBlock("Code")] },
+            ],
+        }));
+
+        root.Update(Viewport);
+
+        var texts = Descendants(root.RootRenderNode).OfType<TextRenderNode>().ToArray();
+        Assert.AreEqual(TextDirection.RightToLeft, texts[0].LayoutAt(float.PositiveInfinity).Style.Direction);
+        Assert.IsNull(texts[1].LayoutAt(float.PositiveInfinity).Style.Direction);
+    }
+
+    private static System.Collections.Generic.IEnumerable<RenderNode> Descendants(RenderNode node) => node.Children.SelectMany(Descendants).Prepend(node);
 }

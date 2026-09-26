@@ -17,6 +17,13 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
     /// <summary>A legibility to draw at instead of the surface's content legibility.</summary>
     public float? Legibility { get; init; }
 
+    /// <summary>
+    /// Whether an icon that points along the line (back, forward, chevrons, first and last page)
+    /// is drawn as its mirror when the UI reads right to left, so "back" still points to where
+    /// things came from. On by default.
+    /// </summary>
+    public bool MirrorInRightToLeft { get; init; } = true;
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -27,8 +34,14 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
         {
             surface = surface with { Content = surface.Content with { Opacity = legibility } };
         }
+        var rightToLeft = context.UseRightToLeft();
         var size = IconSize ?? 24f;
-        return new TextBlock(Icon ?? "")
+        var icon = Icon ?? "";
+        if (rightToLeft && MirrorInRightToLeft && s_mirrors.TryGetValue(icon, out var mirror))
+        {
+            icon = mirror;
+        }
+        return new TextBlock(icon)
         {
             IsDecorative = true,
             Wrap = false,
@@ -45,4 +58,28 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
     }
 
     private static readonly FontVariation[] s_filled = [new(FontVariation.Fill, 1f)];
+
+    // Icons that point along the line, each with the one that points the other way.
+    private static readonly System.Collections.Frozen.FrozenDictionary<string, string> s_mirrors = Pairs(
+        ("arrow_back", "arrow_forward"),
+        ("arrow_back_ios", "arrow_forward_ios"),
+        ("arrow_left", "arrow_right"),
+        ("chevron_left", "chevron_right"),
+        ("navigate_before", "navigate_next"),
+        ("first_page", "last_page"),
+        ("keyboard_arrow_left", "keyboard_arrow_right"),
+        ("keyboard_double_arrow_left", "keyboard_double_arrow_right"),
+        ("keyboard_tab", "keyboard_tab_rtl"),
+        ("west", "east"));
+
+    private static System.Collections.Frozen.FrozenDictionary<string, string> Pairs(params (string A, string B)[] pairs)
+    {
+        var map = new System.Collections.Generic.Dictionary<string, string>();
+        foreach (var (a, b) in pairs)
+        {
+            map.TryAdd(a, b);
+            map.TryAdd(b, a);
+        }
+        return System.Collections.Frozen.FrozenDictionary.ToFrozenDictionary(map);
+    }
 }

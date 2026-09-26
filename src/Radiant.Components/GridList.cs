@@ -36,6 +36,7 @@ public sealed record GridList(int Count, Func<int, Element?> Tile, IReadOnlySet<
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var refs = context.UseMemo(() => Enumerable.Range(0, Count).Select(_ => new ElementRef()).ToArray(), Count);
         var anchor = context.UseRef(-1);
         var latest = context.UseRef(this);
@@ -95,7 +96,7 @@ public sealed record GridList(int Count, Func<int, Element?> Tile, IReadOnlySet<
         {
             var props = latest.Value;
             var columns = Columns();
-            int? next = e.Key switch
+            int? next = e.Key.ForDirection(rightToLeft) switch
             {
                 KeyCode.Right => index + 1,
                 KeyCode.Left => index - 1,

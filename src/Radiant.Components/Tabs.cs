@@ -21,9 +21,9 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var row = context.UseRef(new ElementRef()).Value;
-        var rightToLeft = context.UseRightToLeft();
         var refs = context.UseMemo(() => Enumerable.Range(0, Items.Count).Select(_ => new ElementRef()).ToArray(), Items.Count);
         var indicator = context.UseState((Left: 0f, Width: 0f));
         var motion = theme.Theme.Motion;
@@ -64,7 +64,7 @@ public sealed record Tabs(IReadOnlyList<Tab> Items, int Selected, Action<int>? O
                 Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 },
                 OnKeyDown = e =>
                 {
-                    var next = e.Key switch { KeyCode.Right => index + 1, KeyCode.Left => index - 1, _ => -1 };
+                    var next = e.Key.ForDirection(rightToLeft) switch { KeyCode.Right => index + 1, KeyCode.Left => index - 1, _ => -1 };
                     if (next >= 0 && next < count)
                     {
                         onSelect?.Invoke(next);

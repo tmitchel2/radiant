@@ -359,6 +359,7 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
             var theme = context.UseTheme();
             var hovered = context.UseState(false);
             var drag = context.UseRef<(float Pointer, float Width)?>(null);
+            var rightToLeft = context.UseRightToLeft();
             var latest = context.UseRef(this);
             latest.Value = this;
             return new Box
@@ -377,7 +378,8 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
                 {
                     if (drag.Value is { } start)
                     {
-                        latest.Value.OnResize(start.Width + e.Position.X - start.Pointer);
+                        // The grip is at the column's end: dragging it towards the end widens the column.
+                        latest.Value.OnResize(start.Width + (rightToLeft ? start.Pointer - e.Position.X : e.Position.X - start.Pointer));
                     }
                 },
                 OnPointerUp = _ => drag.Value = null,

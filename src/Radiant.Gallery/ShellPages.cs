@@ -100,7 +100,8 @@ internal static class ShellPages
             return new ScrollArea
             {
                 Behaviour = new Radiant.Scrolling.ScrollBehaviour { Axes = Radiant.Scrolling.ScrollAxes.Both },
-                Layout = new LayoutStyle { FlexGrow = 1 },
+                // Code reads left to right in any language.
+                Layout = new LayoutStyle { FlexGrow = 1, Direction = TextDirection.LeftToRight },
                 ContentLayout = new LayoutStyle { Padding = new Edges(Numbers ? 8 : 16, 8, 16, 8) },
                 Children = rows,
             };

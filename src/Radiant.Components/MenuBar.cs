@@ -19,6 +19,7 @@ public sealed record MenuBar(IReadOnlyList<MenuBarMenu> Menus) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var open = context.UseState((int?)null);
         var anchors = context.UseMemo(() => Menus.Select(_ => new ElementRef()).ToArray(), Menus.Count);
         var count = Menus.Count;
@@ -68,7 +69,7 @@ public sealed record MenuBar(IReadOnlyList<MenuBarMenu> Menus) : Component
             {
                 if (open.Value is { } current && e.Key is KeyCode.Left or KeyCode.Right)
                 {
-                    open.Set((current + (e.Key == KeyCode.Right ? 1 : count - 1)) % count);
+                    open.Set((current + (e.Key.ForDirection(rightToLeft) == KeyCode.Right ? 1 : count - 1)) % count);
                     e.Handled = true;
                 }
             },

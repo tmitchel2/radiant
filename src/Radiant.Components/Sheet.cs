@@ -39,10 +39,12 @@ public sealed record Sheet(bool Open, Action OnClose, Element? Content) : Compon
         var close = OnClose;
         var bottom = Side == SheetSide.Bottom;
         var start = Side == SheetSide.Start;
+        // The start is the left unless the UI reads right to left.
+        var left = start != context.UseRightToLeft();
         var corner = theme.Radius(CornerShapeRole.Large);
         // Rounded only on the side facing the app.
         var radii = bottom ? Radiant.Graphics2D.CornerRadii.Top(corner)
-            : start ? new Radiant.Graphics2D.CornerRadii(0, corner, corner, 0)
+            : left ? new Radiant.Graphics2D.CornerRadii(0, corner, corner, 0)
             : new Radiant.Graphics2D.CornerRadii(corner, 0, 0, corner);
         // The overlay primitives each wrap the panel in a box. The outer one stretches across the
         // edge (the window's height for a side sheet); the inner, in the outer's column, grows down it.
@@ -52,7 +54,7 @@ public sealed record Sheet(bool Open, Action OnClose, Element? Content) : Compon
         {
             // Slides the rest of the way in as it appears: its whole size when hidden.
             var hidden = (1f - progress) * props.Size;
-            var shift = bottom ? new Vector2(0, hidden) : new Vector2(start ? -hidden : hidden, 0);
+            var shift = bottom ? new Vector2(0, hidden) : new Vector2(left ? -hidden : hidden, 0);
             return new Portal(new Box
             {
                 Layout = new LayoutStyle

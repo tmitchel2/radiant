@@ -9,7 +9,9 @@ namespace Radiant.Components.Primitives;
 /// Floating content shown above everything, positioned against an anchor (a button's
 /// <see cref="ElementRef"/>): the basis of menus, popovers, tooltips and selects. It measures itself,
 /// places itself with <see cref="AnchoredPlacement"/>, and follows the anchor if it moves (a scroll).
-/// It is hidden until it has been placed, so it never flashes in the wrong spot.
+/// It is hidden until it has been placed, so it never flashes in the wrong spot. The side and
+/// alignment are as a left-to-right UI would have them; in a right-to-left one they mirror, so a
+/// menu aligned to its button's start lines up with the button's right edge.
 /// </summary>
 /// <param name="Anchor">What to position against.</param>
 /// <param name="Content">What floats.</param>
@@ -45,6 +47,8 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
         var root = context.Root;
         var anchor = Anchor;
         var props = this;
+        var rightToLeft = context.UseRightToLeft();
+        var (side, align) = rightToLeft ? Mirrored(Side, Align) : (Side, Align);
 
         void Place()
         {
@@ -54,7 +58,7 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
             }
             var bounds = content.Bounds;
             var (placed, _) = AnchoredPlacement.Place(anchor.Bounds, new Vector2(bounds.Width, bounds.Height), root.Size,
-                props.Side, props.Align, props.Offset, props.Padding, props.Flip, props.Shift);
+                side, align, props.Offset, props.Padding, props.Flip, props.Shift);
             placed = new Vector2(MathF.Round(placed.X), MathF.Round(placed.Y));
             if (position.Value != placed)
             {
@@ -71,7 +75,6 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
         context.UseEffect(() => root.AddTicker(_ => Place()).Dispose, anchor);
 
         var at = position.Value ?? Vector2.Zero;
-        var rightToLeft = context.UseRightToLeft();
         return new Portal(new Box
         {
             Ref = content,
@@ -86,4 +89,12 @@ public sealed record Anchored(ElementRef Anchor, Element? Content) : Component
             Children = [Content],
         });
     }
+
+    // The side and alignment of a left-to-right placement, reflected left to right.
+    private static (Side Side, SideAlign Align) Mirrored(Side side, SideAlign align) => side switch
+    {
+        Side.Left => (Side.Right, align),
+        Side.Right => (Side.Left, align),
+        _ => (side, align switch { SideAlign.Start => SideAlign.End, SideAlign.End => SideAlign.Start, _ => align }),
+    };
 }

@@ -49,8 +49,14 @@ internal sealed class TextRenderNode : RenderNode
         {
             width = float.PositiveInfinity;
         }
+        var direction = Element.Direction ?? LayoutDirection.Of(Yoga);
+        if (_shaped is not null && _shaped.Style.Direction != direction)
+        {
+            _shaped = null;
+            _laidOut = null;
+        }
         _shaped ??= Paragraph.Layout(Element.AttributedText,
-            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.MaxLines, Direction = Element.Direction },
+            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.MaxLines, Direction = direction },
             Owner.Root.Fonts);
         if (_laidOut is null || _laidOut.Style.MaxWidth != width)
         {

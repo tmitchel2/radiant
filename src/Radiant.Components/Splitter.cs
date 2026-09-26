@@ -58,6 +58,7 @@ public sealed record Splitter(Element? First, Element? Second) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var own = context.UseState(InitialSize);
         var container = context.UseRef(new ElementRef()).Value;
@@ -73,7 +74,8 @@ public sealed record Splitter(Element? First, Element? Second) : Component
         var sizedFirst = SizedPane == SplitterPane.First;
         var size = Size ?? own.Value;
 
-        float Along(System.Numerics.Vector2 point) => horizontal ? point.X : point.Y;
+        // Measured towards the end: leftwards, reading right to left.
+        float Along(System.Numerics.Vector2 point) => horizontal ? (rightToLeft ? -point.X : point.X) : point.Y;
 
         float Extent(System.Drawing.RectangleF bounds) => horizontal ? bounds.Width : bounds.Height;
 
@@ -179,7 +181,7 @@ public sealed record Splitter(Element? First, Element? Second) : Component
             OnKeyDown = e =>
             {
                 var step = (e.Modifiers & KeyModifiers.Shift) != 0 ? LargeStep : Step;
-                var (back, forward) = horizontal ? (KeyCode.Left, KeyCode.Right) : (KeyCode.Up, KeyCode.Down);
+                var (back, forward) = horizontal ? (KeyCode.Left.ForDirection(rightToLeft), KeyCode.Right.ForDirection(rightToLeft)) : (KeyCode.Up, KeyCode.Down);
                 var handled = true;
                 if (e.Key == back)
                 {

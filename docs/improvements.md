@@ -18,6 +18,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   box say "from the left" directly. A portal also looks up its direction on each update by walking
   the element tree; a direction change above a portal whose own props didn't change doesn't reach
   it until it updates.
+- **A single-line field's scroll is worked out as it's painted.** The right-to-left alignment of a
+  field's text and its horizontal scroll both come from `EditableTextRenderNode.Paint`, so a press
+  before the first paint maps to the wrong place, and tests can't check it without a GPU. Working
+  it out after layout would fix both.
+- **Latin text in a right-to-left UI moves its punctuation.** "+31%" shows as "31%+" and a
+  sentence's full stop moves to its left end: that's the bidi algorithm doing its job (browsers do
+  the same), but the gallery, written in English, looks odd with `--rtl`. Arabic or Hebrew sample
+  text would show it properly.
 - **Layered facets are found by convention.** A facet type with a `T Merge(T over)` method is
   merged over the target's value by the forwarders instead of replacing it. It's implicit; an
   attribute on the facet property (`[Layered]`) would say so where it's declared. Components that

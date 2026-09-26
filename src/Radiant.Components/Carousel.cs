@@ -36,6 +36,7 @@ public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var scroll = context.UseRef(new ScrollController(new ScrollBehaviour { Axes = ScrollAxes.Horizontal })).Value;
         var viewport = context.UseState(0f);
@@ -143,7 +144,7 @@ public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
             {
                 if (e.Key is KeyCode.Left or KeyCode.Right)
                 {
-                    GoTo(at + (e.Key == KeyCode.Right ? 1 : -1));
+                    GoTo(at + (e.Key.ForDirection(rightToLeft) == KeyCode.Right ? 1 : -1));
                     e.Handled = true;
                 }
             },

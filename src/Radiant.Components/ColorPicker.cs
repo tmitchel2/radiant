@@ -187,8 +187,7 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
         return new Box
         {
             Semantics = new Semantics { Role = SemanticsRole.Group, Label = Label },
-            // Hue and tone run left to right in any language, as the plane and strip are drawn.
-            Layout = new LayoutStyle { Width = width, RowGap = 12, Direction = Radiant.Text.TextDirection.LeftToRight },
+            Layout = new LayoutStyle { Width = width, RowGap = 12 },
             Children =
             [
                 new Box
@@ -201,7 +200,8 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
                         Value = string.Create(CultureInfo.InvariantCulture, $"hue {hue:0}, chroma {chroma:0}"),
                     },
                     Cursor = Radiant.Platform.CursorShape.Crosshair,
-                    Layout = new LayoutStyle { Width = width, Height = planeHeight },
+                    // Hue and tone run left to right in any language, as the plane and strip are drawn.
+                    Layout = new LayoutStyle { Width = width, Height = planeHeight, Direction = Radiant.Text.TextDirection.LeftToRight },
                     Background = theme.Get(SurfaceName.SurfaceContainerHighest),
                     CornerRadii = theme.Corners(CornerShapeRole.Small),
                     OnPointerDown = e =>
@@ -250,7 +250,7 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
                 {
                     Focusable = true,
                     Semantics = new Semantics { Role = SemanticsRole.Slider, Label = "Tone", Value = tone.ToString("0", CultureInfo.InvariantCulture) },
-                    Layout = new LayoutStyle { Width = width, Height = 20, FlexDirection = FlexDirection.Row },
+                    Layout = new LayoutStyle { Width = width, Height = 20, FlexDirection = FlexDirection.Row, Direction = Radiant.Text.TextDirection.LeftToRight },
                     CornerRadii = CornerRadii.All(10),
                     OnPointerDown = e =>
                     {

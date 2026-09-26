@@ -11,7 +11,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-11] [--dialog] [--menu] [--palette] [--sheet]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-11] [--dialog] [--menu] [--palette] [--sheet] [--rtl]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
@@ -24,6 +24,7 @@ var startPage = 0;
 var followSystem = true;
 var scale = 1f;
 var height = 640;
+var rightToLeft = false;
 for (var i = 0; i < args.Length; i++)
 {
     switch (args[i])
@@ -35,6 +36,7 @@ for (var i = 0; i < args.Length; i++)
         case "--height": height = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--dialog": startWithDialog = true; break;
         case "--palette": startWithPalette = true; break;
+        case "--rtl": rightToLeft = true; break;
         case "--sheet": startWithSheet = true; break;
         case "--bench": bench = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--menu": startWithMenu = true; break;
@@ -45,7 +47,8 @@ for (var i = 0; i < args.Length; i++)
 }
 
 var themes = new ThemeController(theme);
-var app = new ThemeProvider(themes, new GalleryApp(themes) { StartPage = startPage, StartWithDialog = startWithDialog, StartWithMenu = startWithMenu, StartWithPalette = startWithPalette, StartWithSheet = startWithSheet });
+Element gallery = new GalleryApp(themes) { StartPage = startPage, StartWithDialog = startWithDialog, StartWithMenu = startWithMenu, StartWithPalette = startWithPalette, StartWithSheet = startWithSheet };
+var app = new ThemeProvider(themes, rightToLeft ? new Directionality(Radiant.Text.TextDirection.RightToLeft, gallery) : gallery);
 
 if (snapshot is null)
 {

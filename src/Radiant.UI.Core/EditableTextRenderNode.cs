@@ -60,8 +60,15 @@ internal sealed class EditableTextRenderNode : RenderNode
         {
             width = float.PositiveInfinity;
         }
+        var direction = LayoutDirection.Of(Yoga);
+        if (_shaped is not null && _shaped.Style.Direction != direction)
+        {
+            _shaped = null;
+            _placeholder = null;
+            Paragraph = null;
+        }
         _shaped ??= Radiant.Text.Paragraph.Layout(Element.State.Text, Element.Style,
-            new ParagraphStyle { Alignment = Element.Alignment }, Owner.Root.Fonts);
+            new ParagraphStyle { Alignment = Element.Alignment, Direction = direction }, Owner.Root.Fonts);
         if (Paragraph is null || Paragraph.Style.MaxWidth != width)
         {
             Paragraph = float.IsPositiveInfinity(width) ? _shaped : _shaped.WithMaxWidth(width);
@@ -76,7 +83,7 @@ internal sealed class EditableTextRenderNode : RenderNode
             return null;
         }
         _placeholder ??= Radiant.Text.Paragraph.Layout(text, Element.Style with { Color = Element.PlaceholderColor },
-            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.Multiline ? null : 1 }, Owner.Root.Fonts);
+            new ParagraphStyle { Alignment = Element.Alignment, MaxLines = Element.Multiline ? null : 1, Direction = LayoutDirection.Of(Yoga) }, Owner.Root.Fonts);
         return Element.Multiline && float.IsFinite(width) ? _placeholder.WithMaxWidth(width) : _placeholder;
     }
 
@@ -91,7 +98,11 @@ internal sealed class EditableTextRenderNode : RenderNode
         var caret = paragraph.GetCaretRect(state.Selection.FocusPosition);
         if (!Element.Multiline)
         {
-            var maxScroll = MathF.Max(0f, paragraph.Width + 2f - size.X);
+            // Reading right to left, a line shorter than the field sits against its right edge
+            // (a negative scroll), and a longer one starts scrolled to its end.
+            var overflow = paragraph.Width + 2f - size.X;
+            var (minScroll, maxScroll) = LayoutDirection.Of(Yoga) is null ? (0f, MathF.Max(0f, overflow))
+                : overflow <= 0f ? (overflow, overflow) : (0f, overflow);
             if (caret.Left - _scroll > size.X - 2f)
             {
                 _scroll = caret.Left - size.X + 2f;
@@ -100,7 +111,7 @@ internal sealed class EditableTextRenderNode : RenderNode
             {
                 _scroll = caret.Left;
             }
-            _scroll = Math.Clamp(_scroll, 0f, maxScroll);
+            _scroll = Math.Clamp(_scroll, minScroll, maxScroll);
         }
         var origin = context.Origin - new Vector2(_scroll, 0f);
 
@@ -114,7 +125,11 @@ internal sealed class EditableTextRenderNode : RenderNode
         }
         if (PlaceholderAt(size.X) is { } placeholder)
         {
-            renderer.DrawParagraph(placeholder, origin);
+            // A single-line placeholder, unwrapped, is placed against the start edge by hand.
+            var at = !Element.Multiline && LayoutDirection.Of(Yoga) is not null
+                ? context.Origin + new Vector2(size.X - 2f - placeholder.Width, 0f)
+                : origin;
+            renderer.DrawParagraph(placeholder, at);
         }
         renderer.DrawParagraph(paragraph, origin);
         if (state.Composing is { } composing)

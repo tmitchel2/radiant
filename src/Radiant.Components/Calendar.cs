@@ -54,6 +54,7 @@ public sealed record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : 
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var theme = context.UseTheme();
         var culture = Culture ?? CultureInfo.CurrentCulture;
         var today = Today ?? DateOnly.FromDateTime(DateTime.Now);
@@ -99,7 +100,7 @@ public sealed record Calendar(DateOnly? Selected, Action<DateOnly>? OnSelect) : 
         void Key(KeyEventArgs e)
         {
             var at = focus.Value;
-            DateOnly? next = e.Key switch
+            DateOnly? next = e.Key.ForDirection(rightToLeft) switch
             {
                 KeyCode.Left => at.AddDays(-1),
                 KeyCode.Right => at.AddDays(1),

@@ -163,18 +163,29 @@ new Directionality(TextDirection.RightToLeft, app)
   in a right-to-left one, and the same goes for insets and margins. Rows run from the start, and
   `Justify.FlexStart` and `Align.FlexStart` in a row mean the start. `LayoutStyle.Direction` sets a
   subtree's direction, and Yoga passes it down.
-- **Text takes the direction.** `SurfaceText` gives its paragraph the direction in force, so
-  mixed text lays out right to left and `TextAlignment.Start` means the right. Without a
-  `Directionality`, text detects its direction from its first strong character.
+- **Text takes the direction it's laid out in.** Text (and a text field's text) in a right-to-left
+  layout is a right-to-left paragraph, so mixed text orders right to left and
+  `TextAlignment.Start` means the right; a single-line field keeps its text against the right edge
+  and scrolls the other way. Elsewhere text detects its direction from its first strong
+  character, and `TextBlock.Direction` overrides both.
 - **Portals take the direction where they are** in the element tree, not the root's.
+- **Scroll areas mirror.** A horizontal area starts at its right edge and scrolls leftwards; its
+  offsets still count from the start. The vertical bar is on the left.
+- **Controls follow.** Sliders fill from the right, and Left and Right swap for sliders, tabs,
+  toolbars, menus, trees, grids, calendars, carousels and splitters (`KeyCode.ForDirection` does
+  the swap). Dragging a splitter or a column edge towards the end grows what it sizes. Anchored
+  content mirrors its side and alignment, and sheets slide in from the mirrored edge.
+- **Icons that point along the line mirror** (back and forward arrows, chevrons, first and last
+  page): `SurfaceIcon` draws the opposite icon, unless `MirrorInRightToLeft` is off.
 - **Points stay physical.** Pointer positions and bounds are measured from the left, whatever the
   direction. Something placed at one (a popover, a context menu, a tab indicator) uses
   `Edges.Physical(left, top, right, bottom, rightToLeft)`, which swaps sides in a right-to-left
   layout.
 - **Components read it** with `context.UseDirection()` (null if nothing set it) or
   `context.UseRightToLeft()`.
-- **Some things don't mirror.** Charts and the colour picker stay left to right, as their axes
-  do in any language.
+- **Some things don't mirror.** Charts, the colour picker's plane and strip, and code stay left
+  to right in any language: set `LayoutStyle.Direction` to `LeftToRight` on them. The gallery's
+  `--rtl` flag shows every page right to left.
 
 ## Portals, refs and semantics
 

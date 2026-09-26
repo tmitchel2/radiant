@@ -89,6 +89,7 @@ public sealed record DocumentTabs(IReadOnlyList<DocumentTab> Tabs, int Selected,
             var hovered = context.UseState(false);
             var close = Close;
             var arrow = OnArrow;
+            var rightToLeft = context.UseRightToLeft();
             var showClose = close is not null && (Chosen || hovered.Value);
             Element? trailing = showClose
                 ? new CloseButton(Tab.Label, close!)
@@ -111,7 +112,7 @@ public sealed record DocumentTabs(IReadOnlyList<DocumentTab> Tabs, int Selected,
                 },
                 OnKeyDown = e =>
                 {
-                    var step = e.Key switch { KeyCode.Right => 1, KeyCode.Left => -1, _ => 0 };
+                    var step = e.Key.ForDirection(rightToLeft) switch { KeyCode.Right => 1, KeyCode.Left => -1, _ => 0 };
                     if (step != 0)
                     {
                         arrow?.Invoke(step);

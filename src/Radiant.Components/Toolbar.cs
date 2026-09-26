@@ -23,6 +23,7 @@ public sealed record Toolbar(IReadOnlyList<Element?> Items) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+        var rightToLeft = context.UseRightToLeft();
         var bar = context.UseRef(new ElementRef()).Value;
         var root = context.Root;
 
@@ -45,10 +46,10 @@ public sealed record Toolbar(IReadOnlyList<Element?> Items) : Component
             Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 2, Height = 44, Padding = Edges.Symmetric(4, 0) }.Merge(Layout ?? default),
             OnKeyDown = e =>
             {
-                switch (e.Key)
+                switch (e.Key.ForDirection(rightToLeft))
                 {
                     case KeyCode.Left or KeyCode.Right:
-                        Step(e.Key == KeyCode.Right);
+                        Step(e.Key.ForDirection(rightToLeft) == KeyCode.Right);
                         e.Handled = true;
                         break;
                     case KeyCode.Home or KeyCode.End:
