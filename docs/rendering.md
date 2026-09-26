@@ -73,6 +73,20 @@ many rectangles is still a single draw call.
 
 Both `BeginFrame` overloads draw every kind. The parameterless one simply sets no scissor.
 
+## Transforms
+
+`PushTransform(Matrix3x2)` / `PopTransform()` transform everything drawn between them. Nested
+transforms apply inner first, as in a scene graph. `PushScrollOffset` is a translation on the same
+stack.
+
+Every kind of draw follows a transform exactly:
+- SDF shapes move their quad but are evaluated in their own frame, so a rotated rounded rectangle
+  stays exact, and anti-aliasing (from screen-space derivatives) stays one pixel wide at any scale.
+- MSDF text works out its edge sharpness per pixel, so rotated or scaled text stays crisp.
+
+Clip rectangles are not transformed; they are always in window coordinates. A clip that has to
+rotate with its content needs a rounded or path clip, which is not implemented yet.
+
 ## Text
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.

@@ -98,14 +98,15 @@ namespace Radiant.Graphics2D
         // the last batch, so a frame of many rects is still one draw call.
         private readonly List<DrawBatch> _batches = [];
 
-        // Scroll-offset state: a translate applied to emitted geometry (not the clip).
-        // Markers record the vertex counts at push time; PopScrollOffset shifts everything
-        // appended since by the delta, so nested pushes compose cumulatively while the clip
-        // viewport stays fixed in window space.
-        private readonly Stack<ScrollOffsetMarker> _scrollOffsetStack = new();
+        // Transform state: a matrix applied to emitted geometry (not the clip). Markers record the
+        // vertex counts at push time; PopTransform transforms everything appended since. Inner
+        // pushes pop first, so nested transforms compose inner-then-outer, as a scene graph does,
+        // while clip rectangles stay in window space. Scroll offsets are translations on the same
+        // stack.
+        private readonly Stack<TransformMarker> _transformStack = new();
 
-        private readonly record struct ScrollOffsetMarker(
-            Vector2 Delta, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart);
+        private readonly record struct TransformMarker(
+            Matrix3x2 Transform, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart);
         private bool _clipEnabled;
         private uint _attachmentWidth;
         private uint _attachmentHeight;
@@ -605,7 +606,7 @@ namespace Radiant.Graphics2D
             _imageVertices.Clear();
             _batches.Clear();
             _clipStack.Clear();
-            _scrollOffsetStack.Clear();
+            _transformStack.Clear();
             _clipEnabled = attachmentWidth > 0 && attachmentHeight > 0;
             _attachmentWidth = attachmentWidth;
             _attachmentHeight = attachmentHeight;
@@ -647,50 +648,67 @@ namespace Radiant.Graphics2D
         /// clip stack stays in window space (the viewport does not move). Nested pushes
         /// compose cumulatively. Typical use: <c>PushScrollOffset(-controller.Offset)</c>.
         /// </summary>
-        public void PushScrollOffset(Vector2 delta) =>
-            _scrollOffsetStack.Push(new ScrollOffsetMarker(
-                delta,
+        public void PushScrollOffset(Vector2 delta) => PushTransform(Matrix3x2.CreateTranslation(delta));
+
+        /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
+        public void PopScrollOffset() => PopTransform();
+
+        /// <summary>
+        /// Pushes a 2D transform. Everything drawn until the matching <see cref="PopTransform"/> is
+        /// transformed by <paramref name="transform"/> (in the row-vector convention of
+        /// <see cref="Matrix3x2"/>: <c>CreateScale(2) * CreateTranslation(10, 0)</c> scales, then
+        /// moves). Nested transforms apply inner first. Every kind of draw follows the transform
+        /// exactly: SDF shapes are evaluated in their own coordinates, so a rotated rounded rectangle
+        /// stays exact, and text keeps its edge sharpness at any scale. Clip rectangles are not
+        /// transformed; they stay in window coordinates.
+        /// </summary>
+        public void PushTransform(Matrix3x2 transform) =>
+            _transformStack.Push(new TransformMarker(
+                transform,
                 _filledVertices.Count,
                 _lineVertices.Count,
                 _msdfVertices.Count,
                 _sdfShapeVertices.Count,
                 _imageVertices.Count));
 
-        /// <summary>Pops the most recent scroll translate, shifting geometry emitted since the matching push.</summary>
-        public void PopScrollOffset()
+        /// <summary>Pops the most recent transform, applying it to everything drawn since the matching push.</summary>
+        public void PopTransform()
         {
-            if (_scrollOffsetStack.Count == 0) return;
-            var m = _scrollOffsetStack.Pop();
-            if (m.Delta == Vector2.Zero) return;
+            if (_transformStack.Count == 0) return;
+            var m = _transformStack.Pop();
+            if (m.Transform.IsIdentity) return;
 
+            var t = m.Transform;
             for (var i = m.FilledStart; i < _filledVertices.Count; i++)
             {
                 var v = _filledVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _filledVertices[i] = v;
             }
             for (var i = m.LineStart; i < _lineVertices.Count; i++)
             {
                 var v = _lineVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _lineVertices[i] = v;
             }
             for (var i = m.MsdfStart; i < _msdfVertices.Count; i++)
             {
                 var v = _msdfVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _msdfVertices[i] = v;
             }
             for (var i = m.SdfShapeStart; i < _sdfShapeVertices.Count; i++)
             {
+                // Only the quad moves; LocalPos stays in the shape's own frame, so the SDF is
+                // evaluated exactly as before and a rotation or scale is exact.
                 var v = _sdfShapeVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _sdfShapeVertices[i] = v;
             }
             for (var i = m.ImageStart; i < _imageVertices.Count; i++)
             {
                 var v = _imageVertices[i];
-                v.Position += m.Delta;
+                v.Position = Vector2.Transform(v.Position, t);
                 _imageVertices[i] = v;
             }
         }
