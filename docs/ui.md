@@ -34,7 +34,8 @@ RadiantUI.Run(new Counter("Clicks"), new UIAppOptions { Title = "Counter" });
 - **Components** (`Component`, a record with `Build`) describe UI in terms of other elements. They
   leave nothing in the render tree.
 - **Host elements** are what gets laid out and drawn: `Box`, `TextBlock`, `ScrollArea`, `Portal`,
-  `EditableText` and `Canvas` (custom drawing with the renderer, as an escape hatch).
+  `EditableText`, `Image` (cover, contain or fill, with rounded corners and alt text) and `Canvas`
+  (custom drawing with the renderer, as an escape hatch).
 - **Structure:** `Fragment` groups elements, and `Provider<T>` passes a context value down.
 
 ## Reconciliation
@@ -204,7 +205,6 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 
 ## Not yet
 
-- **Host elements:** `Image`.
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** dragging the scroll thumb, and keyboard scrolling.
 - **Commands:** commands and shortcuts.

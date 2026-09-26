@@ -8,6 +8,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## UI core (`Radiant.UI.Core`)
 
+- **Image textures are never freed.** `ImageSource` keeps one texture per renderer in a weak table,
+  but nothing disposes the GPU texture when the source goes. Pictures are also decoded
+  synchronously on the UI thread, and there are no mipmaps, so heavy downscaling aliases. Add
+  async decoding, an image cache with release, and mipmaps.
 - **Tests reach into internals.** Component tests read the render tree through
   `InternalsVisibleTo`. The planned `Radiant.Testing` should offer a public way to find elements
   and read their resolved props and bounds, like Testing Library's queries.
