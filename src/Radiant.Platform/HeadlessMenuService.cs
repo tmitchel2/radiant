@@ -17,6 +17,24 @@ public sealed class HeadlessMenuService : IMenuService
     public IReadOnlyList<PlatformMenuItem>? LastShown { get; private set; }
 
     /// <inheritdoc/>
+    public bool HasMenuBar { get; set; }
+
+    /// <summary>The menus last put on the menu bar.</summary>
+    public IReadOnlyList<PlatformMenu> MenuBar { get; private set; } = [];
+
+    private Action<int, int>? _onChoose;
+
+    /// <inheritdoc/>
+    public void SetMenuBar(IReadOnlyList<PlatformMenu> menus, Action<int, int> onChoose)
+    {
+        MenuBar = menus;
+        _onChoose = onChoose;
+    }
+
+    /// <summary>Chooses an item from the menu bar, as the user would.</summary>
+    public void ChooseFromMenuBar(int menu, int item) => _onChoose?.Invoke(menu, item);
+
+    /// <inheritdoc/>
     public int? ShowContextMenu(IReadOnlyList<PlatformMenuItem> items, Vector2 position)
     {
         LastShown = items;

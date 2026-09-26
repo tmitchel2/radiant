@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Drawing;
 using Radiant.Platform;
 using Radiant.Platform.MacOS;
@@ -111,6 +112,9 @@ internal static unsafe class SelfTest
         // VoiceOver reads the UI through the content view.
         CheckAccessibility(view, window, root, events, Check);
 
+        // The app's commands are on the macOS menu bar.
+        CheckMenuBar(root, window, events, Check);
+
         return failures;
     }
 
@@ -167,6 +171,45 @@ internal static unsafe class SelfTest
             Last = $"marked:{text}:{selectionStart}:{selectionLength}";
 
         public void UnmarkText() => Last = "unmark";
+    }
+
+    private static void CheckMenuBar(UIRoot root, nint window, List<string> events, Action<bool, string> check)
+    {
+        // The command registered in the first frame's effects reaches the menu bar on the next update.
+        root.Update(root.Size);
+        var main = ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "mainMenu");
+        var titles = new List<string>();
+        for (var i = 0; i < (int)ObjC.Send(main, "numberOfItems"); i++)
+        {
+            titles.Add(ObjC.ToManagedString(ObjC.Send(ObjC.Send(main, "itemAtIndex:", i), "title")) ?? "");
+        }
+        check(titles.Count >= 3 && titles[^2] == "Test" && titles[^1] == "Window", $"the menu bar has the app's menus, then Window ({string.Join(", ", titles)})");
+        var appMenu = ObjC.Send(ObjC.Send(main, "itemAtIndex:", 0), "submenu");
+        var quit = ObjC.Send(appMenu, "itemAtIndex:", (int)ObjC.Send(appMenu, "numberOfItems") - 1);
+        check(ObjC.ToManagedString(ObjC.Send(quit, "title"))?.StartsWith("Quit", StringComparison.Ordinal) == true, "the application menu ends with Quit");
+
+        var menu = ObjC.Send(ObjC.Send(main, "itemWithTitle:", ObjC.String("Test")), "submenu");
+        var item = menu == 0 ? 0 : ObjC.Send(menu, "itemAtIndex:", 0);
+        var key = item == 0 ? null : ObjC.ToManagedString(ObjC.Send(item, "keyEquivalent"));
+        var mask = item == 0 ? 0 : ObjC.Send(item, "keyEquivalentModifierMask");
+        check(item != 0 && ObjC.ToManagedString(ObjC.Send(item, "title")) == "Say hello" && key == "j" && (mask & (1 << 20)) != 0,
+            $"the command is an item with its shortcut ({key}, mask {mask:X})");
+
+        events.Clear();
+        ObjC.Send(menu, "performActionForItemAtIndex:", 0);
+        check(events.Contains("command:hello"), $"choosing it runs the command ({string.Join(",", events)})");
+
+        // ⌘J as AppKit dispatches it: the menu answers to it, and the UI's own shortcut doesn't also run it.
+        events.Clear();
+        const nuint keyDownType = 10; // NSEventTypeKeyDown
+        const nuint command = 1 << 20; // NSEventModifierFlagCommand
+        var j = ObjC.String("j");
+        var keyEvent = ((delegate* unmanaged<nint, nint, nuint, Point, nuint, double, nint, nint, nint, nint, byte, ushort, nint>)ObjC.MsgSend)(
+            ObjC.Class("NSEvent"),
+            ObjC.Sel("keyEventWithType:location:modifierFlags:timestamp:windowNumber:context:characters:charactersIgnoringModifiers:isARepeat:keyCode:"),
+            keyDownType, default, command, 0, ObjC.Send(window, "windowNumber"), 0, j, j, 0, 38);
+        ObjC.Send(ObjC.Send(ObjC.Class("NSApplication"), "sharedApplication"), "sendEvent:", keyEvent);
+        check(events.Count(e => e == "command:hello") == 1, $"its shortcut runs it once, through the menu ({string.Join(",", events)})");
     }
 
     private static void CheckAccessibility(nint view, nint window, UIRoot root, List<string> events, Action<bool, string> check)

@@ -38,6 +38,40 @@ public readonly record struct KeyChord(KeyCode Key, KeyModifiers Modifiers = Key
         return text.ToString();
     }
 
+    /// <summary>
+    /// The chord as a platform menu takes it. The platform's command modifier (⌘ on macOS, Ctrl
+    /// elsewhere) is the menu's command key.
+    /// </summary>
+    public Radiant.Platform.MenuShortcut ToMenuShortcut()
+    {
+        var held = Radiant.Platform.MenuModifiers.None;
+        if ((Modifiers & CommandModifier) != 0)
+        {
+            held |= Radiant.Platform.MenuModifiers.Command;
+        }
+        if ((Modifiers & KeyModifiers.Control) != 0 && CommandModifier != KeyModifiers.Control)
+        {
+            held |= Radiant.Platform.MenuModifiers.Control;
+        }
+        if ((Modifiers & KeyModifiers.Alt) != 0)
+        {
+            held |= Radiant.Platform.MenuModifiers.Alt;
+        }
+        if ((Modifiers & KeyModifiers.Shift) != 0)
+        {
+            held |= Radiant.Platform.MenuModifiers.Shift;
+        }
+        var key = Key switch
+        {
+            KeyCode.Space => "Space",
+            >= KeyCode.A and <= KeyCode.Z => ((char)(Key + 32)).ToString(),
+            >= KeyCode.Space and <= KeyCode.GraveAccent => ((char)Key).ToString(),
+            >= KeyCode.F1 and <= KeyCode.F12 => "F" + (Key - KeyCode.F1 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _ => Key.ToString(),
+        };
+        return new Radiant.Platform.MenuShortcut(key, held);
+    }
+
     private static string KeyName(KeyCode key) => key switch
     {
         >= KeyCode.A and <= KeyCode.Z => ((char)key).ToString(),

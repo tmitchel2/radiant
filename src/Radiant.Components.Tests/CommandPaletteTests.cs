@@ -75,8 +75,8 @@ public class CommandPaletteTests
 
     private static Command[] Commands(List<string> ran) =>
     [
-        new("open", "Open file") { Group = "File", Shortcut = "⌘O", Icon = "folder_open", Run = () => ran.Add("open") },
-        new("save", "Save") { Group = "File", Shortcut = "⌘S", Icon = "save", Run = () => ran.Add("save") },
+        new("open", "Open file") { Group = "File", Shortcut = KeyChord.Command(KeyCode.O), Icon = "folder_open", Run = () => ran.Add("open") },
+        new("save", "Save") { Group = "File", Shortcut = KeyChord.Command(KeyCode.S), Icon = "save", Run = () => ran.Add("save") },
         new("dark", "Toggle dark theme") { Group = "View", Keywords = "night appearance", Icon = "palette", Run = () => ran.Add("dark") },
         new("settings", "Open settings") { Group = "Preferences", Icon = "settings", Run = () => ran.Add("settings") },
     ];

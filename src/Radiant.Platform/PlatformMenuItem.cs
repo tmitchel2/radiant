@@ -15,4 +15,7 @@ public sealed record PlatformMenuItem(string Title)
 
     /// <summary>Whether it's ticked.</summary>
     public bool Checked { get; init; }
+
+    /// <summary>Its keyboard shortcut, shown beside it; on a menu bar, pressing it chooses the item.</summary>
+    public MenuShortcut? Shortcut { get; init; }
 }

@@ -12,6 +12,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   worked out after layout and applied to the children, then the root lays out again (up to four
   passes, for nested grids). A custom layout node, or Yoga gaining grid, would do it in one. There
   are no column spans, explicit rows or per-cell alignment yet.
+- **Effects ran in an unstable order.** `FlushEffects` sorted children before parents with
+  `Array.Sort`, which isn't stable, so a component's effects could run out of declaration order.
+  It's a stable sort now; nothing had noticed until commands registered in effects.
 - **Physical positions need converting in right-to-left layouts.** `Edges` are logical only, so a
   box placed at a pointer position or measured bounds has to go through `Edges.Physical`, which
   needs the direction passed in. `Left`/`Right` insets in `LayoutStyle` (Yoga has them) would let a
@@ -195,9 +198,18 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   open needs the content's measured height and a height transition, which `Presence` doesn't
   offer yet.
 - **Command palettes show matches plainly.** The matched letters aren't highlighted (text spans
-  in `SurfaceText` would do it), there's no ordering by recent use, and a `Command.Shortcut` is
-  text: nothing binds it. A command registry would bind chords, feed menus and the palette, and
-  let the palette show whether a command is available.
+  in `SurfaceText` would do it), and there's no ordering by recent use.
+- **Commands don't follow focus.** A command overrides one with the same id by being deeper in
+  the tree while it's mounted, not by having focus: two editors side by side can't each offer
+  Copy for whichever is focused. Scoping commands to a focus scope (as a responder chain does)
+  would.
+- **There's no standard Edit menu.** Registering Copy, Paste or Select All with ⌘C, ⌘V, ⌘A puts
+  them on the macOS menu, which then takes those keys from text fields. Text fields would need to
+  offer their own Edit commands (deeper, so they win while focused) for an app to have an Edit
+  menu that works everywhere.
+- **Menu items are named by all their text.** A drawn menu item's accessible name includes its
+  shortcut ("Save ⌘S"); the shortcut would be better as a description or the key-shortcuts
+  property.
 - **Overlay primitives add boxes.** `DismissableLayer` and `FocusScope` each wrap their content in
   a box that sizes to it, so a panel inside can't simply fill or be a percentage of its parent.
   Both now take a `Layout` for their box (a side sheet has its layer stretch and its scope grow),
@@ -206,9 +218,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   the problem.
 - **Platform menus are plain.** A native context menu shows titles, separators, enabled and
   checked states, but not the drawn menu's icons or shortcuts (`keyEquivalent` and its modifier
-  mask would give shortcuts), and there are no submenus. The menu bar (`MenuBar`) is still drawn
-  in the window; the macOS global menu bar comes from `Radiant.Host`'s `MacMainMenu`, which the
-  UI doesn't feed yet.
+  mask would give shortcuts), and there are no submenus, on context menus or the menu bar.
+  `Radiant.Host`'s `MacMainMenu` still builds its own File menu; a hosted app using
+  `CommandMenuBar` would replace it.
 - **Toolbars aren't a single Tab stop.** Arrows move within a toolbar, but Tab still visits every
   control in it; a roving tab index (only the last-focused control tabbable) needs `TabIndex` on
   `IconButton` and the other controls, which only `PressableSurface` and `ToggleButton` have.

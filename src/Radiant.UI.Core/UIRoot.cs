@@ -244,10 +244,10 @@ public sealed class UIRoot : IDisposable
 
     private void FlushEffects()
     {
-        var effects = _effects.ToArray();
+        // Children's effects before their parents', as a parent's effect may rely on its children
+        // being ready; a component's own effects in the order it declared them (the sort is stable).
+        var effects = _effects.OrderByDescending(e => e.Owner.Depth).ToArray();
         _effects.Clear();
-        // Children's effects before their parents', as a parent's effect may rely on its children being ready.
-        Array.Sort(effects, (a, b) => b.Owner.Depth.CompareTo(a.Owner.Depth));
         foreach (var effect in effects)
         {
             if (effect.Owner.Mounted)
@@ -508,6 +508,11 @@ public sealed class UIRoot : IDisposable
         FrameRequested?.Invoke();
         return new Ticker(() => _tickers.Remove(entry));
     }
+
+    /// <summary>The commands registered in this UI.</summary>
+    public CommandRegistry Commands => _commands ??= new CommandRegistry(this);
+
+    private CommandRegistry? _commands;
 
     /// <summary>
     /// Runs <paramref name="run"/> when <paramref name="chord"/> is pressed and nothing focused

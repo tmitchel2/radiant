@@ -147,6 +147,16 @@ No test can drive AppKit's menu loop, so check it by hand: run `PlatformCheck` a
 box under "Context menu". The system's menu appears at the pointer, Paste is greyed out, a
 separator sits before Delete, and choosing Cut shows "Chose Cut." in the status line.
 
+`IPlatform.Menus.SetMenuBar` puts menus on the platform's menu bar where it has one
+(`HasMenuBar`). On macOS it replaces the application's main menu: the application menu (Hide,
+Hide Others, Show All, Quit), the given menus, and a Window menu (Minimize, Zoom) unless one of
+them is called Window. Items carry their shortcut as a key equivalent, so AppKit answers to it
+before the window sees the key; choosing an item, from the menu or by its shortcut, calls back
+with the menu's and item's indexes. `CommandMenuBar` feeds it from the registered commands and
+gives the menu only shortcuts with ⌘ or ⌃ held, or on function keys, so a bare key never gets
+taken from a text field. The self-test checks the menus are there, that choosing an item runs
+its command, and that its shortcut runs it once, through the menu.
+
 ## Dropped files
 
 Files dropped on the window (from the Finder or another app) arrive through GLFW's drop callback

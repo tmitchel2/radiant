@@ -16,7 +16,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Open">Whether it's showing.</param>
 /// <param name="OnClose">Called when it should close.</param>
-/// <param name="Commands">The commands.</param>
+/// <param name="Commands">The commands: the UI's registered ones (<c>context.UseCommands()</c>), or a list of its own.</param>
 public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Command> Commands) : Component
 {
     /// <summary>The search field's placeholder.</summary>
@@ -88,7 +88,8 @@ public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Com
             return null;
         }, open);
 
-        var shown = Rank(Commands, query.Value.Text);
+        // What can't run now isn't offered.
+        var shown = Rank([.. Commands.Where(c => c.Enabled)], query.Value.Text);
         var grouped = query.Value.Text.Trim().Length == 0;
         var highlighted = shown.Count == 0 ? -1 : Math.Clamp(active.Value, 0, shown.Count - 1);
         var (close, onRun) = (OnClose, OnRun);
@@ -260,7 +261,7 @@ public sealed record CommandPalette(bool Open, Action OnClose, IReadOnlyList<Com
                         Children = [Command.Icon is null ? null : new SurfaceIcon(Command.Icon) { IconSize = 20, Legibility = Highlighted ? null : Legibility.Medium }],
                     },
                     new SurfaceText(Command.Title) { MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
-                    Command.Shortcut is null ? null : new SurfaceText(Command.Shortcut) { TextType = TextType.LabelMedium, Legibility = Legibility.Medium },
+                    Command.Shortcut is null ? null : new SurfaceText(Command.Shortcut.ToString()) { TextType = TextType.LabelMedium, Legibility = Legibility.Medium },
                 ],
             });
         }

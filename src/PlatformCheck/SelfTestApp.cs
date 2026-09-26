@@ -18,6 +18,8 @@ internal sealed record SelfTestApp : Component
         var target = context.UseRef(new ElementRef()).Value;
         var platform = context.UsePlatform();
         var root = context.Root;
+        // For the menu bar checks: a command on a menu of its own.
+        context.UseCommand(new Command("hello", "Say hello") { Menu = "Test", Shortcut = KeyChord.Command(KeyCode.J), Run = () => events.Add("command:hello") });
         context.UseEffect(() =>
         {
             var failures = SelfTest.Run(platform, root, target, events);
@@ -35,6 +37,7 @@ internal sealed record SelfTestApp : Component
             OnTextInput = e => events.Add($"text:{e.Text}"),
             Children =
             [
+                new Radiant.Components.CommandMenuBar(),
                 // For the accessibility checks: a button VoiceOver can press, and text it can read.
                 new Box
                 {

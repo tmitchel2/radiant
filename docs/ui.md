@@ -111,6 +111,8 @@ once. Keep components to this: register tickers only while something moves.
   is mounted, when the key reaches no focused handler (or nothing is focused). A deeper
   component's shortcut takes the chord from one above it (a dialog's over the app's).
   `KeyChord` prints as the platform writes it ("⌘K", "Ctrl+K").
+- **Commands:** `context.UseCommand(new Command("save", "Save") { Shortcut = …, Menu = "File", Run = … })`
+  registers something the user can do while its component is mounted (see [Commands](#commands)).
 - **Text input clients:** a focused text field sets `UIRoot.TextInputClient`. Typed text and
   input method compositions then go to it rather than to text events (see
   [platform.md](platform.md#text-input-and-input-methods)).
@@ -150,6 +152,33 @@ width depends on the grid's own laid-out width, so it's worked out after layout,
 changed the root lays out again. Each layout reuses the last width, so a second pass happens
 only when the grid's width changes (a resize) or the column count does. A child's own width and
 flex sizes are overridden.
+
+## Commands
+
+A `Command` names something the user can do: its id, title, `Run`, and optionally a `Shortcut`,
+the `Menu` it's on, a `Group`, an icon and keywords, whether it's `Enabled` and whether it's
+`Checked`. `context.UseCommand(command)` registers it in `UIRoot.Commands` while the component is
+mounted and keeps it current with every build, so it can say it's disabled or ticked now:
+
+```csharp
+context.UseCommand(new Command("save", "Save")
+{
+    Menu = "File",
+    Shortcut = KeyChord.Command(KeyCode.S),
+    Enabled = document.IsDirty,
+    Run = () => document.Save(),
+});
+```
+
+- **Shortcuts:** an enabled command's shortcut runs it, as `UseShortcut` would.
+- **Listing:** `context.UseCommands()` returns the registered commands and rebuilds when they
+  change: what they run changing with each build doesn't count. `CommandPalette` takes that list,
+  and `CommandMenuBar` makes the menu bar from it (see [components.md](components.md)).
+- **Order:** commands are listed in tree order (a parent's before its children's), each
+  component's in the order it registered them.
+- **Overriding:** where two share an id, the one deeper in the tree is the one listed and run: an
+  editor's Copy over the app's, for as long as the editor is mounted.
+- **Running by id:** `UIRoot.Commands.Execute("save")` runs an enabled command.
 
 ## Direction
 
@@ -280,8 +309,6 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 
 - **Overlay behaviour:** anchoring, dismissing and focus traps come with the P8 primitives.
 - **Scrolling:** keyboard scrolling.
-- **Commands:** a command registry that binds each command's chord and lists it in menus and
-  the palette; shortcuts exist (`UseShortcut`), but a `Command`'s shortcut is only display text.
 - **Accessibility:** the platform bridge for semantics comes later in P7 (the platform's other
   services are in [platform.md](platform.md)).
 - **Theming:** P6.
