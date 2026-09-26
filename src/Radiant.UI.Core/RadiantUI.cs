@@ -9,6 +9,10 @@ namespace Radiant.UI.Core;
 /// <summary>Runs a UI in a window.</summary>
 public static class RadiantUI
 {
+    // The longest step animations take in one frame: after the window has waited idle, the first
+    // frame's time since the last would otherwise finish a just-started animation at once.
+    private const double MaxStep = 1.0 / 20;
+
     /// <summary>
     /// Opens a window showing <paramref name="root"/> and runs until it closes: window input is
     /// routed to the tree as events, and each frame the tree is updated, laid out to the window
@@ -32,6 +36,10 @@ public static class RadiantUI
             ui.SetRoot(PlatformContext.Platform.Provide(created, root));
         };
 
+        // Frames are drawn only while the tree has something to do; otherwise the window waits.
+        app.NeedsFrame = () => ui.NeedsUpdate;
+        ui.FrameRequested = app.RequestFrame;
+
         app.PointerMoved += position => ui.PointerMove(position, Modifiers(app.Input));
         app.PointerPressed += button => ui.PointerDown(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
         app.PointerReleased += button => ui.PointerUp(app.Input.MousePosition, (PointerButton)(int)button, Modifiers(app.Input));
@@ -46,7 +54,7 @@ public static class RadiantUI
             ui.Update(new Vector2(app.WindowWidth, app.WindowHeight));
             platform.AfterUpdate();
             ui.Paint(renderer);
-        }, ui.Advance, options.Background);
+        }, seconds => ui.Advance(Math.Min(seconds, MaxStep)), options.Background);
     }
 
     private static KeyModifiers Modifiers(InputState input)

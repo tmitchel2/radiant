@@ -33,11 +33,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Children lists compare by reference.** A host element whose parent rebuilds always updates,
   even when its children are equal element for element. A structural list comparison, or a
   generated one, would let unchanged subtrees skip.
-- **Nothing is idle.** `RadiantUI.Run` renders every frame. `UIRoot.FrameRequested` exists but
-  isn't used to idle the loop; add idle waiting, then damage regions (P11). `UIRoot.NeedsUpdate`
-  is already false for an idle themed app (the theme and `SidebarLayout` register tickers only
-  while something moves); keep new components to that, and watch for `AddTicker` calls that
-  never end.
+- **Animations redraw everything.** `RadiantUI.Run` now draws only while `UIRoot.NeedsUpdate` (an
+  idle window waits for input and uses no CPU), but anything animating, a spinner included,
+  rebuilds its component and redraws the whole window every frame: about 37% of a core for the
+  gallery's components page in a Debug build. Paint-time animation and damage regions (P11)
+  would make a spinner cost a spinner.
+- **Idle waiting is only in `RadiantUI.Run`.** The tab host (`Radiant.Host`) still draws every
+  frame; `RadiantApplication.NeedsFrame` is there for it to use.
 - **Effect order is approximate.** Effects run deepest first. That runs children before parents,
   but isn't React's strict post-order across sibling subtrees.
 - **Text sizes round up to whole pixels.** Rounding up keeps text from wrapping earlier when it's

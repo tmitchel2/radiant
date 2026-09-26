@@ -82,6 +82,15 @@ a change of order throws.
 `RadiantUI.Run(element, options)` does all of that for a window. Rebuilding one leaf in a
 5,000-node tree and laying out again takes about 0.3 ms.
 
+## Idle
+
+`RadiantUI.Run` draws a frame only while the tree has something to do (`UIRoot.NeedsUpdate`: a
+rebuild, an effect, a scroll or a ticker). Otherwise the window waits for input
+(`RadiantApplication.NeedsFrame`), and anything that asks for a frame without input wakes it
+(`UIRoot.FrameRequested` → `RadiantApplication.RequestFrame`). An idle window uses no CPU. The
+first step after waiting is capped at 50 ms, so an animation starting then doesn't finish at
+once. Keep components to this: register tickers only while something moves.
+
 ## Events
 
 - **Routing:** pointer and key events route like the DOM's. They go root to target through

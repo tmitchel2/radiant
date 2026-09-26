@@ -23,6 +23,7 @@ namespace Radiant
         private Action<double>? _updateCallback;
         private bool _disposed;
         private bool _resizing; // re-entrancy guard for the live-resize render driven from OnFramebufferResize
+        private volatile bool _frameRequested;
         private Handedness _handedness;
         private Vector4 _backgroundColor;
         private RadiantWindowStyle _style = RadiantWindowStyle.Default;
@@ -38,6 +39,23 @@ namespace Radiant
         // Input as it happens, for UI that routes events rather than polling InputState each frame.
 
         /// <summary>The pointer moved, to a position in logical window coordinates.</summary>
+        /// <summary>
+        /// When set, frames are drawn only while this returns true or after <see cref="RequestFrame"/>;
+        /// otherwise the window waits for input rather than drawing the same frame again, so an idle
+        /// app uses no CPU or GPU. Null draws every frame.
+        /// </summary>
+        public Func<bool>? NeedsFrame { get; set; }
+
+        /// <summary>
+        /// Asks for a frame to be drawn, waking the window if it's waiting for input: for a change
+        /// that input didn't cause (an animation starting, a timer, a platform notification).
+        /// </summary>
+        public void RequestFrame()
+        {
+            _frameRequested = true;
+            _window?.ContinueEvents();
+        }
+
         public event Action<Vector2>? PointerMoved;
 
         /// <summary>A mouse button was pressed.</summary>
@@ -517,6 +535,11 @@ namespace Radiant
         {
             _updateCallback?.Invoke(delta);
             _inputState.EndFrame();
+            // With nothing to draw, the loop waits for the next event instead of spinning.
+            if (NeedsFrame is { } needsFrame && _window is { } window)
+            {
+                window.IsEventDriven = !_frameRequested && !needsFrame();
+            }
         }
 
         private void OnClosing()
@@ -559,6 +582,11 @@ namespace Radiant
         private void OnRender(double delta)
         {
             if (_disposed || _engineState == null || _renderer == null) return;
+            if (NeedsFrame is { } needsFrame && !_resizing && !_frameRequested && !needsFrame())
+            {
+                return;
+            }
+            _frameRequested = false;
 
             SurfaceTexture surfaceTexture;
             _engineState._wgpu.SurfaceGetCurrentTexture(_engineState._surface, &surfaceTexture);
