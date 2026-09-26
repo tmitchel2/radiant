@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 ﻿using System;
 using System.Diagnostics;
 using System.Numerics;
@@ -55,6 +56,9 @@ namespace Radiant
             _frameRequested = true;
             _window?.ContinueEvents();
         }
+
+        /// <summary>Raised with the paths of files (or folders) dropped on the window, from the Finder or another app.</summary>
+        public event Action<IReadOnlyList<string>>? FilesDropped;
 
         public event Action<Vector2>? PointerMoved;
 
@@ -310,6 +314,7 @@ namespace Radiant
             // Initialize input
             _inputContext = _window.CreateInput();
             InitializeInput();
+            _window.FileDrop += paths => FilesDropped?.Invoke(paths);
 
             if (_style.MousePassthrough)
             {

@@ -95,6 +95,18 @@ chosen paths (empty when they cancel) or the save path (null when they cancel).
 - **Filters:** they become the panel's allowed content types (`UTType`s from their extensions).
   macOS has no filter menu, so every filter's files are allowed at once.
 
+## Dropped files
+
+Files dropped on the window (from the Finder or another app) arrive through GLFW's drop callback
+as `RadiantApplication.FilesDropped`; `RadiantUI.Run` hands them to `UIRoot.DropFiles` at the
+pointer, and they bubble to `Box.OnFileDrop` from the box under it. `DropZone` is the component
+for it. To check by hand, run the gallery and drop an image on the components page's drop zone;
+its line under the title shows the file's name.
+
+GLFW reports only the drop, not a drag passing over the window, so nothing can highlight while
+files hover, and there's no way to refuse a drop before it lands (the cursor always shows it's
+accepted). Dragging out of the window isn't there either.
+
 ## Text input and input methods
 
 Input methods (Japanese, Chinese, Korean, dead keys for accents) *compose* text before committing

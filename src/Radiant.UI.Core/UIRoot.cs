@@ -656,6 +656,13 @@ public sealed class UIRoot : IDisposable
     public void KeyUp(KeyCode key, KeyModifiers modifiers = KeyModifiers.None) =>
         Dispatch(FocusPath(), new KeyEventArgs(key, modifiers, false), box => null, box => box.OnKeyUp);
 
+    /// <summary>Files were dropped on the window at <paramref name="position"/> (the box under it and its ancestors hear it).</summary>
+    public void DropFiles(Vector2 position, IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        Dispatch(HitPath(position), new FileDropEventArgs(position, paths), box => null, box => box.OnFileDrop);
+    }
+
     /// <summary>Text was typed.</summary>
     public void TextInput(string text)
     {

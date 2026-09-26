@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Radiant.ColorSystem;
 using Radiant.Components;
 using Radiant.Layout;
@@ -40,6 +41,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var menu = context.UseState(StartWithMenu);
         var sheet = context.UseState(StartWithSheet);
         var pageNumber = context.UseState(7);
+        var dropped = context.UseState("");
         var quantity = context.UseState(2.0);
         var width = context.UseState(1280.0);
         var price = context.UseState((50f, 250f));
@@ -193,6 +195,12 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                             new TimelineEvent("Out for delivery", "Today") { Color = SurfaceName.Tertiary },
                         ])) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(20) } },
                     ],
+                },
+                new DropZone(files => dropped.Set(string.Join(", ", files.Select(System.IO.Path.GetFileName))))
+                {
+                    Description = dropped.Value.Length == 0 ? "Images or PDFs, from the Finder or Browse" : $"Last: {dropped.Value}",
+                    Filters = [new Radiant.Platform.FileFilter("Images and PDFs", ["png", "jpg", "jpeg", "pdf"])],
+                    Layout = new LayoutStyle { MaxWidth = 520 },
                 },
                 new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
                 new Row(

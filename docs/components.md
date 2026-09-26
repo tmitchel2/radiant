@@ -90,6 +90,7 @@ turns a filled button red.
 | `StackNavigator`, `Navigator` | Drill-down pages under an app bar with a back button; pages push the next through `context.UseNavigator()`; each slides in from the side it came from; ⌘[ or Alt+Left goes back |
 | `MenuBar`, `MenuBarMenu` | A window's row of menus drawn in the window: a press opens one, the pointer then moves between them, Left/Right step |
 | `Carousel` | Slides in a row, a slide at a time: side buttons, dots, Left/Right; settles on the nearest slide after a wheel or trackpad scroll |
+| `DropZone` | A place to drop files from the Finder, or browse with the platform's panel; filters by extension and says how many it refused |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

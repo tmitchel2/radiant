@@ -74,6 +74,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `Radiant.Host.MacObjc` and a private copy in `RadiantApplication` predate it. They were left
   alone so P7 didn't disturb the host. Point both at one shared interop, either
   `Radiant.Platform.MacOS` or a small interop assembly that both it and `Radiant` reference.
+- **Drops arrive without a drag.** GLFW's drop callback gives only the dropped paths, so a drop
+  zone can't highlight while files hover over it or refuse a drop it won't take, and nothing can
+  be dragged out. Registering the content view for dragging (`NSDraggingDestination` on macOS,
+  as the input methods are wired) would give enter, move and leave, and the drag's types.
 - **The platform is opt-in.** `UIAppOptions.Platform` defaults to headless because
   `Radiant.UI.Core` mustn't reference an implementation, so an app that forgets it gets no
   clipboard, cursors or input methods. A desktop package that references every implementation

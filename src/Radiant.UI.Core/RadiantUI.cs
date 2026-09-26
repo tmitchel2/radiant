@@ -48,6 +48,7 @@ public static class RadiantUI
         app.KeyPressed += key => ui.KeyDown((KeyCode)(int)key, Modifiers(app.Input));
         app.KeyReleased += key => ui.KeyUp((KeyCode)(int)key, Modifiers(app.Input));
         app.CharacterTyped += character => ui.TextInput(character.ToString());
+        app.FilesDropped += paths => ui.DropFiles(app.Input.MousePosition, paths);
 
         app.Run(options.Title, options.Width, options.Height, Handedness.RightHanded, renderer =>
         {

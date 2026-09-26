@@ -102,6 +102,9 @@ public sealed record Box : HostElement
     /// <summary>A button pressed and released over the box; <see cref="PointerEventArgs.ClickCount"/> counts double clicks.</summary>
     public Action<PointerEventArgs>? OnClick { get; init; }
 
+    /// <summary>Files dropped on the box or one of its children (bubbling up).</summary>
+    public Action<FileDropEventArgs>? OnFileDrop { get; init; }
+
     /// <summary>A key pressed while the box or one of its children has focus.</summary>
     public Action<KeyEventArgs>? OnKeyDown { get; init; }
 
