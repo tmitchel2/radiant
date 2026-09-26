@@ -11,11 +11,15 @@ namespace Radiant.Theming;
 /// <param name="ContentFocused">Content when focused.</param>
 public sealed record SurfaceState(SurfaceRoleState Surface, SurfaceRoleState Content, SurfaceRoleState ContentFocused)
 {
-    /// <summary>The root state: the surface container, with high-legibility content on it.</summary>
+    /// <summary>
+    /// The root state: the plain surface (Material's page background), with high-legibility
+    /// content on it. Destash's root was the surface container; Radiant's pages sit on the surface
+    /// and put containers (cards, sheets) on it.
+    /// </summary>
     public static SurfaceState Default { get; } = new(
-        new SurfaceRoleState(SurfaceName.Surface, On: false, Container: true),
-        new SurfaceRoleState(SurfaceName.Surface, On: true, Container: true, Legibility.High),
-        new SurfaceRoleState(SurfaceName.Surface, On: true, Container: true, Legibility.High));
+        new SurfaceRoleState(SurfaceName.Surface, On: false, Container: false),
+        new SurfaceRoleState(SurfaceName.Surface, On: true, Container: false, Legibility.High),
+        new SurfaceRoleState(SurfaceName.Surface, On: true, Container: false, Legibility.High));
 
     /// <summary>
     /// The state inside a component that makes <paramref name="change"/>, applying its parts in

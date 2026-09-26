@@ -36,10 +36,10 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var menuAnchor = context.UseRef(new ElementRef()).Value;
         var last = context.UseState("nothing yet");
         var themes = Themes;
-        return new Box
+        return new ScrollArea
         {
-            Layout = new LayoutStyle { FlexGrow = 1, Padding = Edges.All(32), RowGap = 24 },
-            Background = theme.Background,
+            Layout = new LayoutStyle { FlexGrow = 1 },
+            ContentLayout = new LayoutStyle { Padding = Edges.All(32), RowGap = 24 },
             Children =
             [
                 new SurfaceText("Radiant") { TextType = TextType.DisplaySmall },
@@ -87,6 +87,10 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     },
                     new Tooltip("Tooltips wait 600 ms", new IconButton("info", "About tooltips")),
                     new SurfaceText($"Last menu choice: {last.Value}") { Legibility = Legibility.Medium }),
+                new Row(
+                    new TextField("Name") { SupportingText = "As it appears on your card", Layout = new LayoutStyle { Width = 260 } },
+                    new TextField("Email") { Variant = TextFieldVariant.Outlined, LeadingIcon = "mail", InitialText = "tom@example.com", Layout = new LayoutStyle { Width = 260 } },
+                    new TextField("Code") { Error = "That code has expired", MaxLength = 6, InitialText = "12345", Layout = new LayoutStyle { Width = 220 } }) { Gap = 16 },
                 new Card(
                     new ListItem("Inbox") { LeadingIcon = "inbox", TrailingText = "24", OnPress = () => { }, Selected = true },
                     new ListItem("Starred") { LeadingIcon = "star", SupportingText = "Messages you marked", OnPress = () => { } },

@@ -8,10 +8,10 @@ public class SurfaceStateTests
     private static SurfaceState Root => SurfaceState.Default;
 
     [TestMethod]
-    public void TheRootIsContentOnTheSurfaceContainer()
+    public void TheRootIsContentOnThePlainSurface()
     {
-        Assert.AreEqual(new SurfaceRoleState(SurfaceName.Surface, false, true), Root.Surface);
-        Assert.AreEqual(new SurfaceRoleState(SurfaceName.Surface, true, true, Legibility.High), Root.Content);
+        Assert.AreEqual(new SurfaceRoleState(SurfaceName.Surface, false, false), Root.Surface);
+        Assert.AreEqual(new SurfaceRoleState(SurfaceName.Surface, true, false, Legibility.High), Root.Content);
     }
 
     [TestMethod]

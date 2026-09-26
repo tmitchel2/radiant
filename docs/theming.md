@@ -41,7 +41,9 @@ flows down the tree works out what's readable on it. This is ported from Destash
   with the harmonised custom colour, so they follow variant, contrast and spec version like the
   rest.
 - **Surface state:** a `SurfaceState` holds three `SurfaceRoleState`s: surface, content, and
-  focused content. Each is a family plus on and container flags and an opacity (`Legibility`:
+  focused content. The root state is the plain surface (Destash's root was the surface container;
+  Material pages sit on the surface and put containers on it). Each role state is a family plus on
+  and container flags and an opacity (`Legibility`:
   full 1, high .87, medium .6, low .38, very low .12).
 - **Changing it:** a component applies its `SurfaceChange` to the state it inherits
   (`SurfaceState.With`, Destash's `withBackgroundColor`). The change can set a surface family,

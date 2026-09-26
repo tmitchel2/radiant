@@ -60,6 +60,9 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
     /// <summary>What assistive technology calls the input.</summary>
     public string? Label { get; init; }
 
+    /// <summary>A handle on the input's box: its bounds, and <see cref="ElementRef.Focus"/> to focus it from code.</summary>
+    public ElementRef? Ref { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -243,6 +246,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         return new Box
         {
             Focusable = !Disabled,
+            Ref = Ref,
             Semantics = new Semantics { Role = SemanticsRole.TextField, Label = Label ?? Placeholder, Value = State.Text, Disabled = Disabled },
             Layout = Layout,
             OnFocus = _ =>

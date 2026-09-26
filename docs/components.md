@@ -44,6 +44,7 @@ turns a filled button red.
 | `Menu` | Drops from an anchor: arrow keys and Tab move, a choice closes it, as do Escape and an outside press; icons, shortcuts, dividers, disabled items |
 | `Dialog` | Modal: scrim, focus trap, Escape and scrim close (unless it must be answered), focus restored, fade and scale |
 | `Tooltip` | After the pointer rests 600 ms, a small inverse-surface label beside its child |
+| `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
 React's: they show the value they're given and report presses with the value they should become.
