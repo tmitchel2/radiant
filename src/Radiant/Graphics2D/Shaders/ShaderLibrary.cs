@@ -464,6 +464,172 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(input.color.rgb * alpha, alpha) * clip_coverage(input.position.xy);
 }";
 
+        // Text drawn from its outlines with Slug (Renderer2DSlugText.cs). The coverage calculation
+        // follows Eric Lengyel's reference pixel shader (github.com/EricLengyel/Slug, MIT, Copyright
+        // 2017 Eric Lengyel) and is mirrored step for step by Radiant.Text.Slug.SlugCoverage.
+        public const string SlugTextShader = Common + @"
+struct VertexInput {
+    @location(0) position: vec2<f32>,
+    @location(1) em: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) glyph: vec2<u32>,
+}
+
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) em: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    // (first band word, first curve texel), the same for the whole glyph.
+    @location(2) @interpolate(flat) glyph: vec2<u32>,
+}
+
+// Curve texels: a curve at i has p1, p2 in texel i and p3 in texel i + 1 (see SlugGlyph).
+@group(1) @binding(0)
+var<storage, read> slugCurves: array<vec4<f32>>;
+
+// Band words: per glyph, a header, band headers and curve lists (see SlugGlyph).
+@group(1) @binding(1)
+var<storage, read> slugBands: array<u32>;
+
+// x = the gamma edge coverage is corrected for (Renderer2D.TextGamma), as coverage text does.
+@group(1) @binding(2)
+var<uniform> slugParams: vec4<f32>;
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.position = uniforms.view_projection * vec4<f32>(input.position, 0.0, 1.0);
+    output.em = input.em;
+    output.color = input.color;
+    output.glyph = input.glyph;
+    return output;
+}
+
+// Which roots of a sample-relative curve count, from the sign bits of its control points across
+// the ray: bit 0 the first (adds), bit 8 the second (subtracts). The paper's lookup table, 0x2E74.
+fn slug_root_code(y1: f32, y2: f32, y3: f32) -> u32 {
+    let i1 = bitcast<u32>(y1) >> 31u;
+    let i2 = bitcast<u32>(y2) >> 30u;
+    let i3 = bitcast<u32>(y3) >> 29u;
+    var shift = (i2 & 2u) | (i1 & ~2u);
+    shift = (i3 & 4u) | (shift & ~4u);
+    return (0x2E74u >> shift) & 0x0101u;
+}
+
+// Where a sample-relative curve crosses y = 0 (the x of both roots). y(t) = a t^2 - 2 b t + p1.y;
+// a negative discriminant clamps to a double root, and a nearly linear curve solves the line.
+// Divisors are guarded so no infinity is made (Metal compiles with fast math).
+fn slug_solve_horizontal(p12: vec4<f32>, p3: vec2<f32>) -> vec2<f32> {
+    let a = p12.xy - p12.zw * 2.0 + p3;
+    let b = p12.xy - p12.zw;
+    let linear = abs(a.y) < 1.0 / 65536.0;
+    let ra = 1.0 / select(a.y, 1.0, linear);
+    let rb = 0.5 / select(b.y, 1.0, b.y == 0.0);
+    let d = sqrt(max(b.y * b.y - a.y * p12.y, 0.0));
+    let t1 = select((b.y - d) * ra, p12.y * rb, linear);
+    let t2 = select((b.y + d) * ra, p12.y * rb, linear);
+    return vec2<f32>((a.x * t1 - b.x * 2.0) * t1 + p12.x, (a.x * t2 - b.x * 2.0) * t2 + p12.x);
+}
+
+// The same with x and y swapped: the y where the curve crosses x = 0.
+fn slug_solve_vertical(p12: vec4<f32>, p3: vec2<f32>) -> vec2<f32> {
+    let a = p12.xy - p12.zw * 2.0 + p3;
+    let b = p12.xy - p12.zw;
+    let linear = abs(a.x) < 1.0 / 65536.0;
+    let ra = 1.0 / select(a.x, 1.0, linear);
+    let rb = 0.5 / select(b.x, 1.0, b.x == 0.0);
+    let d = sqrt(max(b.x * b.x - a.x * p12.x, 0.0));
+    let t1 = select((b.x - d) * ra, p12.x * rb, linear);
+    let t2 = select((b.x + d) * ra, p12.x * rb, linear);
+    return vec2<f32>((a.y * t1 - b.y * 2.0) * t1 + p12.y, (a.y * t2 - b.y * 2.0) * t2 + p12.y);
+}
+
+// How much of the pixel centred on em (em units, y up) the glyph covers. One ray right through
+// the pixel's horizontal band and one up through its vertical band each sum, over the curves they
+// cross, the fraction of the pixel before the crossing: a winding number blurred over one pixel.
+fn slug_coverage(em: vec2<f32>, pixels_per_em: vec2<f32>, band_base: u32, curve_base: u32) -> f32 {
+    let h_count = slugBands[band_base];
+    let v_count = slugBands[band_base + 1u];
+    let scale = vec2<f32>(bitcast<f32>(slugBands[band_base + 2u]), bitcast<f32>(slugBands[band_base + 3u]));
+    let offset = vec2<f32>(bitcast<f32>(slugBands[band_base + 4u]), bitcast<f32>(slugBands[band_base + 5u]));
+    let band = clamp(vec2<i32>(floor(em * scale + offset)), vec2<i32>(0), vec2<i32>(i32(v_count) - 1, i32(h_count) - 1));
+
+    var xcov = 0.0;
+    var xwgt = 0.0;
+    let h_header = band_base + 6u + 2u * u32(band.y);
+    let h_list = band_base + slugBands[h_header + 1u];
+    for (var i = 0u; i < slugBands[h_header]; i++) {
+        let at = curve_base + slugBands[h_list + i];
+        let p12 = slugCurves[at] - vec4<f32>(em, em);
+        let p3 = slugCurves[at + 1u].xy - em;
+        // Sorted by greatest x: once a curve is wholly half a pixel behind, all the rest are.
+        if (max(max(p12.x, p12.z), p3.x) * pixels_per_em.x < -0.5) {
+            break;
+        }
+        let code = slug_root_code(p12.y, p12.w, p3.y);
+        if (code != 0u) {
+            let r = slug_solve_horizontal(p12, p3) * pixels_per_em.x;
+            if ((code & 1u) != 0u) {
+                xcov += saturate(r.x + 0.5);
+                xwgt = max(xwgt, saturate(1.0 - abs(r.x) * 2.0));
+            }
+            if (code > 1u) {
+                xcov -= saturate(r.y + 0.5);
+                xwgt = max(xwgt, saturate(1.0 - abs(r.y) * 2.0));
+            }
+        }
+    }
+
+    var ycov = 0.0;
+    var ywgt = 0.0;
+    let v_header = band_base + 6u + 2u * h_count + 2u * u32(band.x);
+    let v_list = band_base + slugBands[v_header + 1u];
+    for (var i = 0u; i < slugBands[v_header]; i++) {
+        let at = curve_base + slugBands[v_list + i];
+        let p12 = slugCurves[at] - vec4<f32>(em, em);
+        let p3 = slugCurves[at + 1u].xy - em;
+        if (max(max(p12.y, p12.w), p3.y) * pixels_per_em.y < -0.5) {
+            break;
+        }
+        let code = slug_root_code(p12.x, p12.z, p3.x);
+        if (code != 0u) {
+            let r = slug_solve_vertical(p12, p3) * pixels_per_em.y;
+            if ((code & 1u) != 0u) {
+                ycov -= saturate(r.x + 0.5);
+                ywgt = max(ywgt, saturate(1.0 - abs(r.x) * 2.0));
+            }
+            if (code > 1u) {
+                ycov += saturate(r.y + 0.5);
+                ywgt = max(ywgt, saturate(1.0 - abs(r.y) * 2.0));
+            }
+        }
+    }
+
+    // Averaged by how near each ray's crossings came to the centre, never below the lesser of the
+    // two; magnitudes so either winding direction fills, clamped for the non-zero rule.
+    let weighted = abs(xcov * xwgt + ycov * ywgt) / max(xwgt + ywgt, 1.0 / 65536.0);
+    return saturate(max(weighted, min(abs(xcov), abs(ycov))));
+}
+
+// As the coverage text shader: edges corrected as if blended in a gamma-g space against the
+// contrasting ground, so Slug text has the weight coverage text has.
+fn slug_correct_coverage(a: f32, color: vec3<f32>, gamma: f32) -> f32 {
+    let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let dark = 1.0 - pow(max(1.0 - a, 0.0), gamma);
+    let light = pow(max(a, 0.0), gamma);
+    return mix(dark, light, luma);
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    // Pixels per em along each axis, from the em coordinate's screen derivatives. Taken first,
+    // in uniform control flow, as derivatives must be.
+    let pixels_per_em = 1.0 / max(fwidth(input.em), vec2<f32>(1.0e-7));
+    let coverage = slug_coverage(input.em, pixels_per_em, input.glyph.x, input.glyph.y);
+    let alpha = slug_correct_coverage(coverage, input.color.rgb, slugParams.x) * input.color.a;
+    return vec4<f32>(input.color.rgb * alpha, alpha) * clip_coverage(input.position.xy);
+}";
+
         public const string TexturedShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,

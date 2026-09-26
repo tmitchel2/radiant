@@ -88,8 +88,8 @@ namespace Radiant.Graphics2D
         // One vertex buffer per batch kind, kept across frames and grown (to the next power of two)
         // when a frame needs more. Rewriting a buffer the previous frame drew from is safe: the queue
         // runs writeBuffer after work already submitted.
-        private readonly IntPtr[] _vertexBuffers = new IntPtr[6];
-        private readonly ulong[] _vertexBufferCapacities = new ulong[6];
+        private readonly IntPtr[] _vertexBuffers = new IntPtr[7];
+        private readonly ulong[] _vertexBufferCapacities = new ulong[7];
 
         // Clip/scissor state
         private readonly Stack<ClipState> _clipStack = new();
@@ -132,7 +132,7 @@ namespace Radiant.Graphics2D
 
         private readonly record struct TransformMarker(
             Matrix3x2 Transform, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart,
-            int CoverageStart);
+            int CoverageStart, int SlugStart);
         private bool _clipEnabled;
         private uint _attachmentWidth;
         private uint _attachmentHeight;
@@ -170,6 +170,7 @@ namespace Radiant.Graphics2D
             Image,
             Msdf,
             Coverage,
+            Slug,
         }
 
         // A run of consecutive vertices of one kind sharing a clip and a group-1 bind group (the
@@ -222,6 +223,7 @@ namespace Radiant.Graphics2D
             CreateBindGroup();
             CreateMsdfPipeline();
             CreateCoveragePipeline();
+            CreateSlugPipeline();
             CreateSdfShapePipeline();
             CreateImagePipeline();
         }
@@ -658,6 +660,7 @@ namespace Radiant.Graphics2D
             _imageVertices.Clear();
             _coverageVertices.Clear();
             _glyphAtlas?.TrimIfFull();
+            BeginSlugFrame();
             _batches.Clear();
             _layers.Clear();
             _layerRenderOrder.Clear();
@@ -756,7 +759,8 @@ namespace Radiant.Graphics2D
                 _msdfVertices.Count,
                 _sdfShapeVertices.Count,
                 _imageVertices.Count,
-                _coverageVertices.Count));
+                _coverageVertices.Count,
+                _slugVertices.Count));
 
         /// <summary>Pops the most recent transform, applying it to everything drawn since the matching push.</summary>
         public void PopTransform()
@@ -804,6 +808,7 @@ namespace Radiant.Graphics2D
                 v.Position = Vector2.Transform(v.Position, t);
                 _coverageVertices[i] = v;
             }
+            TransformSlugVertices(m.SlugStart, t);
         }
 
         /// <summary>
@@ -1843,6 +1848,7 @@ namespace Radiant.Graphics2D
             {
                 WriteCoverageParams();
             }
+            UploadSlug();
 
             RenderLayers(slots, buffers);
             ReplayBatches(renderPass, _batches, slots, buffers);
@@ -2066,6 +2072,9 @@ namespace Radiant.Graphics2D
                     _wgpu.RenderPassEncoderSetPipeline(renderPass, _coveragePipeline);
                     _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, (Buffer*)buffers.Coverage, 0, (ulong)(_coverageVertices.Count * sizeof(MsdfVertex2D)));
                     break;
+                case BatchKind.Slug:
+                    BindSlugPipeline(renderPass);
+                    break;
             }
         }
 
@@ -2163,6 +2172,7 @@ namespace Radiant.Graphics2D
 
             DisposeImageResources();
             DisposeGlyphResources();
+            DisposeSlugResources();
 
             GC.SuppressFinalize(this);
         }
