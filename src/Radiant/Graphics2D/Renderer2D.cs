@@ -88,8 +88,8 @@ namespace Radiant.Graphics2D
         // One vertex buffer per batch kind, kept across frames and grown (to the next power of two)
         // when a frame needs more. Rewriting a buffer the previous frame drew from is safe: the queue
         // runs writeBuffer after work already submitted.
-        private readonly IntPtr[] _vertexBuffers = new IntPtr[5];
-        private readonly ulong[] _vertexBufferCapacities = new ulong[5];
+        private readonly IntPtr[] _vertexBuffers = new IntPtr[6];
+        private readonly ulong[] _vertexBufferCapacities = new ulong[6];
 
         // Clip/scissor state
         private readonly Stack<ClipState> _clipStack = new();
@@ -131,7 +131,8 @@ namespace Radiant.Graphics2D
         private readonly Stack<TransformMarker> _transformStack = new();
 
         private readonly record struct TransformMarker(
-            Matrix3x2 Transform, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart);
+            Matrix3x2 Transform, int FilledStart, int LineStart, int MsdfStart, int SdfShapeStart, int ImageStart,
+            int CoverageStart);
         private bool _clipEnabled;
         private uint _attachmentWidth;
         private uint _attachmentHeight;
@@ -168,6 +169,7 @@ namespace Radiant.Graphics2D
             SdfShape,
             Image,
             Msdf,
+            Coverage,
         }
 
         // A run of consecutive vertices of one kind sharing a clip and a group-1 bind group (the
@@ -219,6 +221,7 @@ namespace Radiant.Graphics2D
             CreatePipelines();
             CreateBindGroup();
             CreateMsdfPipeline();
+            CreateCoveragePipeline();
             CreateSdfShapePipeline();
             CreateImagePipeline();
         }
@@ -434,7 +437,13 @@ namespace Radiant.Graphics2D
             _msdfPipelineLayout = _wgpu.DeviceCreatePipelineLayout(_device, in pipelineLayoutDesc);
 
             _msdfShader = CreateShaderModule(ShaderLibrary.MsdfTextShader);
+            _msdfPipeline = CreateAtlasTextPipeline(_msdfShader);
+        }
 
+        // A pipeline for text drawn from an atlas: MsdfVertex2D quads, the group-0 uniforms and a
+        // group-1 atlas (sampler, texture, parameters). MSDF and coverage text differ only in shader.
+        private RenderPipeline* CreateAtlasTextPipeline(ShaderModule* shader)
+        {
             var vertexAttributes = stackalloc VertexAttribute[3];
             vertexAttributes[0] = new VertexAttribute
             {
@@ -474,7 +483,7 @@ namespace Radiant.Graphics2D
 
             var fragmentState = new FragmentState
             {
-                Module = _msdfShader,
+                Module = shader,
                 TargetCount = 1,
                 Targets = &colorTargetState,
                 EntryPoint = (byte*)SilkMarshal.StringToPtr("fs_main"),
@@ -485,7 +494,7 @@ namespace Radiant.Graphics2D
                 Layout = _msdfPipelineLayout,
                 Vertex = new VertexState
                 {
-                    Module = _msdfShader,
+                    Module = shader,
                     EntryPoint = (byte*)SilkMarshal.StringToPtr("vs_main"),
                     BufferCount = 1,
                     Buffers = &vertexBufferLayout,
@@ -509,7 +518,7 @@ namespace Radiant.Graphics2D
                 DepthStencil = null,
             };
 
-            _msdfPipeline = _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
+            return _wgpu.DeviceCreateRenderPipeline(_device, in pipelineDesc);
         }
 
         private void CreateSdfShapePipeline()
@@ -647,6 +656,8 @@ namespace Radiant.Graphics2D
             _msdfVertices.Clear();
             _sdfShapeVertices.Clear();
             _imageVertices.Clear();
+            _coverageVertices.Clear();
+            _glyphAtlas?.TrimIfFull();
             _batches.Clear();
             _layers.Clear();
             _layerRenderOrder.Clear();
@@ -744,7 +755,8 @@ namespace Radiant.Graphics2D
                 _lineVertices.Count,
                 _msdfVertices.Count,
                 _sdfShapeVertices.Count,
-                _imageVertices.Count));
+                _imageVertices.Count,
+                _coverageVertices.Count));
 
         /// <summary>Pops the most recent transform, applying it to everything drawn since the matching push.</summary>
         public void PopTransform()
@@ -785,6 +797,12 @@ namespace Radiant.Graphics2D
                 var v = _imageVertices[i];
                 v.Position = Vector2.Transform(v.Position, t);
                 _imageVertices[i] = v;
+            }
+            for (var i = m.CoverageStart; i < _coverageVertices.Count; i++)
+            {
+                var v = _coverageVertices[i];
+                v.Position = Vector2.Transform(v.Position, t);
+                _coverageVertices[i] = v;
             }
         }
 
@@ -1819,16 +1837,21 @@ namespace Radiant.Graphics2D
                 UploadIfAny(BatchKind.Line, _lineVertices),
                 UploadIfAny(BatchKind.SdfShape, _sdfShapeVertices),
                 UploadIfAny(BatchKind.Image, _imageVertices),
-                UploadIfAny(BatchKind.Msdf, _msdfVertices));
+                UploadIfAny(BatchKind.Msdf, _msdfVertices),
+                UploadIfAny(BatchKind.Coverage, _coverageVertices));
+            if (_coverageVertices.Count > 0)
+            {
+                WriteCoverageParams();
+            }
 
             RenderLayers(slots, buffers);
             ReplayBatches(renderPass, _batches, slots, buffers);
         }
 
-        private readonly record struct VertexBuffers(IntPtr Filled, IntPtr Line, IntPtr SdfShape, IntPtr Image, IntPtr Msdf)
+        private readonly record struct VertexBuffers(IntPtr Filled, IntPtr Line, IntPtr SdfShape, IntPtr Image, IntPtr Msdf, IntPtr Coverage)
         {
-            public VertexBuffers(Buffer* filled, Buffer* line, Buffer* sdfShape, Buffer* image, Buffer* msdf)
-                : this((IntPtr)filled, (IntPtr)line, (IntPtr)sdfShape, (IntPtr)image, (IntPtr)msdf)
+            public VertexBuffers(Buffer* filled, Buffer* line, Buffer* sdfShape, Buffer* image, Buffer* msdf, Buffer* coverage)
+                : this((IntPtr)filled, (IntPtr)line, (IntPtr)sdfShape, (IntPtr)image, (IntPtr)msdf, (IntPtr)coverage)
             {
             }
         }
@@ -1978,8 +2001,7 @@ namespace Radiant.Graphics2D
             {
                 if (boundKind != batch.Kind)
                 {
-                    BindPipeline(renderPass, batch.Kind, (Buffer*)buffers.Filled, (Buffer*)buffers.Line,
-                        (Buffer*)buffers.SdfShape, (Buffer*)buffers.Image, (Buffer*)buffers.Msdf);
+                    BindPipeline(renderPass, batch.Kind, buffers);
                     boundKind = batch.Kind;
                     boundGroup = IntPtr.Zero;
                 }
@@ -2011,10 +2033,13 @@ namespace Radiant.Graphics2D
             }
         }
 
-        private void BindPipeline(
-            RenderPassEncoder* renderPass, BatchKind kind,
-            Buffer* filledBuffer, Buffer* lineBuffer, Buffer* sdfShapeBuffer, Buffer* imageBuffer, Buffer* msdfBuffer)
+        private void BindPipeline(RenderPassEncoder* renderPass, BatchKind kind, VertexBuffers buffers)
         {
+            var filledBuffer = (Buffer*)buffers.Filled;
+            var lineBuffer = (Buffer*)buffers.Line;
+            var sdfShapeBuffer = (Buffer*)buffers.SdfShape;
+            var imageBuffer = (Buffer*)buffers.Image;
+            var msdfBuffer = (Buffer*)buffers.Msdf;
             switch (kind)
             {
                 case BatchKind.Filled:
@@ -2036,6 +2061,10 @@ namespace Radiant.Graphics2D
                 case BatchKind.Msdf:
                     _wgpu.RenderPassEncoderSetPipeline(renderPass, _msdfPipeline);
                     _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, msdfBuffer, 0, (ulong)(_msdfVertices.Count * sizeof(MsdfVertex2D)));
+                    break;
+                case BatchKind.Coverage:
+                    _wgpu.RenderPassEncoderSetPipeline(renderPass, _coveragePipeline);
+                    _wgpu.RenderPassEncoderSetVertexBuffer(renderPass, 0, (Buffer*)buffers.Coverage, 0, (ulong)(_coverageVertices.Count * sizeof(MsdfVertex2D)));
                     break;
             }
         }
@@ -2133,6 +2162,7 @@ namespace Radiant.Graphics2D
             if (_sdfShapeShader != null) _wgpu.ShaderModuleRelease(_sdfShapeShader);
 
             DisposeImageResources();
+            DisposeGlyphResources();
 
             GC.SuppressFinalize(this);
         }

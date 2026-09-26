@@ -149,8 +149,29 @@ SDF shape's vertices, so a gradient needs no texture and batches with plain shap
 
 ## Text
 
-Shaping, Unicode and paragraph layout live in `Radiant.Text`; see [text.md](text.md). This
-section covers what the renderer draws text with today.
+Shaping, Unicode and paragraph layout live in `Radiant.Text`; see [text.md](text.md). The
+renderer draws text two ways.
+
+### Coverage text (laid-out paragraphs)
+
+`DrawParagraph(paragraph, position)` and `DrawGlyphRun(run, offset)` draw text laid out by
+`Radiant.Text` from a **coverage atlas** (`GlyphAtlas`).
+
+- **Rasterizing:** each glyph is rasterized on the CPU (`GlyphRasterizer`, exact-area coverage) at
+  the size it appears on screen, which is its size × the pixel scale × the transform's scale.
+- **Pixel grid:** the baseline snaps to a whole device pixel and the pen to a quarter, so small
+  text is as sharp as the grid allows. Glyphs are cached per quarter-pixel position.
+- **Pages:** 1024² single-channel textures packed in shelves, each glyph with a blank border.
+  Past four pages the atlas is emptied at the next frame.
+- **Weight:** edge coverage is corrected for `TextGamma` (default 1.8) by the text's luminance, so
+  dark text on light keeps the weight it was designed with rather than looking thin in linear-light
+  blending. Set it to 1 to blend coverage as it is.
+- **Transforms:** under a move-and-scale transform, glyphs snap. Under a rotation they're drawn
+  unsnapped and softer; turning or zooming text is what MSDF is for.
+
+It is a sixth batch kind (`Coverage`), so it keeps its place in draw order like everything else.
+
+### MSDF text
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.
 `EmbeddedFonts` names them:

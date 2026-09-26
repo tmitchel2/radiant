@@ -411,6 +411,59 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return select(shape, fill * shadow, is_shadow) * clip_coverage(input.position.xy);
 }";
 
+        // Text drawn from a coverage atlas (GlyphAtlas): one byte of coverage per texel, tinted by
+        // the vertex colour.
+        public const string CoverageTextShader = Common + @"
+struct VertexInput {
+    @location(0) position: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) texCoord: vec2<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) texCoord: vec2<f32>,
+}
+
+@group(1) @binding(0)
+var atlasSampler: sampler;
+
+@group(1) @binding(1)
+var atlasTexture: texture_2d<f32>;
+
+// x = the gamma edge coverage is corrected for (Renderer2D.TextGamma; 1 leaves it as is).
+@group(1) @binding(2)
+var<uniform> atlasParams: vec4<f32>;
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.position = uniforms.view_projection * vec4<f32>(input.position, 0.0, 1.0);
+    output.color = input.color;
+    output.texCoord = input.texCoord;
+    return output;
+}
+
+// Edge pixels blended in linear light make dark text on a light ground look lighter and thinner,
+// and light text on a dark ground heavier, than type is designed to look: it is drawn and hinted
+// on screens that blend in gamma space. So coverage is corrected as if blending in a gamma-g space
+// against the contrasting ground: dark text (on white) takes 1 - (1 - a)^g, light text (on black)
+// a^g, and colours between mix the two by luminance.
+fn correct_coverage(a: f32, color: vec3<f32>, gamma: f32) -> f32 {
+    let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let dark = 1.0 - pow(max(1.0 - a, 0.0), gamma);
+    let light = pow(max(a, 0.0), gamma);
+    return mix(dark, light, luma);
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    let coverage = textureSample(atlasTexture, atlasSampler, input.texCoord).r;
+    let alpha = correct_coverage(coverage, input.color.rgb, atlasParams.x) * input.color.a;
+    return vec4<f32>(input.color.rgb * alpha, alpha) * clip_coverage(input.position.xy);
+}";
+
         public const string TexturedShader = Common + @"
 struct VertexInput {
     @location(0) position: vec2<f32>,

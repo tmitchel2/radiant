@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.png" />
     <EmbeddedResource Include="Assets\Fonts\*.json" />
   </ItemGroup>

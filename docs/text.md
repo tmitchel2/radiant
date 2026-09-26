@@ -1,8 +1,9 @@
 # Radiant Text: fonts, shaping, Unicode and paragraph layout
 
 `Radiant.Text` turns styled text into positioned glyphs, and answers the questions a text view and
-an editor ask about them. It doesn't draw. Drawing glyph runs belongs to the renderer (see
-[rendering.md](rendering.md)); the strategies for that are listed under "Not yet" below.
+an editor ask about them. It also rasterizes glyphs to coverage bitmaps (`GlyphRasterizer`), but
+it doesn't touch the GPU: `Renderer2D.DrawParagraph` draws a paragraph from a coverage atlas (see
+[rendering.md](rendering.md)).
 
 ```
 AttributedText ─┐
@@ -118,6 +119,15 @@ between them.
   - line start and end, where line end stops before the line break, or upstream of a wrap
   - document start and end
 
+## Rasterizing
+
+`GlyphRasterizer.Rasterize(outline, scale, offset)` gives each pixel the exact fraction of its area
+inside the outline. It uses the signed-area accumulation of font-rs (see `THIRD-PARTY-NOTICES.md`):
+- **Curves** are flattened to within 0.05 px.
+- **Overlapping contours** of variable fonts fill as non-zero.
+- **Positioning:** `offset` places the pen within its pixel, which is how the atlas makes its
+  quarter-pixel positions.
+
 ## Performance
 
 Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
@@ -132,8 +142,9 @@ Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
 
 ## Not yet
 
-- **Drawing glyph runs** through a coverage atlas with MSDF for large text, through runtime MSDF,
-  and through Slug. For now, `Renderer2D.DrawText` still draws from the baked MSDF atlases.
+- **More ways to draw glyph runs:** MSDF generated at runtime (for large, rotating or zooming
+  text, and the hybrid of coverage below a size and MSDF above it), and Slug.
+  `Renderer2D.DrawText` still draws from the baked MSDF atlases.
 - **Line layout:**
   - tab stops, with tabs positioned by where they fall on the line
   - justification
