@@ -109,6 +109,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                         new Slider(volume.Value, volume.Set) { Step = 0.25f, Label = "Stepped" },
                         new LinearProgress { Value = volume.Value, Label = "Progress" },
                         new LinearProgress { Label = "Loading" },
+                        new Row(new CircularProgress { Value = volume.Value, Label = "Done" }, new CircularProgress { Label = "Working" }) { Gap = 16 },
                     ],
                 },
                 new Row(

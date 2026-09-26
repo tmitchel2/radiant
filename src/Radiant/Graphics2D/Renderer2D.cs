@@ -1636,6 +1636,20 @@ namespace Radiant.Graphics2D
         public void DrawRing(Vector2 center, float outerRadius, float innerRadius, Vector4 color)
             => EmitCircle(center, outerRadius, MathF.Max(0f, innerRadius), 0f, color, color);
 
+        /// <summary>
+        /// Draws an arc: a stroke along a circle of <paramref name="radius"/>, <paramref name="thickness"/>
+        /// wide with round ends, from <paramref name="startAngle"/> through <paramref name="sweepAngle"/>
+        /// (radians, clockwise from the positive x axis, as the screen's y points down). A sweep of
+        /// 2π or more is a whole ring. For circular progress and spinners.
+        /// </summary>
+        public void DrawArc(Vector2 center, float radius, float thickness, float startAngle, float sweepAngle, Vector4 color)
+        {
+            if (radius <= 0f || thickness <= 0f || sweepAngle == 0f) return;
+            var outer = radius + thickness * 0.5f;
+            EmitShape(center, new Vector2(outer, outer), 0f, SdfShapeKind.Arc,
+                new Vector4(radius, thickness * 0.5f, startAngle, sweepAngle), color, color);
+        }
+
         private void EmitRoundedRect(float x, float y, float width, float height, CornerRadii radii,
             float borderWidth, Vector4 fill, Vector4 border, Gradient? gradient = null)
         {

@@ -47,6 +47,7 @@ turns a filled button red.
 | `Chip` | Assist, filter (tick and tonal fill when chosen) and input (trailing ×) chips, elevated or outlined |
 | `Badge` | A dot or a count (99+) in the error colour on the top right of its child |
 | `LinearProgress` | Determinate, or an indeterminate sliding segment |
+| `CircularProgress` | A ring filling clockwise from the top, or a spinner whose arc turns as it grows and shrinks |
 | `Slider` | Continuous or stepped; drag, press the track, or use arrows, Page Up/Down, Home and End |
 | `Tabs` | Tabs with optional icons and an indicator that slides to the chosen tab; Left and Right choose neighbours |
 | `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |

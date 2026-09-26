@@ -338,6 +338,21 @@ fn erf2(v: vec2<f32>) -> vec2<f32> {
     return s - s / (x * x);
 }
 
+// Signed distance to an arc of radius params.x and half-thickness params.y with round ends,
+// starting at angle params.z and sweeping params.w (radians, clockwise from +x on screen). The point
+// is turned so the arc's middle points along +y, then Inigo Quilez's symmetric arc distance applies.
+fn sd_arc(p: vec2<f32>, params: vec4<f32>) -> f32 {
+    let phi = 1.5707963 - (params.z + params.w * 0.5);
+    let c = cos(phi);
+    let s = sin(phi);
+    let q = vec2<f32>(abs(p.x * c - p.y * s), p.x * s + p.y * c);
+    let half_aperture = min(abs(params.w) * 0.5, 3.14159265);
+    let sc = vec2<f32>(sin(half_aperture), cos(half_aperture));
+    let to_end = length(q - sc * params.x);
+    let to_ring = abs(length(q) - params.x);
+    return select(to_ring, to_end, sc.y * q.x > sc.x * q.y) - params.y;
+}
+
 // The blurred coverage along x of the box's horizontal slice at height y.
 fn shadow_x(x: f32, y: f32, sigma: f32, corner: f32, half_size: vec2<f32>) -> f32 {
     let delta = min(half_size.y - corner - abs(y), 0.0);
@@ -374,7 +389,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let half_size = input.misc.xy;
     let border_width = input.misc.z;
     let shape_kind = input.misc.w;
-    let is_shadow = shape_kind > 1.5;
+    let is_shadow = shape_kind > 1.5 && shape_kind < 2.5;
 
     // Every branch only computes values: fwidth below must run in uniform control flow, so no
     // shape may return early.
@@ -384,6 +399,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         dist = sd_round_box(input.localPos, half_size, input.params);
     } else if (shape_kind < 1.5) {
         dist = sd_annulus(input.localPos, input.params.x, input.params.y);
+    } else if (shape_kind > 2.5) {
+        dist = sd_arc(input.localPos, input.params);
     } else {
         // For shadows, misc.z carries sigma rather than a border width.
         shadow = shadow_mask(input.localPos, half_size, input.params, max(border_width, 1e-3));

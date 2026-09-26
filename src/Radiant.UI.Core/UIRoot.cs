@@ -692,6 +692,9 @@ public sealed class UIRoot : IDisposable
             case TextRenderNode text:
                 into.Add(new SemanticsNode(new Semantics { Role = SemanticsRole.Text }, text.Element.AttributedText.Text, bounds, false, false, []));
                 break;
+            case CanvasRenderNode { Element.Semantics: { } canvasSemantics }:
+                into.Add(new SemanticsNode(canvasSemantics, canvasSemantics.Label, bounds, false, false, children));
+                break;
             case BoxRenderNode { Element: var box } when box.Semantics is not null || box.Focusable:
                 var semantics = box.Semantics ?? new Semantics();
                 // A control named by its text (a button's label) takes it as its own name.

@@ -137,6 +137,17 @@ public class MoreComponentTests
         Assert.IsTrue(All(badge.GetSemantics()).Any(n => n.Label == "99+"));
     }
 
+    [TestMethod]
+    public void ACircularProgressIsAProgressIndicatorAndASpinnerHasNoValue()
+    {
+        using var ring = Mount(new CircularProgress { Value = 0.5f, Label = "Done" });
+        using var spinner = Mount(new CircularProgress { Label = "Working" });
+
+        Assert.AreEqual("50%", Find(ring, SemanticsRole.ProgressIndicator, "Done").Semantics.Value);
+        Assert.IsNull(Find(spinner, SemanticsRole.ProgressIndicator, "Working").Semantics.Value);
+        Assert.AreEqual(40, Find(ring, SemanticsRole.ProgressIndicator).Bounds.Width);
+    }
+
     private static System.Drawing.RectangleF FindIndicator(UIRoot root)
     {
         // The indicator is the tab list's last child: a 3 px bar.

@@ -53,8 +53,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   PNG, so it could start from there.
 - **Presses don't animate fully.** State layers fade in and out (`UseTransition`), but there's no
   press scale and no ripple.
-- **No circular progress or spinner.** The renderer has no arc shape; add an SDF arc (ring segment)
-  to the shape shader.
 - **Sliders are single-valued.** No range slider, no value label while dragging, and no tick marks
   for stepped sliders.
 - **Tabs are primary tabs only.** The indicator spans the whole tab rather than its content,

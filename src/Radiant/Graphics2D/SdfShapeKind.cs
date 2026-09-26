@@ -14,5 +14,8 @@ namespace Radiant.Graphics2D
 
         /// <summary>A Gaussian-blurred rounded rectangle: a soft shadow.</summary>
         Shadow = 2,
+
+        /// <summary>A stroked arc with round ends: params = (radius, half thickness, start angle, sweep), radians clockwise from +x.</summary>
+        Arc = 3,
     }
 }

@@ -121,6 +121,14 @@ Layers need the attachment size, so they need the clip-aware `BeginFrame(width, 
 Each costs a full-size texture and pass, so keep them for groups that actually overlap. A lone
 shape can simply use a translucent color.
 
+## Arcs
+
+`DrawArc(centre, radius, thickness, start, sweep, colour)` strokes part of a circle with round ends.
+Angles are in radians, clockwise from +x as the screen's y points down, and a sweep of 2π or more
+is a whole ring. It's a fourth SDF shape kind: Inigo Quilez's arc distance, with the point turned
+so the arc's middle lies along +y. So it's exact and anti-aliased at any size and transform, like
+the other shapes. Circular progress and spinners use it.
+
 ## Shadows
 
 `DrawShadow(x, y, w, h, radii, blur, color, offset, spread)` draws a soft shadow of a rounded
