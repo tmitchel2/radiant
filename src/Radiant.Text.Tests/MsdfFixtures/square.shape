@@ -1,0 +1,7 @@
+# A square wound anticlockwise (as CFF outlines are), so the generator must turn it outward.
+0.125 4
+M 3 7
+L 203 7
+L 203 207
+L 3 207
+Z

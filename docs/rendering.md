@@ -151,8 +151,8 @@ SDF shape's vertices, so a gradient needs no texture and batches with plain shap
 ## Text
 
 Shaping, Unicode and paragraph layout live in `Radiant.Text`; see [text.md](text.md). The
-renderer draws laid-out text as `TextRendering` says (a coverage atlas by default, or Slug), and
-also draws text from baked MSDF atlases.
+renderer draws laid-out text as `TextRendering` says (a coverage atlas by default, distance
+fields generated at runtime, a hybrid of the two, or Slug), and strings from fonts baked offline.
 
 ### Coverage text (laid-out paragraphs)
 
@@ -169,7 +169,7 @@ also draws text from baked MSDF atlases.
   dark text on light keeps the weight it was designed with rather than looking thin in linear-light
   blending. Set it to 1 to blend coverage as it is.
 - **Transforms:** under a move-and-scale transform, glyphs snap. Under a rotation they're drawn
-  unsnapped and softer; turning or zooming text is what MSDF is for.
+  unsnapped and softer; turning or zooming text is what MSDF (or `Hybrid`) is for.
 
 It is a sixth batch kind (`Coverage`), so it keeps its place in draw order like everything else.
 
@@ -212,7 +212,35 @@ the reference shaders are MIT; see `src/Radiant.Text/THIRD-PARTY-NOTICES.md`.
   either mode. Coverage is cheaper per pixel and sharper at small sizes, since it snaps to the
   pixel grid. Slug has no bitmaps to make or store, and stays exact when text turns or zooms.
 
-### MSDF text
+### Runtime MSDF text and the hybrid (laid-out paragraphs)
+
+`TextRendering` chooses how `DrawParagraph` and `DrawGlyphRun` draw: `Coverage` (the default),
+`Msdf`, `Hybrid`, or `Slug`.
+
+- **`Msdf`:** each glyph's multi-channel distance field is generated once, at runtime, by
+  `Radiant.Text`'s port of msdfgen (see [text.md](text.md)), into a **runtime MSDF atlas**
+  (`MsdfGlyphAtlas`). It is keyed by font instance and glyph only, generated at a 40 px em with a
+  6 px range, and scaled to every size and angle the glyph is drawn at.
+  - **Drawing:** quads go in the run's own coordinates, unsnapped, through the MSDF pipeline
+    (`BatchKind.Msdf`), so they follow the transform stack like any other draw. The shader works
+    out the edge's sharpness per pixel from the range in texels (the page's parameters uniform), so
+    edges stay a pixel wide at any scale or rotation.
+  - **Pages:** 1024² RGBA textures packed in shelves, with a bind group each. Past four pages the
+    atlas is emptied at the next frame.
+  - **Generating:** about a millisecond a glyph. A run's new glyphs are generated together, on
+    several threads: Inter's letters, digits and a few symbols (66 glyphs) take about 20 ms on
+    a 12-core Mac, against 70 ms on one thread.
+  - **Colour:** the tint is a straight-alpha linear colour, as for coverage text. There is no
+    gamma correction of edges: at the sizes MSDF is for, edges are a small part of the ink.
+- **`Hybrid`:** coverage for text at most `HybridThreshold` (24) device pixels and upright (moved
+  and scaled only), where pixel-grid snapping makes it sharpest; MSDF for larger text and for text
+  under a rotation, where one field serves every size and angle. The size counts the pixel scale
+  and the transform's scale.
+
+At 64 px, `Msdf` draws Inter within about 2% of the coverage atlas's ink; turned, its stems stay
+as solid.
+
+### Baked MSDF text (`DrawText`)
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.
 `EmbeddedFonts` names them:
@@ -275,6 +303,6 @@ the CPU. They cannot see text, SDF shapes or images.
 | Nested rounded clips | Only the innermost rounded clip's corners apply | A rounded container inside another visibly overflows the outer corners; clip through a layer mask |
 | Multisampling in windows | `RadiantApplication` renders single-sampled; SDF shapes and text anti-alias analytically, but tessellated circles, polygons and thick lines are aliased | A UI draws tessellated geometry prominently |
 | Backdrop blur | Needs the scene behind a layer as a texture, blurred | A frosted-glass design |
-| Runtime glyph generation, shaping, wrapping, variable fonts | The atlases are fixed at bake time and `DrawText` walks codepoints | The text stack (`ITextShaper`, paragraph layout, atlas / MSDF / Slug renderers) |
+| Shaped, wrapped, variable-font text in `DrawText` | Its atlases are fixed at bake time and it walks codepoints; laid-out text (`DrawParagraph`) has all of this, from runtime atlases | Moving `DrawText`'s callers to `Paragraph` |
 | Material Symbols icons | Nothing draws icons yet, and the full variable icon font is several megabytes to embed for no user | The first icon-bearing components |
 | Premultiplying decoded images | Nothing in Radiant decodes images into a `Texture2D` yet | An image-loading API |

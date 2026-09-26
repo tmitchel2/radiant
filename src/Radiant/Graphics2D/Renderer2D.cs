@@ -661,6 +661,7 @@ namespace Radiant.Graphics2D
             _coverageVertices.Clear();
             _glyphAtlas?.TrimIfFull();
             BeginSlugFrame();
+            _msdfGlyphAtlas?.TrimIfFull();
             _batches.Clear();
             _layers.Clear();
             _layerRenderOrder.Clear();
@@ -2173,6 +2174,7 @@ namespace Radiant.Graphics2D
             DisposeImageResources();
             DisposeGlyphResources();
             DisposeSlugResources();
+            DisposeMsdfTextResources();
 
             GC.SuppressFinalize(this);
         }

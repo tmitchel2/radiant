@@ -1,0 +1,8 @@
+# A line and a quadratic that leave a corner in exactly opposite directions: the edges are pushed
+# apart (deconverged) before colouring.
+0.09375 4
+M 0 0
+L 200 0
+Q 0 0 100 200
+L 0 0
+Z

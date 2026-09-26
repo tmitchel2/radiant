@@ -1,0 +1,12 @@
+# Two rectangles wound the same way (clockwise, as TrueType fills are), crossing like a plus.
+0.125 4
+M 0 100
+L 0 200
+L 300 200
+L 300 100
+Z
+M 100 0
+L 100 300
+L 200 300
+L 200 0
+Z

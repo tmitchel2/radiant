@@ -1,0 +1,6 @@
+# A single cubic that returns to its start: one edge and one corner, so it is split in thirds and
+# coloured as a teardrop.
+0.078125 4
+M 0 0
+C 400 -200 400 400 0 0
+Z

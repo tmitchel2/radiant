@@ -2,8 +2,9 @@
 
 `Radiant.Text` turns styled text into positioned glyphs, and answers the questions a text view and
 an editor ask about them. It also rasterizes glyphs to coverage bitmaps (`GlyphRasterizer`) and
-prepares them for Slug (`Radiant.Text.Slug`), but it doesn't touch the GPU: `Renderer2D.DrawParagraph`
-draws a paragraph from a coverage atlas or with Slug (see [rendering.md](rendering.md)).
+prepares them for Slug (`Radiant.Text.Slug`) and generates their distance fields
+(`MsdfGenerator`), but it doesn't touch the GPU: `Renderer2D.DrawParagraph` draws a paragraph from
+a coverage atlas, from distance fields, or with Slug (see [rendering.md](rendering.md)).
 
 ```
 AttributedText ─┐
@@ -149,6 +150,42 @@ coverage, and total ink agrees within 0.2%. The differences come from Slug sampl
 way through the pixel centre rather than the pixel's area. They are largest on features narrower
 than two pixels, such as a period at 11 px.
 
+## Distance fields
+
+`MsdfGenerator.Generate(outline, scale, range)` makes a glyph's multi-channel signed distance
+field (`MsdfBitmap`), positioned like a coverage bitmap: whole pixels from the pen, y down, with
+half the range as margin all round. One field, made once at a moderate size, draws the glyph
+sharply at any size or angle; the renderer's runtime MSDF atlas is built from them (see
+[rendering.md](rendering.md)).
+
+- **msdfgen, ported:** the generator is a C# port of the core of Viktor Chlumsky's
+  [msdfgen](https://github.com/Chlumsky/msdfgen) (MIT) at commit `1c106ed8`, in `Msdf/`. It uses
+  msdfgen's defaults: simple edge colouring with an angle threshold of 3, perpendicular distances
+  per channel combined by the overlapping-contour combiner, and the error correction's default
+  mode (edge priority, checking the exact distance at edges).
+- **Parity:** `tools/msdf-fixtures/generate.sh` builds upstream msdfgen at that commit (no CMake)
+  and writes fields for eleven shapes, from squares, rings and a teardrop to Inter glyphs. The
+  port matches them to within 1e-5 of the range; on macOS they are bit-identical.
+- **Crossing contours:** variable fonts keep overlapping strokes, and their contours cross each
+  other and themselves (Inter's heavy 'A' turns its counter's sides across each other; bowls cross
+  stems within one contour; the heavy 'Q''s tail crosses its counter). msdfgen's combiner handles
+  contours that overlap, but not these; upstream relies on Skia's path simplification.
+  `OverlapResolver` does that job: it cuts every edge where another crosses it, keeps the pieces
+  with filled area (by the non-zero rule) on one side only, and joins them into the outline. A
+  glyph whose contours don't cross is left exactly as it is.
+- **Orientation:** TrueType and CFF wind contours in opposite directions; a shape that comes out
+  inside out is reversed, as msdfgen's `-guesswinding` does.
+
+Tests check that fields decode (`median(r, g, b) > ½`) to the same inside and outside as the
+coverage rasterizer on every pixel more than a pixel from an edge, for Inter at weights 100, 400
+and 900 and JetBrains Mono; that overlaps leave no seam; and that a magnified corner stays sharp
+where a single-channel field rounds it.
+
+A wider sweep, every glyph of both fonts from U+0020 to U+2FFF at weights 100, 400 and 900 at a
+40 px em (10,008 fields, 6.2 million pixels), finds 6 pixels that disagree, in 5 glyphs, all on
+strokes about a texel wide (Inter 100's thinnest Greek and IPA letters, JetBrains Mono 900's ϖ).
+A distance field can't resolve features much under two texels; a larger em would.
+
 ## Performance
 
 Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
@@ -161,11 +198,21 @@ Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
 | `HitTest` | ~1 µs |
 | arrow-key `MoveCaret` | ~10 µs |
 
+`MsdfGenerator.Generate`, averaged over Inter 400's A–Z, a–z, 0–9 and `&@%$`, one thread:
+
+| Em, range | Time per glyph | Worst (`@`) |
+|---|---|---|
+| 32 px, 4 px | ~0.65 ms | ~2 ms |
+| 40 px, 6 px (the renderer's atlas) | ~0.9 ms | ~2.8 ms |
+| 48 px, 6 px | ~1.1 ms | ~3.6 ms |
+
+That is the speed of upstream msdfgen built with clang `-O2` (3.7 ms for the same `@`). About
+two thirds is the distance field, a quarter the error correction and a few percent resolving
+crossing contours.
+
 ## Not yet
 
-- **More ways to draw glyph runs:** MSDF generated at runtime (for large, rotating or zooming
-  text, and the hybrid of coverage below a size and MSDF above it).
-  `Renderer2D.DrawText` still draws from the baked MSDF atlases.
+- **Baked strings:** `Renderer2D.DrawText` still draws from the MSDF atlases baked offline.
 - **Line layout:**
   - tab stops, with tabs positioned by where they fall on the line
   - justification
