@@ -36,4 +36,7 @@ public interface IPlatform : IDisposable
 
     /// <summary>The platform's own menus.</summary>
     IMenuService Menus { get; }
+
+    /// <summary>Assistive technology reading and acting on the UI.</summary>
+    IAccessibility Accessibility { get; }
 }

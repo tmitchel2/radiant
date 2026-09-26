@@ -65,6 +65,12 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   like `Always`), and the thumb doesn't widen under the pointer, so the 12 px grip is invisible
   until used.
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
+- **VoiceOver gets a first cut.** The whole tree is converted on every read (fine for hundreds of
+  nodes, not tens of thousands; a virtual table's rows are only those built), text fields can't be
+  typed into or have their text and selection read through accessibility (`AXSelectedText`,
+  `setAccessibilityValue:`), sliders can't be stepped (`accessibilityPerformIncrement`), tables and
+  trees don't give rows and columns their structure (`AXRowCount`, `AXDisclosureLevel`), and
+  there are no announcements (snackbars, alerts appearing) or live regions.
 - **Semantics act only by press and focus.** `UIRoot.Press` and `UIRoot.FocusNode` act on a
   node by id; there's no increment or decrement (sliders), setting a value (text fields), scrolling
   a node into view, or custom actions yet.

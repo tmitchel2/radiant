@@ -108,6 +108,9 @@ internal static unsafe class SelfTest
         chrome.ExtendIntoTitleBar(false);
         Check(!chrome.ExtendsIntoTitleBar && Math.Abs(ObjC.GetRect(view, "frame").Height - before.Height) < 0.5, "giving the title bar back restores the content's size");
 
+        // VoiceOver reads the UI through the content view.
+        CheckAccessibility(view, window, root, events, Check);
+
         return failures;
     }
 
@@ -164,5 +167,43 @@ internal static unsafe class SelfTest
             Last = $"marked:{text}:{selectionStart}:{selectionLength}";
 
         public void UnmarkText() => Last = "unmark";
+    }
+
+    private static void CheckAccessibility(nint view, nint window, UIRoot root, List<string> events, Action<bool, string> check)
+    {
+        root.Update(root.Size);
+        var children = ObjC.Send(view, "accessibilityChildren");
+        var elements = new List<nint>();
+        void Collect(nint array)
+        {
+            var count = array == 0 ? 0 : (int)ObjC.Send(array, "count");
+            for (var i = 0; i < count; i++)
+            {
+                var element = ObjC.Send(array, "objectAtIndex:", i);
+                elements.Add(element);
+                Collect(ObjC.Send(element, "accessibilityChildren"));
+            }
+        }
+        Collect(children);
+        string? Text(nint element, string selector) => ObjC.ToManagedString(ObjC.Send(element, selector));
+        var button = elements.Find(e => Text(e, "accessibilityRole") == "AXButton" && Text(e, "accessibilityLabel") == "Press me");
+        var text = elements.Find(e => Text(e, "accessibilityRole") == "AXStaticText");
+        check(button != 0, $"the view's accessibility children include the button ({elements.Count} elements)");
+        check(text != 0 && Text(text, "accessibilityValue") == "Hello from Radiant", $"static text is read by its value ({(text == 0 ? "none" : Text(text, "accessibilityValue"))})");
+        if (button == 0)
+        {
+            return;
+        }
+        var screen = ObjC.GetRect(button, "accessibilityFrame");
+        var frame = ObjC.GetRect(window, "frame");
+        check(screen.Width == 120 && screen.Height == 32 && screen.X >= frame.X && screen.Y >= frame.Y && screen.Y + screen.Height <= frame.Y + frame.Height,
+            $"the button's frame is on screen inside the window ({screen}, window {frame})");
+        events.Clear();
+        check(ObjC.GetBool(button, "accessibilityPerformPress") && events.Contains("click:Press me"), $"pressing it through accessibility clicks it ({string.Join(",", events)})");
+        root.Update(root.Size);
+        check(ObjC.Send(view, "accessibilityFocusedUIElement") == button, "the pressed button is the focused element");
+        elements.Clear();
+        Collect(ObjC.Send(view, "accessibilityChildren"));
+        check(elements.Contains(button), "the button is the same element when the tree is read again");
     }
 }

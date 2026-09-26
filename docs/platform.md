@@ -110,6 +110,32 @@ hand, run `PlatformCheck`: its title bar is the app's own. Drag it by its empty 
 move the window, double-click it to zoom, and press its ⓘ button: the status line changes and the
 window doesn't move.
 
+## Accessibility
+
+VoiceOver reads the UI's semantics tree. `PlatformBinding` is the `IAccessibilityProvider`: it
+turns `UIRoot.GetSemantics()` into `AccessibilityNode`s when asked, presses and focuses nodes by id
+(`UIRoot.Press`, `UIRoot.FocusNode`), and after each drawn frame tells the platform the tree may
+have changed and where focus went.
+
+On macOS, `accessibilityChildren` and `accessibilityFocusedUIElement` are replaced on GLFW's view
+class, as the input methods are, to answer with `NSAccessibilityElement`s:
+
+- The tree is read only when VoiceOver asks, so an app nobody is reading pays nothing. Elements are
+  kept by node id, so VoiceOver's references stay good while their nodes live.
+- Roles map to AppKit's (`AXButton`, `AXCheckBox` with `AXSwitch`, `AXTabGroup`, `AXOutline` …),
+  with the label, value (text, checked state, heading level), help, enabled, selected and expanded
+  states, and frames in their parent's space.
+- Pressable roles are a subclass whose `accessibilityPerformPress` presses the node; setting an
+  element's focus moves the UI's.
+- A changed tree is announced once as a layout change until VoiceOver reads it again; a focus move
+  as the focused element changing.
+
+The self-test finds a button and some text among the view's accessibility children, checks the
+button's screen frame, presses it and checks it clicked and took focus. By hand: turn on
+VoiceOver (⌘F5), run the gallery, and move through it with VO-arrow keys. Buttons, switches, tabs
+and headings are announced by name and role, VO-Space presses the one under the cursor, and the
+VoiceOver cursor follows Tab.
+
 ## Menus
 
 `IPlatform.Menus.ShowContextMenu` shows the platform's own context menu at a point and waits for a
@@ -286,7 +312,6 @@ The window also checks the other services:
 ## Not yet
 
 - **Other platforms:** Windows and Linux implementations; they run headless until then.
-- **The accessibility bridge:** exposing `UIRoot.GetSemantics()` to VoiceOver comes later in P7.
 - **Rich clipboard formats:** images, files and styled text.
 - **Platform input:** key repeat and precise trackpad scrolling still come through Silk and GLFW.
 

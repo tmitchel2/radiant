@@ -33,6 +33,18 @@ internal sealed record SelfTestApp : Component
             Layout = new LayoutStyle { FlexGrow = 1 },
             OnKeyDown = e => events.Add($"key:{e.Key}"),
             OnTextInput = e => events.Add($"text:{e.Text}"),
+            Children =
+            [
+                // For the accessibility checks: a button VoiceOver can press, and text it can read.
+                new Box
+                {
+                    Focusable = true,
+                    Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Press me" },
+                    Layout = new LayoutStyle { Width = 120, Height = 32, Margin = Edges.All(20) },
+                    OnClick = _ => events.Add("click:Press me"),
+                },
+                new TextBlock("Hello from Radiant") { Layout = new LayoutStyle { Margin = new Edges(20, 0, 0, 0) } },
+            ],
         };
     }
 }

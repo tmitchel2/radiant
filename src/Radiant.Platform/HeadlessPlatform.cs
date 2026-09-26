@@ -32,6 +32,9 @@ public sealed class HeadlessPlatform : IPlatform
     /// <inheritdoc cref="IPlatform.Menus"/>
     public HeadlessMenuService Menus { get; } = new();
 
+    /// <inheritdoc cref="IPlatform.Accessibility"/>
+    public HeadlessAccessibility Accessibility { get; } = new();
+
     IClipboard IPlatform.Clipboard => Clipboard;
 
     ICursorService IPlatform.Cursors => Cursors;
@@ -45,6 +48,8 @@ public sealed class HeadlessPlatform : IPlatform
     IWindowChrome IPlatform.Chrome => Chrome;
 
     IMenuService IPlatform.Menus => Menus;
+
+    IAccessibility IPlatform.Accessibility => Accessibility;
 
     /// <summary>Nothing to release.</summary>
     public void Dispose()

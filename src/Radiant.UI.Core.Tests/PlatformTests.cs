@@ -269,6 +269,40 @@ public class PlatformTests
         public void UnmarkText() => Calls.Add("unmark");
     }
 
+    [TestMethod]
+    public void TheBindingGivesThePlatformTheTreeAndItsActions()
+    {
+        var clicks = 0;
+        using var root = new UIRoot(new Box
+        {
+            Children =
+            [
+                new Box { Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Save", Checked = true }, OnClick = _ => clicks++ },
+                new TextBlock("Hello"),
+            ],
+        });
+        root.Update(new Vector2(200, 100));
+        var platform = new HeadlessPlatform();
+        var binding = new PlatformBinding(root);
+        binding.Attach(platform);
+
+        var tree = platform.Accessibility.Provider!.Root();
+        var save = tree.Children[0];
+        var pressed = platform.Accessibility.Provider.Press(save.Id);
+        root.Update(new Vector2(200, 100));
+        binding.AfterUpdate();
+
+        Assert.AreEqual((AccessibilityRole.Button, "Save", true), (save.Role, save.Label, save.Checked));
+        Assert.AreEqual((AccessibilityRole.Text, "Hello"), (tree.Children[1].Role, tree.Children[1].Label));
+        Assert.IsTrue(pressed);
+        Assert.AreEqual(1, clicks);
+        Assert.AreEqual(save.Id, platform.Accessibility.FocusedId, "the focus move is passed on");
+        Assert.AreEqual(1, platform.Accessibility.Invalidations);
+
+        binding.Dispose();
+        Assert.IsNull(platform.Accessibility.Provider, "detached with the binding");
+    }
+
     private sealed class CountingPlatform : IPlatform
     {
         private readonly HeadlessPlatform _inner = new();
@@ -294,6 +328,8 @@ public class PlatformTests
         public IWindowChrome Chrome => _inner.Chrome;
 
         public IMenuService Menus => _inner.Menus;
+
+        public IAccessibility Accessibility => _inner.Accessibility;
 
         public void Dispose() => Disposals++;
     }

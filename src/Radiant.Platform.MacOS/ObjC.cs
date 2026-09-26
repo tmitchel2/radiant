@@ -102,6 +102,18 @@ internal static unsafe class ObjC
     public static void SendBool(nint receiver, string selector, bool arg) =>
         ((delegate* unmanaged<nint, nint, byte, void>)MsgSend)(receiver, Sel(selector), arg ? (byte)1 : (byte)0);
 
+    /// <summary><c>[receiver selector:rect]</c>, as <c>setAccessibilityFrameInParentSpace:</c>.</summary>
+    public static void SendRect(nint receiver, string selector, NSRect rect) =>
+        ((delegate* unmanaged<nint, nint, NSRect, void>)MsgSend)(receiver, Sel(selector), rect);
+
+    /// <summary>
+    /// Tells assistive technology about <paramref name="element"/> with AppKit's
+    /// <c>NSAccessibilityPostNotification</c>, the notification named by an AppKit constant
+    /// (such as <c>NSAccessibilityLayoutChangedNotification</c>).
+    /// </summary>
+    public static void PostAccessibilityNotification(nint element, string notification) =>
+        ((delegate* unmanaged<nint, nint, void>)NativeLibrary.GetExport(s_appKit, "NSAccessibilityPostNotification"))(element, AppKitConstant(notification));
+
     /// <summary><c>[receiver selector:rect with:flag]</c>, as <c>setFrame:display:</c>.</summary>
     public static void SendRectBool(nint receiver, string selector, NSRect rect, bool flag) =>
         ((delegate* unmanaged<nint, nint, NSRect, byte, void>)MsgSend)(receiver, Sel(selector), rect, flag ? (byte)1 : (byte)0);

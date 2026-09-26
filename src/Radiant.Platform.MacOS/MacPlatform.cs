@@ -20,6 +20,7 @@ public sealed class MacPlatform : IPlatform
     private readonly ITextInput _textInput;
     private readonly MacWindowChrome _chrome;
     private readonly MacMenuService _menus;
+    private readonly MacAccessibility _accessibility;
 
     private MacPlatform(nint window)
     {
@@ -37,6 +38,7 @@ public sealed class MacPlatform : IPlatform
         // Without a window there's nothing to type into; a headless input keeps the API whole.
         _textInput = View == 0 ? new HeadlessTextInput() : new MacTextInput(View, _cursors);
         _menus = new MacMenuService(View);
+        _accessibility = new MacAccessibility(View);
     }
 
     /// <summary>The <c>NSWindow*</c> served, or zero.</summary>
@@ -84,6 +86,9 @@ public sealed class MacPlatform : IPlatform
 
     /// <inheritdoc/>
     public IMenuService Menus => _menus;
+
+    /// <inheritdoc/>
+    public IAccessibility Accessibility => _accessibility;
 
     /// <inheritdoc/>
     public IClipboard Clipboard => _clipboard;
