@@ -27,7 +27,7 @@ public class PresetGoldenTests
 
     [TestMethod]
     [DynamicData(nameof(AllPresets))]
-    public void Structures(string preset) => InPreset(preset, "Structures", 640, 560, () => Column(16,
+    public void Structures(string preset) => InPreset(preset, "Structures", 640, 620, () => Column(16,
         new Box
         {
             Layout = new LayoutStyle { Width = 420 },
@@ -51,6 +51,10 @@ public class PresetGoldenTests
             new Box { Layout = new LayoutStyle { Width = 160 }, Children = [new LinearProgress { Value = 0.3f, Label = "Progress" }] },
             new ToggleButton("sync", "Spin", true, _ => { }) { ShowLabel = true },
             new ToggleButton("stop", "Stop", false, _ => { }) { ShowLabel = true }),
+        Row(
+            new SplitButton("Save", () => { }, [new MenuItem("Save as…")]) { Icon = "download" },
+            new ButtonGroup([new GroupButton("Bold", null) { Icon = "format_bold", IconOnly = true }, new GroupButton("Italic", null) { Icon = "format_italic", IconOnly = true }]),
+            new Pagination(9, 4, _ => { })),
         Row(
             new Checkbox(false, _ => { }) { Label = "Off" },
             new Checkbox(true, null) { Label = "Disabled", Disabled = true },

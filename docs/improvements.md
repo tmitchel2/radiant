@@ -334,9 +334,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   contrast level. Deriving a palette's primary family from the seed would also let the user pick
   an accent while keeping the palette's neutrals.
 - **Not every component reads the component styles yet.** Still fixed at one look: `Fab`,
-  `SplitButton` and `ButtonGroup` (40 px), `DataTable` headers and rows, `TreeView` rows,
-  `DocumentTabs`, `Pagination`'s sizes, `CommandPalette`, `MenuBar`, `StatusBar` and the
-  templates' own blocks. Each wants its sizes and looks moved into a style record.
+  `DataTable` headers and rows, `TreeView` rows, `DocumentTabs`, `Pagination`'s sizes,
+  `MenuBar`, `StatusBar` and the templates' own blocks (a hero's corners, a pricing tier's
+  highlight). Each wants its sizes and looks moved into a style record.
 - **Component styles are theme-wide.** A `SurfaceLook` or a `TabsLook` applies to every instance;
   there's no way to give one screen's tabs a different structure than another's except by
   providing a different theme below it. A per-instance override (a `Look` prop) would be the

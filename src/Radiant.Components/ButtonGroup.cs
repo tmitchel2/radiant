@@ -90,7 +90,7 @@ public sealed record ButtonGroup(IReadOnlyList<GroupButton> Buttons) : Component
                     FlexDirection = FlexDirection.Row,
                     AlignItems = Align.Center,
                     JustifyContent = Justify.Center,
-                    Height = 40 + theme.DensityOffset,
+                    Height = theme.Theme.Components.Button.Height + theme.DensityOffset,
                     MinWidth = 48,
                     Padding = Edges.Symmetric(button.IconOnly ? 12 : 16, 0),
                     ColumnGap = 8,
