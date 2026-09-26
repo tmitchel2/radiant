@@ -85,7 +85,11 @@ namespace Radiant.Graphics2D
         // attachment it draws into, so this is decided once at Initialize and is the same for all
         // four -- a mismatch is a validation error at draw time rather than a soft failure.
         private uint _sampleCount = 1;
-        private readonly List<IntPtr> _frameBuffers = [];
+        // One vertex buffer per batch kind, kept across frames and grown (to the next power of two)
+        // when a frame needs more. Rewriting a buffer the previous frame drew from is safe: the queue
+        // runs writeBuffer after work already submitted.
+        private readonly IntPtr[] _vertexBuffers = new IntPtr[5];
+        private readonly ulong[] _vertexBufferCapacities = new ulong[5];
 
         // Clip/scissor state
         private readonly Stack<ClipState> _clipStack = new();
@@ -638,13 +642,6 @@ namespace Radiant.Graphics2D
         /// </summary>
         public void BeginFrame(uint attachmentWidth, uint attachmentHeight, float pixelScale)
         {
-            // Release buffers from previous frame
-            foreach (var bufferPtr in _frameBuffers)
-            {
-                _wgpu.BufferRelease((Buffer*)bufferPtr);
-            }
-            _frameBuffers.Clear();
-
             _filledVertices.Clear();
             _lineVertices.Clear();
             _msdfVertices.Clear();
@@ -1818,11 +1815,11 @@ namespace Radiant.Graphics2D
 
             // One vertex buffer per kind, uploaded once; the main and layer batches index into them.
             var buffers = new VertexBuffers(
-                UploadIfAny(_filledVertices),
-                UploadIfAny(_lineVertices),
-                UploadIfAny(_sdfShapeVertices),
-                UploadIfAny(_imageVertices),
-                UploadIfAny(_msdfVertices));
+                UploadIfAny(BatchKind.Filled, _filledVertices),
+                UploadIfAny(BatchKind.Line, _lineVertices),
+                UploadIfAny(BatchKind.SdfShape, _sdfShapeVertices),
+                UploadIfAny(BatchKind.Image, _imageVertices),
+                UploadIfAny(BatchKind.Msdf, _msdfVertices));
 
             RenderLayers(slots, buffers);
             ReplayBatches(renderPass, _batches, slots, buffers);
@@ -2043,27 +2040,38 @@ namespace Radiant.Graphics2D
             }
         }
 
-        // Uploads a vertex list into a buffer released at the next BeginFrame, or null if it is empty.
-        private Buffer* UploadIfAny<T>(List<T> vertices) where T : unmanaged
+        // Writes a vertex list into its kind's persistent buffer, growing it first if needed; null if
+        // the list is empty.
+        private Buffer* UploadIfAny<T>(BatchKind kind, List<T> vertices) where T : unmanaged
         {
             if (vertices.Count == 0)
             {
                 return null;
             }
+            var slot = (int)kind;
             var bytes = (ulong)(vertices.Count * sizeof(T));
-            var descriptor = new BufferDescriptor
+            if (bytes > _vertexBufferCapacities[slot])
             {
-                Size = bytes,
-                Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
-                MappedAtCreation = false,
-            };
-            var buffer = _wgpu.DeviceCreateBuffer(_device, in descriptor);
+                if (_vertexBuffers[slot] != IntPtr.Zero)
+                {
+                    _wgpu.BufferRelease((Buffer*)_vertexBuffers[slot]);
+                }
+                var capacity = Math.Max(System.Numerics.BitOperations.RoundUpToPowerOf2(bytes), 4096UL);
+                var descriptor = new BufferDescriptor
+                {
+                    Size = capacity,
+                    Usage = BufferUsage.Vertex | BufferUsage.CopyDst,
+                    MappedAtCreation = false,
+                };
+                _vertexBuffers[slot] = (IntPtr)_wgpu.DeviceCreateBuffer(_device, in descriptor);
+                _vertexBufferCapacities[slot] = capacity;
+            }
+            var buffer = (Buffer*)_vertexBuffers[slot];
             var span = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(vertices);
             fixed (T* data = span)
             {
                 _wgpu.QueueWriteBuffer(_queue, buffer, 0, data, (nuint)bytes);
             }
-            _frameBuffers.Add((IntPtr)buffer);
             return buffer;
         }
 
@@ -2096,12 +2104,12 @@ namespace Radiant.Graphics2D
 
         public void Dispose()
         {
-            // Release any remaining frame buffers
-            foreach (var bufferPtr in _frameBuffers)
+            for (var i = 0; i < _vertexBuffers.Length; i++)
             {
-                _wgpu.BufferRelease((Buffer*)bufferPtr);
+                if (_vertexBuffers[i] != IntPtr.Zero) _wgpu.BufferRelease((Buffer*)_vertexBuffers[i]);
+                _vertexBuffers[i] = IntPtr.Zero;
+                _vertexBufferCapacities[i] = 0;
             }
-            _frameBuffers.Clear();
 
             if (_uniformBuffer != null) _wgpu.BufferRelease(_uniformBuffer);
             foreach (var target in _layerTargets) target.Dispose();
