@@ -28,11 +28,24 @@ public sealed record SegmentedButton(IReadOnlyList<Segment> Segments, IReadOnlyS
         var segmented = theme.Theme.Components.Navigation.Tabs == TabsLook.Segmented;
         var radius = segmented ? theme.Radius(CornerShapeRole.Small) : System.MathF.Min(theme.Radius(CornerShapeRole.Control), 20f);
         var (selected, multi, onChange) = (Selected, MultiSelect, OnChange);
+        // Joined segments share the width equally, but none narrower than the widest label needs
+        // (with the tick a chosen one shows, its gap, padding and borders), so a group given no
+        // width fits its labels rather than cutting them.
+        var widest = 48f;
+        if (!segmented)
+        {
+            var label = theme.Text(TextType.LabelLarge);
+            foreach (var segment in Segments)
+            {
+                var text = Radiant.Text.Paragraph.Layout(segment.Label, label, fonts: context.Root.Fonts).LongestLine;
+                widest = System.MathF.Max(widest, System.MathF.Ceiling(text) + 12f + 18f + 8f + 12f + 2f);
+            }
+        }
         var children = new List<Element?>();
         for (var i = 0; i < Segments.Count; i++)
         {
             var index = i;
-            children.Add(new SegmentBox(Segments[i], selected.Contains(i), First: i == 0, Last: i == Segments.Count - 1, radius, segmented, () =>
+            children.Add(new SegmentBox(Segments[i], selected.Contains(i), First: i == 0, Last: i == Segments.Count - 1, radius, segmented, widest, () =>
             {
                 var next = new HashSet<int>(multi ? selected : []);
                 if (multi && next.Contains(index))
@@ -68,7 +81,7 @@ public sealed record SegmentedButton(IReadOnlyList<Segment> Segments, IReadOnlyS
     /// One segment: rounded only on the group's outer ends and filled when chosen; or, segmented,
     /// rounded all round and raised when chosen.
     /// </summary>
-    private sealed record SegmentBox(Segment Segment, bool Chosen, bool First, bool Last, float Radius, bool Segmented, Action Press) : Component
+    private sealed record SegmentBox(Segment Segment, bool Chosen, bool First, bool Last, float Radius, bool Segmented, float MinWidth, Action Press) : Component
     {
         public override Element? Build(BuildContext context)
         {
@@ -115,7 +128,7 @@ public sealed record SegmentedButton(IReadOnlyList<Segment> Segments, IReadOnlyS
                     AlignItems = Align.Center,
                     JustifyContent = Justify.Center,
                     Height = Segmented ? 30 + theme.DensityOffset / 2f : 40,
-                    MinWidth = 48,
+                    MinWidth = MinWidth,
                     // Segments share the width equally, whatever their labels; segmented ones start from their labels.
                     FlexGrow = 1,
                     FlexBasis = Segmented ? Dimension.Auto : 0,

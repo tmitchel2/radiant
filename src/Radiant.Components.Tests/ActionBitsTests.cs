@@ -126,6 +126,22 @@ public class ActionBitsTests
     }
 
     [TestMethod]
+    public void JoinedSegmentsInARowFitTheirLabelsAndStayEqual()
+    {
+        using var root = Mount(new Box
+        {
+            Layout = new LayoutStyle { FlexDirection = FlexDirection.Row },
+            Children = [new SegmentedButton([new Segment("Day"), new Segment("Fortnight"), new Segment("Month")], new HashSet<int> { 0 }, _ => { })],
+        });
+
+        var segments = All(root).Where(n => n.Role == SemanticsRole.RadioButton).ToList();
+
+        Assert.AreEqual(3, segments.Count);
+        Assert.IsTrue(segments.All(n => MathF.Abs(n.Bounds.Width - segments[0].Bounds.Width) < 0.5f), "equal widths");
+        Assert.IsTrue(segments[0].Bounds.Width > 100f, "wide enough for \"Fortnight\" and the tick");
+    }
+
+    [TestMethod]
     public void AnExtendedFabShowsItsLabel()
     {
         using var small = Mount(new Fab("edit", "Compose"));

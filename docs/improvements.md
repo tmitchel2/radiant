@@ -144,10 +144,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Components (`Radiant.Components`)
 
-- **A `SegmentedButton` needs a width from its parent (in the tonal look).** Its joined segments
-  share the width equally (flex basis 0), so in a row that doesn't give it one they shrink to
-  48 px and their labels truncate. Segmented ones (the `Hairline` look) size to their labels. It
-  could size to its widest segment times the count when nothing constrains it.
 - **Hugging content takes an extra box.** `Tag` and `Badge` sit in a plain box of their own and
   set `AlignSelf = FlexStart` inside it, so they keep to their content across a column yet line
   up with a row's alignment. A "hug" alignment in the layout would do it without the box.
