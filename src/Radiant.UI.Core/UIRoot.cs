@@ -31,6 +31,7 @@ public sealed class UIRoot : IDisposable
     private readonly List<EffectHook> _effects = [];
     private readonly HashSet<ScrollRenderNode> _scrollers = [];
     private readonly HashSet<GridRenderNode> _grids = [];
+    private readonly HashSet<Facebook.Yoga.Node> _hugs = [];
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
     private readonly List<TickerEntry> _tickers = [];
@@ -653,6 +654,7 @@ public sealed class UIRoot : IDisposable
             YGNodeStyleSetHeight(yoga, size.Y);
             Size = size;
         }
+        ResolveHugs();
         foreach (var grid in _grids)
         {
             grid.ApplyCellWidth();
@@ -765,6 +767,37 @@ public sealed class UIRoot : IDisposable
     internal void AddScroller(ScrollRenderNode scroller) => _scrollers.Add(scroller);
 
     internal void AddGrid(GridRenderNode grid) => _grids.Add(grid);
+
+    /// <summary>Registers (or, with <paramref name="hugs"/> false, forgets) a node whose style hugs (<see cref="Align.Hug"/>).</summary>
+    internal void TrackHug(Facebook.Yoga.Node node, bool hugs)
+    {
+        if (hugs)
+        {
+            _hugs.Add(node);
+        }
+        else
+        {
+            _hugs.Remove(node);
+        }
+    }
+
+    // A hugging node takes its parent's alignment, but the start where the parent stretches. Only a
+    // change marks the node dirty, so a settled tree costs a look at each hugging node.
+    private void ResolveHugs()
+    {
+        foreach (var node in _hugs)
+        {
+            if (YGNodeGetOwner(node) is not { } parent)
+            {
+                continue;
+            }
+            var align = YGNodeStyleGetAlignItems(parent) == Facebook.Yoga.YGAlign.Stretch ? Facebook.Yoga.YGAlign.FlexStart : Facebook.Yoga.YGAlign.Auto;
+            if (YGNodeStyleGetAlignSelf(node) != align)
+            {
+                YGNodeStyleSetAlignSelf(node, align);
+            }
+        }
+    }
 
     internal void RemoveGrid(GridRenderNode grid) => _grids.Remove(grid);
 

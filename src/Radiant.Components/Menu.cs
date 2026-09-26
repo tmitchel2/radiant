@@ -39,6 +39,7 @@ public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, 
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
+        var style = theme.Theme.Components.Overlay;
         var root = context.Root;
         var close = OnClose;
         var items = Items;
@@ -50,7 +51,7 @@ public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, 
             {
                 if (item.DividerBefore)
                 {
-                    rows.Add(new Box { Layout = new LayoutStyle { Padding = new Edges(0, 8, 0, 8) }, Children = [new Divider()] });
+                    rows.Add(new Box { Layout = new LayoutStyle { Padding = new Edges(0, style.MenuPadding, 0, style.MenuPadding) }, Children = [new Divider()] });
                 }
                 rows.Add(new PressableSurface
                 {
@@ -60,6 +61,7 @@ public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, 
                     // Named by its text alone: its shortcut is a detail, not its name.
                     Label = item.Text,
                     ShowDisabled = item.Disabled ? true : null,
+                    CornerShape = style.MenuItemShape,
                     OnPress = () =>
                     {
                         close();
@@ -69,27 +71,25 @@ public sealed partial record Menu(ElementRef Anchor, bool Open, Action OnClose, 
                     {
                         FlexDirection = FlexDirection.Row,
                         AlignItems = Radiant.Layout.Align.Center,
-                        MinHeight = 48 + theme.DensityOffset,
+                        MinHeight = style.MenuItemHeight + theme.DensityOffset,
                         Padding = Edges.Symmetric(12, 0),
                         ColumnGap = 12,
                     },
                     Children =
                     [
-                        item.Icon is null ? null : new SurfaceIcon(item.Icon) { Legibility = Legibility.Medium },
-                        new SurfaceText(item.Text) { TextType = TextType.LabelLarge, Layout = new LayoutStyle { FlexGrow = 1 } },
-                        item.Shortcut is null ? null : new SurfaceText(item.Shortcut) { TextType = TextType.LabelLarge, Legibility = Legibility.Medium },
+                        item.Icon is null ? null : new SurfaceIcon(item.Icon) { IconSize = style.MenuIconSize, Legibility = Legibility.Medium },
+                        new SurfaceText(item.Text) { TextType = style.MenuItemText, Layout = new LayoutStyle { FlexGrow = 1 } },
+                        item.Shortcut is null ? null : new SurfaceText(item.Shortcut) { TextType = style.MenuItemText, Legibility = Legibility.Medium },
                     ],
                 });
             }
 
-            return new Anchored(anchor, new DismissableLayer(new FocusScope(new Surface
+            return new Anchored(anchor, new DismissableLayer(new FocusScope(SurfaceLooks.Surface(style.Menu) with
             {
-                SurfaceColor = SurfaceName.SurfaceContainer,
-                CornerShape = CornerShapeRole.ExtraSmall,
-                Elevation = ElevationLevel.Level2,
+                CornerShape = style.MenuShape,
                 ClipContent = true,
                 Semantics = new Semantics { Role = SemanticsRole.Menu },
-                Layout = new LayoutStyle { MinWidth = matchWidth ? anchor.Bounds.Width : 112, MaxWidth = matchWidth ? 560 : 280, Padding = Edges.Symmetric(0, 8) },
+                Layout = new LayoutStyle { MinWidth = matchWidth ? anchor.Bounds.Width : 112, MaxWidth = matchWidth ? 560 : 280, Padding = Edges.Symmetric(style.MenuItemInset, style.MenuPadding) },
                 Children =
                 [
                     new Box

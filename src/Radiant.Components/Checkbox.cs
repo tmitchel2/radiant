@@ -41,41 +41,54 @@ public sealed record Checkbox(bool Checked, Action<bool>? OnChange) : Component
         var motion = theme.Theme.Motion;
         var fill = context.UseTransition(on ? 1f : 0f, motion.Reduced ? TimeSpan.Zero : motion.ShortDuration, motion.Standard);
 
-        // Unticked: an outline in the quiet content colour. Ticked: filled in the accent, with its "on" colour check.
-        var outline = Disabled
-            ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
-            : Error ? theme.Get(SurfaceName.Error) : theme.Get(SurfaceName.SurfaceVariant, on: true);
-        var accent = Disabled ? outline : theme.Get(family);
-        var mark = Disabled ? theme.SurfaceColor(surface) : theme.Get(family, on: true);
-        var box = new Box
+        var style = theme.Theme.Components.Selection;
+        var recolor = Disabled && theme.RecolorsDisabled();
+        var size = style.CheckboxSize;
+
+        // Unticked: an outline in the quiet content colour (or, without halos, the outline colour,
+        // darkening under the pointer). Ticked: filled in the accent, with its "on" colour check.
+        Element Box(SelectionVisualState state)
         {
-            Layout = new LayoutStyle { Width = 18, Height = 18, AlignItems = Align.Center, JustifyContent = Justify.Center },
-            CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
-            BorderWidth = fill >= 1f ? 0f : 2f,
-            BorderColor = outline,
-            Background = fill <= 0f ? null : Radiant.Graphics2D.Color.Lerp(Radiant.Graphics2D.Color.Transparent, accent, fill),
-            Children =
-            [
-                fill <= 0.5f ? null : new TextBlock(Indeterminate ? "remove" : "check")
-                {
-                    IsDecorative = true,
-                    Wrap = false,
-                    Style = new Radiant.Text.TextStyle
+            var outline = recolor
+                ? theme.ContentColor(surface with { Content = surface.Content with { Opacity = Legibility.Low } })
+                : Error ? theme.Get(SurfaceName.Error)
+                : style.Halo ? theme.Get(SurfaceName.SurfaceVariant, on: true)
+                : state.Hovered && !state.Disabled ? theme.Get(SurfaceName.SurfaceVariant, on: true) : theme.Outline;
+            var accent = recolor ? outline : theme.Get(family);
+            var mark = recolor ? theme.SurfaceColor(surface) : theme.Get(family, on: true);
+            return new Box
+            {
+                Layout = new LayoutStyle { Width = size, Height = size, AlignItems = Align.Center, JustifyContent = Justify.Center },
+                CornerRadii = Radiant.Graphics2D.CornerRadii.All(style.CheckboxRadius),
+                BorderWidth = fill >= 1f ? 0f : style.BorderWidth,
+                BorderColor = outline,
+                Background = fill <= 0f ? (style.Halo ? null : theme.Get(SurfaceName.SurfaceBright))
+                    : Radiant.Graphics2D.Color.Lerp(style.Halo ? Radiant.Graphics2D.Color.Transparent : theme.Get(SurfaceName.SurfaceBright), accent, fill),
+                Children =
+                [
+                    fill <= 0.5f ? null : new TextBlock(Indeterminate ? "remove" : "check")
                     {
-                        FontFamily = Radiant.Text.FontLibrary.Icons,
-                        Size = 18,
-                        LineHeight = 18,
-                        Weight = 700,
-                        Color = mark,
+                        IsDecorative = true,
+                        Wrap = false,
+                        Style = new Radiant.Text.TextStyle
+                        {
+                            FontFamily = Radiant.Text.FontLibrary.Icons,
+                            Size = size,
+                            LineHeight = size,
+                            Weight = 700,
+                            Color = mark,
+                        },
+                        Layout = new LayoutStyle { Width = size, Height = size },
                     },
-                    Layout = new LayoutStyle { Width = 18, Height = 18 },
-                },
-            ],
-        };
+                ],
+            };
+        }
         var onChange = OnChange;
         var next = !Checked;
-        return new SelectionControl(_ => box, 18)
+        return new SelectionControl(Box, size)
         {
+            IndicatorHeight = size,
+            IndicatorRadius = style.CheckboxRadius,
             Label = Label,
             AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.CheckBox,

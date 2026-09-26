@@ -4,6 +4,14 @@
 `Radiant.Theming` (the theme and surface state) and `Radiant.Generators` (style facets). Their look is
 kept by golden images of every variant and state, light and dark (see [testing.md](testing.md)).
 
+## Styles from the theme
+
+A component reads its sizes, its variants' colours and, where themes differ, its structure from
+`Theme.Components` ([theming.md](theming.md#component-styles)): the same `Tabs` are underlined in
+the `Tonal` theme and a segmented tray in `Hairline` ones, a `TextField`'s label floats or sits
+above, a `Switch` is expressive or compact. Only the look changes: behaviour, keys and what
+assistive technology hears are the same.
+
 ## Facets
 
 Components share props through style facets, generated onto each component by
@@ -14,7 +22,7 @@ Components share props through style facets, generated onto each component by
 | `IHasBackgroundColor` | `SurfaceColor`, `SurfaceLegibility`, `SurfaceOnToggle`, `SurfaceContainerToggle`, `ContentColor`, `ContentLegibility`, `ContentOnToggle`, `ContentContainerToggle`, `ContentFocusedColor`, `ShowSurface`, `ShowError`, `ShowDisabled` |
 | `IHasCornerShape` | `CornerShape` |
 | `IHasElevation` | `Elevation` |
-| `IHasOutline` | `ShowOutline`, `OutlineWidth`, `OutlineVariant` |
+| `IHasOutline` | `ShowOutline`, `OutlineWidth`, `OutlineVariant`, `OutlineInContentColor`, `OutlineColor` |
 | `IHasText` | `Text`, `TextType` |
 | `IHasPressable` | `OnPress` |
 | `IHasLayout` | `Layout` |
@@ -31,7 +39,8 @@ turns a filled button red.
 | `Surface` | Applies its background-colour props to the inherited surface state and draws the surface (colour, corners, elevation, outline); children inherit the new state |
 | `PressableSurface` | A surface that presses: focus, pointer, Enter and Space; hover, focus and pressed state layers; disabled fades and stops responding; a button to assistive technology (or another `Role`, with `Selected` and `Expanded` states) |
 | `SurfaceText` | Text in the surface's content colour, in a type-scale step, with optional legibility; `HeadingLevel` makes it a heading to assistive technology |
-| `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a pill-shaped `PressableSurface` with a label |
+| `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a `PressableSurface` with a label, shaped by the theme's `Control` corners (a pill by default); a leading icon, a `TrailingIcon` ("Send →") and a `Trailing` element (an inline count) |
+| `Composer` | A framed box for a message or prompt: an optional header (a mode switch), text that grows, actions and a send button disabled until there's text; ⌘Enter sends |
 | `Card` | Elevated, filled and outlined cards |
 | `SurfaceIcon` | A Material Symbols icon in the content colour (decorative: hidden from assistive technology) |
 | `IconButton` | Standard, filled, tonal and outlined icon buttons, named by a required label |
@@ -47,14 +56,15 @@ turns a filled button red.
 | `Dialog` | Modal: scrim, focus trap, Escape and scrim close (unless it must be answered), focus restored, fade and scale |
 | `Tooltip` | After the pointer rests 600 ms, a small inverse-surface label beside its child |
 | `Chip` | Assist, filter (tick and tonal fill when chosen) and input (trailing ×) chips, elevated or outlined |
-| `Badge` | A dot or a count (99+) in the error colour on the top right of its child |
+| `Tag` | A small label tinted in a colour family, or outlined in themes that outline them; a bolder `Value` before its text ("**611** pieces") |
+| `Badge` | A dot or a count (99+) in the error colour on the top right of its child; `Inline`, a quiet count after it in a row |
 | `LinearProgress` | Determinate, or an indeterminate sliding segment |
 | `CircularProgress` | A ring filling clockwise from the top, or a spinner whose arc turns as it grows and shrinks |
 | `Slider` | Continuous or stepped; drag, press the track, or use arrows, Page Up/Down, Home and End |
-| `Tabs` | Tabs with optional icons and an indicator that slides to the chosen tab; Left and Right choose neighbours |
+| `Tabs` | Tabs with optional icons and an indicator that slides to the chosen tab, underlined or a pill in a tray as the theme says; Left and Right choose neighbours |
 | `TopAppBar` | Navigation button, title and actions; the container colour when content scrolls under it |
-| `NavigationRail` | A desktop side rail: icons in pills that fill when current, labels, badges |
-| `NavigationDrawer` | A sidebar: heading, sections, rows with counts, the current one in a filled pill |
+| `NavigationRail` | A desktop side rail: icons in `Control`-shaped indicators that fill when current, labels, badges |
+| `NavigationDrawer` | A sidebar: heading, sections, rows with counts, the current one filled in the `Control` shape |
 | `SegmentedButton` | Joined outlined segments, single or multi choice, ticked when chosen |
 | `ButtonGroup`, `GroupButton` | Related actions joined into one outlined control (Bold, Italic, Underline), each its own button, icon-only or labelled, disabled apart |
 | `SelectField` | A read-only field that drops a menu (as wide as itself) of options, the chosen one ticked |
@@ -85,7 +95,7 @@ turns a filled button red.
 | `Banner` | A message across a page or pane that stays until dealt with: an icon, text and actions |
 | `Alert`, `AlertKind` | An in-page message: info, success, warning or error colour and icon, title, text, actions, dismiss; announced as an alert |
 | `Fab` | The floating main action: a 56 px rounded square, or extended with its label |
-| `ToggleButton`, `ToggleGroup` | Icon buttons that stay on; groups of one-of (alignment) or any (bold, italic) |
+| `ToggleButton`, `ToggleGroup` | Icon buttons that stay on, in the theme's toggle colour, labelled with `ShowLabel`; groups of one-of (alignment) or any (bold, italic) |
 | `Toolbar` | A row of controls where Left/Right/Home/End move focus, stopping at its ends |
 | `SplitButton` | The usual action with a joined arrow dropping its alternatives |
 | `NumberField` | A number typed in the culture's format or stepped by its arrows, Up/Down and Page Up/Down; min, max, step, decimals, suffix |
@@ -111,7 +121,7 @@ turns a filled button red.
 | `DockPanel`, `DockLayout`, `DockGroup`, `DockItem`, `DockArea` | IDE-style docking: panels as tabs on the left, right, bottom and centre, with dividers between. Drag a tab to another area (the landing area is shown, and near an edge it docks on that side even where nothing is yet); each tab's context menu moves it or closes it. Controlled by an immutable `DockLayout` (`Move`, `Close`, `Activate`, `Resize`), so the layout can be saved |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |
-| `TextField` | Filled and outlined fields (a `Trailing` element can replace the trailing icon): the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
+| `TextField` | Filled, outlined and plain fields (plain: just the text, for a composer); in a theme with labels above, the label sits over a bordered input (a `Trailing` element can replace the trailing icon): the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like
 React's: they show the value they're given and report presses with the value they should become.
@@ -123,9 +133,15 @@ round the indicator.
 Icons are Material Symbols Rounded (Apache-2.0), drawn as text: an icon's name, set in
 `FontLibrary.Icons`, becomes the icon through the font's ligatures. FILL, weight and optical size
 are variable (`TextStyle.Variations`).
-- **Embedded set:** Radiant embeds 272 common icons (408 KB). The list is `tools/icons/icons.txt`;
+- **Embedded set:** Radiant embeds 295 common icons (445 KB). The list is `tools/icons/icons.txt`;
   `tools/icons/subset.sh` rebuilds the font from a pinned upstream commit.
 - **All icons:** register the full font under `FontLibrary.Icons` for the rest.
+- **Outline icons:** a theme whose `IconStyle.Set` is `IconSet.Outline` (the Hairline presets)
+  draws Lucide's outline icons (ISC) instead, by the same names: `OutlineIcons.Glyph(name)` gives
+  the character in `FontLibrary.OutlineIconFont`. `tools/icons/outline-map.txt` pairs each name
+  with its Lucide icon, and `tools/icons/outline.sh` cuts the font (90 KB) and writes the map
+  from a pinned release. An icon with no pair is drawn from Material Symbols; outline icons
+  don't fill.
 
 ## Primitives (`Radiant.Components.Primitives`)
 
@@ -153,14 +169,20 @@ the colour underneath, so the result can be opaque, which is also better for tex
 
 `Radiant.Gallery` is a `SidebarLayout` app (see [templates.md](templates.md)). Its first page is
 the component catalogue, with a button that shuffles the theme (seed, variant, light or dark,
-corner scale) and animates everything to it; the other pages are the templates.
+corner scale) and animates everything to it; the other pages are the templates. The app bar's
+palette button switches between the theme presets (Tonal, Quartz, Linen) and light and dark, live
+and animated, as do the View menu, the command palette and the Settings page.
 
 ```
 dotnet run --project src/Radiant.Gallery                                            # in a window
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2     # to a PNG
+dotnet run --project src/Radiant.Gallery -- --snapshot out.png --theme Linen        # in a preset
 dotnet run --project src/Radiant.Gallery -- --snapshot out.png --page 6 --height 900  # one page
 dotnet run -c Release --project src/Radiant.Gallery -- --snapshot out.png --page 0 --bench 120  # frame timings
 ```
 
+The Studio page (13) is a whole design tool built only from stock components: switch themes on it
+to see every component's structure change together.
+
 Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 table, 6 landing page,
-7 store, 8 workspace, 9 mail, 10 new project (wizard), 11 preferences.
+7 store, 8 workspace, 9 mail, 10 new project (wizard), 11 preferences, 12 docking, 13 studio.

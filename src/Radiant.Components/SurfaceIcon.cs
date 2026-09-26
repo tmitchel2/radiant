@@ -35,23 +35,27 @@ public sealed partial record SurfaceIcon : Component, IHasIcon, IHasLayout
             surface = surface with { Content = surface.Content with { Opacity = legibility } };
         }
         var rightToLeft = context.UseRightToLeft();
-        var size = IconSize ?? 24f;
+        var icons = theme.Theme.Components.Icons;
+        var size = IconSize ?? icons.Size;
         var icon = Icon ?? "";
         if (rightToLeft && MirrorInRightToLeft && s_mirrors.TryGetValue(icon, out var mirror))
         {
             icon = mirror;
         }
-        return new TextBlock(icon)
+        // Outline icons draw the name's Lucide glyph where there is one, Material Symbols otherwise.
+        var outline = icons.Set == IconSet.Outline ? OutlineIcons.Glyph(icon) : null;
+        return new TextBlock(outline ?? icon)
         {
             IsDecorative = true,
             Wrap = false,
             Style = new TextStyle
             {
-                FontFamily = FontLibrary.Icons,
+                FontFamily = outline is null ? FontLibrary.Icons : FontLibrary.OutlineIconFont,
                 Size = size,
                 LineHeight = size,
+                Weight = icons.Weight,
                 Color = theme.ContentColor(surface),
-                Variations = IconFilled == true ? s_filled : [],
+                Variations = IconFilled == true && outline is null ? s_filled : [],
             },
             Layout = new LayoutStyle { Width = size, Height = size }.Merge(Layout ?? default),
         };

@@ -35,4 +35,10 @@ public enum CornerShapeRole
 
     /// <summary>Fully rounded: pills and circles.</summary>
     Full,
+
+    /// <summary>
+    /// Buttons, icon buttons, button groups, search fields and the current navigation item: a
+    /// pill by default, gently rounded in themes whose controls are.
+    /// </summary>
+    Control,
 }

@@ -56,6 +56,10 @@ public sealed class ResolvedTheme
     {
         ArgumentNullException.ThrowIfNull(theme);
         var colors = theme.Colors;
+        if (colors.Roles is { } picked)
+        {
+            return FromRoles(theme, picked);
+        }
         var seed = (int)colors.Seed.ToArgb();
         var scheme = Scheme(seed, colors);
         var roles = new Color[s_names * 4];
@@ -116,6 +120,93 @@ public sealed class ResolvedTheme
             Argb(scheme, RadiantDynamicColors.Background()));
     }
 
+    // Hand-picked roles fill the families as the seed's scheme's roles do. Raised contrast (above
+    // 0, up to 1) moves quiet content towards the full content colour and borders towards stronger ones.
+    private static ResolvedTheme FromRoles(Theme theme, ColorRoles c)
+    {
+        var level = (float)Math.Clamp(theme.Colors.ContrastLevel, 0, 1);
+        if (theme.Colors.AccentFromSeed)
+        {
+            var scheme = Scheme((int)theme.Colors.Seed.ToArgb(), theme.Colors);
+            var primary = new ColorFamily(
+                Argb(scheme, RadiantDynamicColors.Primary()),
+                Argb(scheme, RadiantDynamicColors.OnPrimary()),
+                Argb(scheme, RadiantDynamicColors.PrimaryContainer()),
+                Argb(scheme, RadiantDynamicColors.OnPrimaryContainer()));
+            c = c with
+            {
+                Primary = primary,
+                PrimaryFixed = new ColorFamily(
+                    Argb(scheme, RadiantDynamicColors.PrimaryFixed()),
+                    Argb(scheme, RadiantDynamicColors.OnPrimaryFixed()),
+                    Argb(scheme, RadiantDynamicColors.PrimaryFixedDim()),
+                    Argb(scheme, RadiantDynamicColors.OnPrimaryFixedVariant())),
+                InversePrimary = Argb(scheme, RadiantDynamicColors.InversePrimary()),
+            };
+        }
+        if (level > 0f)
+        {
+            c = c with
+            {
+                OnSurfaceVariant = Oklab.Lerp(c.OnSurfaceVariant, c.OnSurface, 0.6f * level),
+                Outline = Oklab.Lerp(c.Outline, c.OnSurfaceVariant, 0.8f * level),
+                OutlineVariant = Oklab.Lerp(c.OutlineVariant, c.Outline, level),
+            };
+        }
+        var roles = new Color[s_names * 4];
+        void Set(SurfaceName name, Color color, Color on, Color container, Color onContainer)
+        {
+            var i = (int)name * 4;
+            roles[i] = color;
+            roles[i + 1] = on;
+            roles[i + 2] = container;
+            roles[i + 3] = onContainer;
+        }
+        void Family(SurfaceName name, ColorFamily f) => Set(name, f.Color, f.On, f.Container, f.OnContainer);
+        ColorFamily Fixed(ColorFamily? chosen, ColorFamily family) =>
+            chosen ?? new ColorFamily(family.Container, family.OnContainer, family.Container, family.OnContainer);
+
+        Set(SurfaceName.Surface, c.Surface, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        Set(SurfaceName.SurfaceDim, c.SurfaceDim, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        Set(SurfaceName.SurfaceBright, c.SurfaceBright, c.OnSurface, c.SurfaceContainer, c.OnSurface);
+        foreach (var (name, container) in new[]
+        {
+            (SurfaceName.SurfaceContainerLowest, c.SurfaceContainerLowest),
+            (SurfaceName.SurfaceContainerLow, c.SurfaceContainerLow),
+            (SurfaceName.SurfaceContainer, c.SurfaceContainer),
+            (SurfaceName.SurfaceContainerHigh, c.SurfaceContainerHigh),
+            (SurfaceName.SurfaceContainerHighest, c.SurfaceContainerHighest),
+        })
+        {
+            Set(name, container, c.OnSurface, container, c.OnSurfaceVariant);
+        }
+        Set(SurfaceName.SurfaceVariant, c.Surface, c.OnSurfaceVariant, c.SurfaceVariant, c.OnSurfaceVariant);
+        Set(SurfaceName.Inverse, c.InverseSurface, c.InverseOnSurface, c.InversePrimary, c.InverseSurface);
+        Family(SurfaceName.Primary, c.Primary);
+        Family(SurfaceName.PrimaryFixed, Fixed(c.PrimaryFixed, c.Primary));
+        Family(SurfaceName.Secondary, c.Secondary);
+        Family(SurfaceName.SecondaryFixed, Fixed(c.SecondaryFixed, c.Secondary));
+        Family(SurfaceName.Tertiary, c.Tertiary);
+        Family(SurfaceName.TertiaryFixed, Fixed(c.TertiaryFixed, c.Tertiary));
+        Family(SurfaceName.Error, c.Error);
+        Family(SurfaceName.Success, c.Success);
+        Family(SurfaceName.Warning, c.Warning);
+        Family(SurfaceName.Info, c.Info);
+        return new ResolvedTheme(theme, roles, c.Outline, c.OutlineVariant, c.Scrim, c.Shadow, c.Background);
+    }
+
+    /// <summary>
+    /// This theme with <paramref name="theme"/>'s shapes, type, elevation, state layers, motion,
+    /// density and component styles, but the colours already worked out here: for restyling part
+    /// of an app (<see cref="ThemeScope"/>) without working the colours out again, so it follows
+    /// the app's colours even part way through a transition.
+    /// </summary>
+    public ResolvedTheme Restyled(Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        return new ResolvedTheme(theme with { Colors = Theme.Colors }, _roles, Outline, OutlineVariant, Scrim, Shadow, Background);
+    }
+
     /// <summary>A family's colour, "on" colour, container or content on the container.</summary>
     public Color Get(SurfaceName name, bool on = false, bool container = false) =>
         _roles[(int)name * 4 + (container ? 2 : 0) + (on ? 1 : 0)];
@@ -152,14 +243,17 @@ public sealed class ResolvedTheme
     }
 
     /// <summary>
-    /// A state layer over a state's surface, opaque: its content colour mixed in at
-    /// <paramref name="opacity"/> (hover, focus, pressed), in sRGB for the same reason as
-    /// <see cref="ContentColor"/>.
+    /// A state layer over a state's surface, opaque: its content colour (or, with
+    /// <see cref="StateLayerLook.Shade"/>, black or white) mixed in at <paramref name="opacity"/>
+    /// (hover, focus, pressed), in sRGB for the same reason as <see cref="ContentColor"/>.
     /// </summary>
     public Color StateLayerColor(SurfaceState state, float opacity)
     {
         ArgumentNullException.ThrowIfNull(state);
-        return MixSrgb(SurfaceColor(state), Get(state.Content with { Opacity = null }), opacity);
+        var over = Theme.Components.Interaction.StateLayer == StateLayerLook.Shade
+            ? Theme.Colors.IsDark ? Color.White : Color.Black
+            : Get(state.Content with { Opacity = null });
+        return MixSrgb(SurfaceColor(state), over, opacity);
     }
 
     /// <summary>Mixes two colours in sRGB (gamma-encoded) space, as CSS and Material blend.</summary>
@@ -225,6 +319,9 @@ public sealed class ResolvedTheme
                 ExtraLarge = Mix(shape.ExtraLarge, target.ExtraLarge),
                 ExtraLargeIncreased = Mix(shape.ExtraLargeIncreased, target.ExtraLargeIncreased),
                 ExtraExtraLarge = Mix(shape.ExtraExtraLarge, target.ExtraExtraLarge),
+                // A pill's radius is effectively infinite: mixed from there it would stay a pill
+                // until the last moment, so it's mixed from a radius that's already a pill on any control.
+                Control = Mix(MathF.Min(shape.Control, 64f), MathF.Min(target.Control, 64f)),
             },
         };
         return new ResolvedTheme(theme, roles,

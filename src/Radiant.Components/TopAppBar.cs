@@ -34,15 +34,16 @@ public sealed partial record TopAppBar(string Title) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return new Surface
+        var style = context.UseTheme().Theme.Components.Navigation;
+        var bar = new Surface
         {
-            SurfaceColor = Scrolled ? SurfaceName.SurfaceContainer : SurfaceName.Surface,
+            SurfaceColor = Scrolled && style.AppBarTonalOnScroll ? SurfaceName.SurfaceContainer : SurfaceName.Surface,
             Semantics = new Semantics { Role = SemanticsRole.Group, Label = Title },
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,
                 AlignItems = Align.Center,
-                Height = 64,
+                Height = style.AppBarHeight,
                 Padding = Edges.Symmetric(4, 0),
                 ColumnGap = 4,
                 AlignSelf = Align.Stretch,
@@ -50,9 +51,15 @@ public sealed partial record TopAppBar(string Title) : Component
             Children =
             [
                 NavigationIcon is null ? new Box { Layout = new LayoutStyle { Width = 12 } } : new IconButton(NavigationIcon, NavigationLabel) { TestId = Navigation, OnPress = OnNavigation },
-                new SurfaceText(Title) { TextType = TextType.TitleLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
+                new SurfaceText(Title) { TextType = style.AppBarTitle, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
                 .. Actions,
             ],
+        };
+        // A bar that keeps its colour is set off from the page by a line instead.
+        return style.AppBarTonalOnScroll ? bar : new Box
+        {
+            Layout = new LayoutStyle { AlignSelf = Align.Stretch },
+            Children = [bar, new Divider()],
         };
     }
 }

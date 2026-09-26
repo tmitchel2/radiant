@@ -351,7 +351,8 @@ internal sealed partial record VerticalSlice(ThemeController Themes) : Component
                 Variant = s_variants[random.Next(s_variants.Length)],
                 IsDark = random.Next(2) == 0,
             },
-            Shape = new ShapeScale().Scaled(s_corners[random.Next(s_corners.Length)]),
+            // Corners scale from the current theme's own.
+            Shape = (ThemePresets.Find(current.Name ?? "")?.Shape ?? new ShapeScale()).Scaled(s_corners[random.Next(s_corners.Length)]),
         }, TimeSpan.FromMilliseconds(400));
     }
 }

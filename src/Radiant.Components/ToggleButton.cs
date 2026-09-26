@@ -6,9 +6,10 @@ using Radiant.UI.Core;
 namespace Radiant.Components;
 
 /// <summary>
-/// An icon button that stays on or off (bold, pin, a view mode): filled with the secondary container
-/// while on, its icon filled too. A button to assistive technology, named by its label and
-/// selected while on.
+/// An icon button that stays on or off (bold, pin, a view mode): filled while on (in the theme's
+/// toggle colour, the secondary container by default), its icon filled too. With
+/// <see cref="ShowLabel"/> its label shows beside the icon. A button to assistive technology, named
+/// by its label and selected while on.
 /// Controlled: shows <paramref name="On"/> and reports each press with the new state.
 /// </summary>
 /// <param name="Icon">The icon.</param>
@@ -27,15 +28,20 @@ public sealed record ToggleButton(string Icon, string Label, bool On, Action<boo
     /// <summary>Whether it can't be used.</summary>
     public bool Disabled { get; init; }
 
+    /// <summary>Whether the label shows beside the icon.</summary>
+    public bool ShowLabel { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
+        System.ArgumentNullException.ThrowIfNull(context);
         var (on, change) = (On, OnChange);
-        return new PressableSurface
+        var theme = context.UseTheme().Theme;
+        var labelled = ShowLabel;
+        return (On ? SurfaceLooks.Pressable(theme.Components.Button.ToggleOn) : new PressableSurface()) with
         {
-            SurfaceColor = On ? SurfaceName.Secondary : null,
-            SurfaceContainerToggle = On ? true : null,
             ShowDisabled = Disabled ? true : null,
+            ScaleOnPress = true,
             CornerShape = CornerShapeRole.Small,
             Label = Label,
             TabIndex = TabIndex,
@@ -43,8 +49,14 @@ public sealed record ToggleButton(string Icon, string Label, bool On, Action<boo
             Role = Exclusive ? SemanticsRole.RadioButton : SemanticsRole.CheckBox,
             Checked = On,
             OnPress = () => change?.Invoke(!on),
-            Layout = new LayoutStyle { Width = 36, Height = 36, AlignItems = Align.Center, JustifyContent = Justify.Center },
-            Children = [new SurfaceIcon(Icon) { IconSize = 20, IconFilled = On, Legibility = On ? null : Legibility.Medium }],
+            Layout = labelled
+                ? new LayoutStyle { FlexDirection = FlexDirection.Row, Height = 36, AlignItems = Align.Center, ColumnGap = 6, Padding = Edges.Symmetric(10, 0) }
+                : new LayoutStyle { Width = 36, Height = 36, AlignItems = Align.Center, JustifyContent = Justify.Center },
+            Children =
+            [
+                new SurfaceIcon(Icon) { IconSize = labelled ? 18 : 20, IconFilled = On && theme.Components.Icons.FillChosen, Legibility = On ? null : Legibility.Medium },
+                labelled ? new SurfaceText(Label) { TextType = TextType.LabelLarge, Legibility = On ? null : Legibility.High } : null,
+            ],
         };
     }
 }

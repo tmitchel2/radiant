@@ -11,7 +11,7 @@ internal sealed class CanvasRenderNode : RenderNode
         Element = (Canvas)element;
         if (old is null || old.Layout != Element.Layout)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
         }
     }
 

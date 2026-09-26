@@ -45,20 +45,22 @@ public sealed record ListItem(string Headline) : Component
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
+        var style = theme.Theme.Components.List;
+        var fillChosen = theme.Theme.Components.Icons.FillChosen;
         var lines = SupportingText is null ? 1 : 1 + Math.Clamp(SupportingLines, 1, 2);
-        var height = (lines switch { 1 => 56f, 2 => 72f, _ => 88f }) + theme.DensityOffset;
+        var height = style.OneLineHeight + style.LineStep * (lines - 1) + theme.DensityOffset;
         Element?[] children =
         [
-            LeadingIcon is null ? null : new SurfaceIcon(LeadingIcon) { Legibility = Legibility.Medium, IconFilled = Selected },
+            LeadingIcon is null ? null : new SurfaceIcon(LeadingIcon) { Legibility = Legibility.Medium, IconFilled = Selected && fillChosen },
             new Box
             {
                 Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                 Children =
                 [
-                    new SurfaceText(Headline) { TextType = TextType.BodyLarge, MaxLines = 1 },
+                    new SurfaceText(Headline) { TextType = style.Headline, MaxLines = 1 },
                     SupportingText is null ? null : new SurfaceText(SupportingText)
                     {
-                        TextType = TextType.BodyMedium,
+                        TextType = style.Supporting,
                         Legibility = Legibility.Medium,
                         MaxLines = SupportingLines,
                     },
@@ -73,18 +75,17 @@ public sealed record ListItem(string Headline) : Component
             FlexDirection = FlexDirection.Row,
             AlignItems = Align.Center,
             MinHeight = height,
-            Padding = new Edges(16, 8, 24, 8),
-            ColumnGap = 16,
+            Padding = new Edges(style.Padding, 8, style.Padding * 1.5f, 8),
+            ColumnGap = style.Padding,
         };
         if (OnPress is null && !Selected)
         {
             return new Box { Layout = layout, Children = children };
         }
-        return new PressableSurface
+        return (Selected ? SurfaceLooks.Pressable(style.Selected) : new PressableSurface()) with
         {
             InsetFocusRing = true,
-            SurfaceColor = Selected ? SurfaceName.Secondary : null,
-            SurfaceContainerToggle = Selected ? true : null,
+            CornerShape = style.Shape,
             ShowDisabled = Disabled ? true : null,
             OnPress = OnPress,
             Role = SemanticsRole.ListItem,

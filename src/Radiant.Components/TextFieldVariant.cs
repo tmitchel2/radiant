@@ -8,4 +8,10 @@ public enum TextFieldVariant
 
     /// <summary>An outlined container: for forms with many fields.</summary>
     Outlined,
+
+    /// <summary>
+    /// Just the text: no container, border or visible label (the label still names it to assistive
+    /// technology), for a field inside something that frames it, like a message composer.
+    /// </summary>
+    Plain,
 }

@@ -32,6 +32,61 @@ public class LayoutTests
         Assert.AreEqual(new Vector2(30, 20), row.Children[1].Size);
     }
 
+    // A 40 × 20 box hugging, in a 200 × 100 parent laid out as asked.
+    private static RenderNode Hugging(FlexDirection direction, Align? alignItems)
+    {
+        var root = new UIRoot(new Box
+        {
+            Layout = new LayoutStyle { FlexDirection = direction, AlignItems = alignItems, Width = 200, Height = 100 },
+            Children = [new Box { Layout = new LayoutStyle { AlignSelf = Align.Hug, Width = 40, Height = 20 } }],
+        });
+        root.Update(new Vector2(400, 300));
+        return Only(root).Children.Single();
+    }
+
+    [TestMethod]
+    public void AHuggingBoxSitsAtTheStartWhereItsParentWouldStretchIt()
+    {
+        var inColumn = new UIRoot(new Box
+        {
+            Layout = new LayoutStyle { Width = 200 },
+            Children = [new Box { Layout = new LayoutStyle { AlignSelf = Align.Hug, Height = 20, Padding = Edges.Symmetric(30, 0) } }],
+        });
+        inColumn.Update(new Vector2(400, 300));
+
+        Assert.AreEqual(new Vector2(60, 20), Only(inColumn).Children.Single().Size, "keeps to its own width");
+        Assert.AreEqual(Vector2.Zero, Only(inColumn).Children.Single().Position);
+        Assert.AreEqual(Vector2.Zero, Hugging(FlexDirection.Row, null).Position, "at the top of a stretching row");
+        inColumn.Dispose();
+    }
+
+    [TestMethod]
+    public void AHuggingBoxFollowsItsParentsAlignmentOtherwise()
+    {
+        Assert.AreEqual(new Vector2(0, 40), Hugging(FlexDirection.Row, Align.Center).Position, "centred in a row");
+        Assert.AreEqual(new Vector2(80, 0), Hugging(FlexDirection.Column, Align.Center).Position, "centred in a column");
+        Assert.AreEqual(new Vector2(0, 80), Hugging(FlexDirection.Row, Align.FlexEnd).Position, "at a row's end");
+    }
+
+    [TestMethod]
+    public void AHuggingBoxFollowsItsParentWhenTheParentChanges()
+    {
+        var centred = true;
+        Element Tree() => new Box
+        {
+            Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = centred ? Align.Center : null, Width = 200, Height = 100 },
+            Children = [new Box { Layout = new LayoutStyle { AlignSelf = Align.Hug, Width = 40, Height = 20 } }],
+        };
+        using var root = new UIRoot(Tree());
+        root.Update(new Vector2(400, 300));
+
+        centred = false;
+        root.SetRoot(Tree());
+        root.Update(new Vector2(400, 300));
+
+        Assert.AreEqual(Vector2.Zero, Only(root).Children.Single().Position);
+    }
+
     [TestMethod]
     public void TheRootIsTheViewport()
     {

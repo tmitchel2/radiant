@@ -70,6 +70,78 @@ public class ActionBitsTests
     }
 
     [TestMethod]
+    public void AComposerSendsOnlyWhenThereIsText()
+    {
+        var sent = new List<string>();
+        using var empty = Mount(new Composer(TextEditState.From("  "), _ => { }) { OnSend = sent.Add });
+        using var full = Mount(new Composer(TextEditState.From("A windmill"), _ => { }) { OnSend = sent.Add });
+
+        Click(empty, Find(empty, SemanticsRole.Button, "Send"));
+        Click(full, Find(full, SemanticsRole.Button, "Send"));
+
+        Assert.IsTrue(Find(empty, SemanticsRole.Button, "Send").Semantics.Disabled);
+        CollectionAssert.AreEqual(new[] { "A windmill" }, sent);
+    }
+
+    [TestMethod]
+    public void ATagsValueIsReadWithItsText()
+    {
+        using var root = Mount(new Tag("pieces") { Value = "611" });
+
+        Assert.IsTrue(All(root).Any(n => n.Label == "611 pieces"));
+    }
+
+    [TestMethod]
+    public void AButtonsTrailingPartsFollowItsLabel()
+    {
+        using var root = Mount(new SurfaceButton("Versions") { Trailing = new Badge(null) { Inline = true, Count = 3 } });
+
+        var button = Find(root, SemanticsRole.Button, "Versions");
+        var count = All(root).First(n => n.Label == "3");
+
+        Assert.IsTrue(count.Bounds.X > button.Bounds.X + button.Bounds.Width / 2, "the count sits at the button's end");
+        Assert.IsTrue(count.Bounds.X + count.Bounds.Width <= button.Bounds.X + button.Bounds.Width, "inside the button");
+    }
+
+    [TestMethod]
+    public void AThemeScopeRestylesOnlyWhatItHolds()
+    {
+        Tabs Tabs() => new([new Tab("One"), new Tab("Two")], 0, _ => { });
+        using var root = new UIRoot(new ThemeProvider(new ThemeController(ThemePresets.Quartz), new Box
+        {
+            Layout = new LayoutStyle { Width = 600 },
+            Children =
+            [
+                Tabs(),
+                new ThemeScope(t => t with { Components = t.Components with { Navigation = t.Components.Navigation with { Tabs = TabsLook.Underline } } }, Tabs()),
+            ],
+        }));
+        Settle(root);
+
+        var lists = All(root).Where(n => n.Role == SemanticsRole.TabList).ToList();
+
+        Assert.AreEqual(2, lists.Count);
+        Assert.IsTrue(lists[0].Bounds.Width < 300, "segmented tabs keep to their labels");
+        Assert.AreEqual(600f, lists[1].Bounds.Width, 0.5f, "underlined tabs share the width");
+    }
+
+    [TestMethod]
+    public void JoinedSegmentsInARowFitTheirLabelsAndStayEqual()
+    {
+        using var root = Mount(new Box
+        {
+            Layout = new LayoutStyle { FlexDirection = FlexDirection.Row },
+            Children = [new SegmentedButton([new Segment("Day"), new Segment("Fortnight"), new Segment("Month")], new HashSet<int> { 0 }, _ => { })],
+        });
+
+        var segments = All(root).Where(n => n.Role == SemanticsRole.RadioButton).ToList();
+
+        Assert.AreEqual(3, segments.Count);
+        Assert.IsTrue(segments.All(n => MathF.Abs(n.Bounds.Width - segments[0].Bounds.Width) < 0.5f), "equal widths");
+        Assert.IsTrue(segments[0].Bounds.Width > 100f, "wide enough for \"Fortnight\" and the tick");
+    }
+
+    [TestMethod]
     public void AnExtendedFabShowsItsLabel()
     {
         using var small = Mount(new Fab("edit", "Compose"));

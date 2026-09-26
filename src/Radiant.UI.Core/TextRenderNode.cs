@@ -25,7 +25,7 @@ internal sealed class TextRenderNode : RenderNode
         var old = previous as TextBlock;
         if (old is null || old.Layout != Element.Layout)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
         }
         // Plain text's colour is applied as it's drawn, so a new colour alone (a theme change) keeps
         // the shaped text and its layout; styled spans carry their own colours, so any change reshapes.

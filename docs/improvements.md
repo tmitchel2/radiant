@@ -320,6 +320,31 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Theming (`Radiant.Theming`)
 
+- **Hand-picked palettes only raise contrast roughly.** For `ColorRoles`, a raised contrast level
+  moves quiet text and borders towards stronger ones, but accents and containers stay as picked
+  and a reduced level does nothing. A palette could carry its own high-contrast `ColorRoles`.
+  With `AccentFromSeed`, only the primary family comes from the seed: the secondary and tertiary
+  accents stay as picked, which can clash with a very different seed.
+- **A few desktop components share one look.** `DocumentTabs` (a strip with the chosen tab's
+  accent line), `StatusBar`, and `DataTable`'s header and row heights draw the same in every
+  preset: they're neutral already, but a theme can't size or recolour them beyond the colour
+  roles. Their chosen rows do follow `ListStyle.Selected`.
+- **Outline icons only cover the embedded names.** `outline-map.txt` pairs the embedded Material
+  Symbols names with Lucide icons; an app that registers the full Material Symbols font gets
+  Material icons for any other name, even in an outline theme. A few pairs are approximate
+  (`groups`, `insights`, `fit_screen`), and outline icons can't be filled, so a chosen item's
+  icon looks the same as the rest.
+- **Component styles change by subtree, not by instance.** `ThemeScope` restyles everything below
+  it; a single component can't take another look except by wrapping it in one. A per-instance
+  `Look` prop would be the next step if apps need it. Templates in the full sense (a style
+  supplying its own build function) aren't exposed.
+- **Segmented trays and pills are worked out, not roles.** The tray is the surface tinted 6%
+  towards its content and the pill white (light) or tinted 14% (dark), so they read on any
+  surface. Named roles would let a palette choose them.
+- **A preset switch jumps its layout.** Type, density and button padding switch at the start of an
+  animated theme change (colours and corners animate), so text reflows once. Fine for a settings
+  choice, but a switch that animates layout would need measuring both ends.
+
 - **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,
   and on every frame of a transition. The expensive part was text: colour lived in `TextStyle`,
   so a recolour re-shaped and re-measured every paragraph. Plain text now takes its colour at
@@ -431,6 +456,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Assets and licences
 
+- **Source Serif 4 adds about 1.1 MB.** It's embedded (Latin only, upright and italic, built by
+  `tools/fonts/serif.sh`) for the `Linen` preset's headings, so every app carries it. A way to
+  register optional fonts only when a theme needs them would keep it out of apps that don't.
 - **SixLabors.ImageSharp** (Split License) still decodes PNGs. Consider a permissively licensed
   decoder; ask first.
 - **`MsdfBaker` is due for replacement.**

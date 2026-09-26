@@ -68,8 +68,13 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
         var span = MathF.Max(Max - Min, 1e-6f);
         var fraction = Math.Clamp((Value - Min) / span, 0f, 1f);
         var faded = surface with { Content = surface.Content with { Opacity = Legibility.Low } };
-        var active = Disabled ? theme.ContentColor(faded) : theme.Get(SurfaceName.Primary);
-        var inactive = Disabled ? theme.StateLayerColor(surface, 0.12f) : theme.Get(SurfaceName.Secondary, container: true);
+        var style = theme.Theme.Components.Selection;
+        var interaction = theme.Theme.Components.Interaction;
+        var recolor = Disabled && theme.RecolorsDisabled();
+        var thickness = style.TrackThickness;
+        var active = recolor ? theme.ContentColor(faded) : theme.Get(SurfaceName.Primary);
+        var inactive = recolor ? theme.StateLayerColor(surface, 0.12f)
+            : theme.Track();
         var layers = theme.Theme.StateLayers;
         var layer = Disabled ? 0f : pressed.Value ? layers.Pressed : focusRing.Value ? layers.Focus : hovered.Value ? layers.Hover : 0f;
 
@@ -114,6 +119,7 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 Disabled = Disabled,
             },
             // Inset by the handle's radius, so the handle stays inside the slider at either end.
+            Opacity = Disabled && !recolor ? interaction.DisabledOpacity : 1f,
             Layout = new LayoutStyle { Height = 44, MinWidth = 120, AlignSelf = Align.Stretch, JustifyContent = Justify.Center, Padding = Edges.Symmetric(10, 0) },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ => hovered.Set(false),
@@ -165,17 +171,17 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 {
                     Ref = line,
                     HitTestVisible = false,
-                    Layout = new LayoutStyle { Height = 4 },
+                    Layout = new LayoutStyle { Height = thickness },
                     Background = inactive,
-                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
                     Children =
                     [
                         new Box
                         {
                             HitTestVisible = false,
-                            Layout = new LayoutStyle { Width = Dimension.Percent(fraction * 100f), Height = 4 },
+                            Layout = new LayoutStyle { Width = Dimension.Percent(fraction * 100f), Height = thickness },
                             Background = active,
-                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+                            CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
                         },
                         new Box
                         {
@@ -185,23 +191,16 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                                 Position = PositionType.Absolute,
                                 Width = 40,
                                 Height = 40,
-                                Inset = new Edges(Dimension.Percent(fraction * 100f), -18, Dimension.Undefined, Dimension.Undefined),
+                                Inset = new Edges(Dimension.Percent(fraction * 100f), -(40f - thickness) / 2f, Dimension.Undefined, Dimension.Undefined),
                                 Margin = new Edges(-20, 0, 0, 0),
                                 AlignItems = Align.Center,
                                 JustifyContent = Justify.Center,
                             },
-                            Background = layer > 0f ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, layer) : null,
+                            Background = style.Halo && layer > 0f ? theme.StateLayerColor(surface with { Content = new SurfaceRoleState(SurfaceName.Primary, false, false) }, layer) : null,
                             CornerRadii = Radiant.Graphics2D.CornerRadii.All(20),
                             Children =
                             [
-                                new Box
-                                {
-                                    HitTestVisible = false,
-                                    Layout = new LayoutStyle { Width = 20, Height = 20 },
-                                    Background = active,
-                                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
-                                    Shadows = Disabled ? [] : theme.Elevation(ElevationLevel.Level1),
-                                },
+                                .. SliderParts.Thumb(theme, active, focusRing.Value && !Disabled, raised: !recolor),
                             ],
                         },
                     ],

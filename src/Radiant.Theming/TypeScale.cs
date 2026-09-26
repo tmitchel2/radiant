@@ -39,6 +39,7 @@ public sealed record TypeScale
         [TextType.BodySmall] = Style(12, 16, FontWeight.Regular, 0.4f),
         [TextType.BodyExtraSmall] = Style(11, 16, FontWeight.Regular, 0f),
         [TextType.Code] = Style(13, 20, FontWeight.Regular, 0f) with { FontFamily = FontLibrary.JetBrainsMono },
+        [TextType.Overline] = Style(11, 16, FontWeight.SemiBold, 0.88f),
     });
 
     /// <summary>A type's style.</summary>

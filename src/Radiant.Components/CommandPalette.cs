@@ -157,11 +157,9 @@ public sealed partial record CommandPalette(bool Open, Action OnClose, IReadOnly
             Background = theme.Scrim with { A = 0.2f * progress },
             Children =
             [
-                new DismissableLayer(new FocusScope(new Surface
+                new DismissableLayer(new FocusScope(SurfaceLooks.Surface(theme.Theme.Components.Overlay.Dialog) with
                 {
-                    SurfaceColor = SurfaceName.SurfaceContainerHigh,
                     CornerShape = CornerShapeRole.Large,
-                    Elevation = ElevationLevel.Level3,
                     ClipContent = true,
                     Semantics = new Semantics { Role = SemanticsRole.Dialog, Label = "Command palette" },
                     Layout = new LayoutStyle { Width = 560, MaxHeight = 440 },

@@ -19,6 +19,11 @@ package, MIT). Radiant exposes none of Yoga's types; everything goes through `Ra
 - **Merging:** `LayoutStyle.Merge` (and `Edges.Merge`) lays one style's set properties over
   another's. Components use it so a caller's layout adds to theirs: a button told to stretch keeps
   its padding and height.
+- **Hugging:** `AlignSelf = Align.Hug` keeps an element to its own size: it's placed as its
+  parent's `AlignItems` places items, except that where they'd stretch, it sits at the start.
+  Yoga has no such value, so the root keeps the hugging nodes and sets each one's alignment from
+  its parent's before layout. Tags and badges hug, so they neither stretch across a column nor
+  leave a row's centring.
 - **Render nodes keep their Yoga nodes.** Each host element's render node has one Yoga node for its
   life, so a rebuild only restyles what changed and Yoga only redoes dirty subtrees (`YogaStyle`
   maps a `LayoutStyle` onto a node). Text measures itself through Yoga's measure function, shaped

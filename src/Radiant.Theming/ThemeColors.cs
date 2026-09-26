@@ -5,7 +5,8 @@ namespace Radiant.Theming;
 
 /// <summary>
 /// Where a theme's colours come from: a seed colour turned into a full scheme by Radiant's colour
-/// system (the Material 3 method), in one of its variants, light or dark, at a contrast level.
+/// system (the Material 3 method), in one of its variants, light or dark, at a contrast level; or
+/// hand-picked <see cref="ColorRoles"/> for light and dark.
 /// </summary>
 public sealed record ThemeColors
 {
@@ -35,4 +36,25 @@ public sealed record ThemeColors
 
     /// <summary>Whether success, warning and info are nudged towards the seed's hue, so they sit well with it.</summary>
     public bool HarmonizeCustomColors { get; init; } = true;
+
+    /// <summary>
+    /// Hand-picked colours for the light appearance, used instead of the seed's scheme when not
+    /// <see cref="IsDark"/>. The seed and <see cref="Variant"/> don't change them; a raised
+    /// <see cref="ContrastLevel"/> moves quiet text towards the full text colour and borders
+    /// towards stronger ones (a reduced one changes nothing).
+    /// </summary>
+    public ColorRoles? Light { get; init; }
+
+    /// <summary>Hand-picked colours for the dark appearance, used instead of the seed's scheme when <see cref="IsDark"/>.</summary>
+    public ColorRoles? Dark { get; init; }
+
+    /// <summary>
+    /// With hand-picked colours, whether the primary family (and the inverse primary) comes from the
+    /// seed's scheme instead, so the user's or the system's accent colours a fixed palette while its
+    /// neutrals, status colours and other accents stay as picked.
+    /// </summary>
+    public bool AccentFromSeed { get; init; }
+
+    /// <summary>The hand-picked colours in force for the appearance, or null if they come from the seed.</summary>
+    public ColorRoles? Roles => IsDark ? Dark : Light;
 }

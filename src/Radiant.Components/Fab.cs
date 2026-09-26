@@ -28,29 +28,35 @@ public sealed record Fab(string Icon, string Label) : Component
     public LayoutStyle? Layout { get; init; }
 
     /// <inheritdoc/>
-    public override Element? Build(BuildContext context) => new PressableSurface
+    public override Element? Build(BuildContext context)
     {
-        SurfaceColor = Color,
-        SurfaceContainerToggle = true,
-        CornerShape = CornerShapeRole.Large,
-        Elevation = ElevationLevel.Level3,
-        Label = Label,
-        OnPress = OnPress,
-        Layout = new LayoutStyle
+        ArgumentNullException.ThrowIfNull(context);
+        var style = context.UseTheme().Theme.Components.Button;
+        return new PressableSurface
         {
-            FlexDirection = FlexDirection.Row,
-            AlignItems = Align.Center,
-            JustifyContent = Justify.Center,
-            Height = 56,
-            MinWidth = 56,
-            Padding = Extended ? new Edges(16, 0, 20, 0) : Edges.None,
-            ColumnGap = 12,
-            AlignSelf = Align.FlexStart,
-        }.Merge(Layout ?? default),
-        Children =
-        [
-            new SurfaceIcon(Icon),
-            Extended ? new SurfaceText(Label) { TextType = TextType.LabelLarge } : null,
-        ],
-    };
+            SurfaceColor = Color,
+            SurfaceContainerToggle = true,
+            CornerShape = style.FabShape,
+            Elevation = style.FabElevation,
+            ScaleOnPress = true,
+            Label = Label,
+            OnPress = OnPress,
+            Layout = new LayoutStyle
+            {
+                FlexDirection = FlexDirection.Row,
+                AlignItems = Align.Center,
+                JustifyContent = Justify.Center,
+                Height = 56,
+                MinWidth = 56,
+                Padding = Extended ? new Edges(16, 0, 20, 0) : Edges.None,
+                ColumnGap = 12,
+                AlignSelf = Align.FlexStart,
+            }.Merge(Layout ?? default),
+            Children =
+            [
+                new SurfaceIcon(Icon),
+                Extended ? new SurfaceText(Label) { TextType = TextType.LabelLarge } : null,
+            ],
+        };
+    }
 }

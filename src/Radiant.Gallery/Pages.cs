@@ -29,7 +29,9 @@ internal static partial class Pages
 
     internal sealed partial record SettingsPage(ThemeController Themes) : Component
     {
+        [TestId<SelectField>] public static partial string Style { get; }
         [TestId<Switch>] public static partial string DarkTheme { get; }
+        [TestId<Switch>] public static partial string OwnAccent { get; }
         [TestId<SelectField>] public static partial string Density { get; }
         [TestId<ColorPicker>] public static partial string Accent { get; }
         [TestId<Switch>] public static partial string Notifications { get; }
@@ -39,9 +41,17 @@ internal static partial class Pages
         {
             var notifications = context.UseState(true);
             var digest = context.UseState(false);
-            var density = context.UseState(0);
             var themes = Themes;
             var theme = context.UseTheme();
+            var names = new string[ThemePresets.All.Count];
+            var style = -1;
+            for (var i = 0; i < names.Length; i++)
+            {
+                names[i] = ThemePresets.All[i].Name!;
+                style = names[i] == theme.Theme.Name ? i : style;
+            }
+            var seeded = theme.Theme.Colors.Roles is null;
+            var ownAccent = theme.Theme.Colors.AccentFromSeed;
             return new Box
             {
                 Layout = new LayoutStyle { RowGap = 32 },
@@ -50,18 +60,28 @@ internal static partial class Pages
                     new PageHeading("Settings") { Description = "Manage your account and preferences" },
                     new SettingsSection("Appearance",
                     [
+                        new SettingsRow("Theme", new SelectField("Theme", names, style, i => ThemePicker.Choose(themes, ThemePresets.All[i]))
+                        {
+                            TestId = Style,
+                            Layout = new LayoutStyle { Width = 200 },
+                        })
+                        {
+                            Description = "Colour, shape, type and shadows, together",
+                        },
                         new SettingsRow("Dark theme", new Switch(theme.Theme.Colors.IsDark, dark =>
                             themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = dark } }, System.TimeSpan.FromMilliseconds(300))) { TestId = DarkTheme })
                         {
                             Description = "Use dark colours everywhere",
                         },
-                        new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], density.Value, i =>
+                        seeded ? null : new SettingsRow("Accent from my colour", new Switch(ownAccent, on =>
+                            themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { AccentFromSeed = on } }, System.TimeSpan.FromMilliseconds(300))) { TestId = OwnAccent })
                         {
-                            density.Set(i);
-                            themes.Set(themes.Theme with { Density = -i });
-                        }) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
+                            Description = "Colour this theme's accent with the colour below",
+                        },
+                        new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], theme.Theme.Density < 0 ? 1 : 0, i =>
+                            themes.Set(themes.Theme with { Density = -i })) { TestId = Density, Layout = new LayoutStyle { Width = 200 } }),
                     ]) { Description = "How Radiant looks on this device." },
-                    new SettingsSection("Theme colour",
+                    !seeded && !ownAccent ? null : new SettingsSection("Theme colour",
                     [
                         new Box
                         {
@@ -76,7 +96,7 @@ internal static partial class Pages
                                 },
                             ],
                         },
-                    ]) { Description = "Every colour in the app is worked out from this one, in light and dark." },
+                    ]) { Description = seeded ? "Every colour in the app is worked out from this one, in light and dark." : "The accent is worked out from this one, in light and dark." },
                     new SettingsSection("Notifications",
                     [
                         new SettingsRow("Push notifications", new Switch(notifications.Value, notifications.Set) { TestId = Notifications }) { Description = "Alerts for mentions and replies" },
@@ -240,7 +260,7 @@ internal static partial class Pages
                 new Hero("Desktop apps that feel native, built in C#")
                 {
                     Eyebrow = "Radiant 1.0",
-                    Text = "A declarative UI, a Material-inspired theme system, sharp text and GPU rendering, in one platform.",
+                    Text = "A declarative UI, themes you can swap live, sharp text and GPU rendering, in one platform.",
                     Actions = [new SurfaceButton("Get started") { TestId = GetStarted, Icon = "rocket_launch" }, new SurfaceButton("Read the docs", ButtonVariant.Text) { TestId = ReadTheDocs }],
                     Picture = SamplePictures.Gradient(250),
                 },

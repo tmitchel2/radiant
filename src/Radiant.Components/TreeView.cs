@@ -210,11 +210,7 @@ public sealed record TreeView(IReadOnlyList<TreeNode> Roots) : Component
         {
             var theme = context.UseTheme();
             var hovered = context.UseState(false);
-            var state = context.UseSurface().With(new SurfaceChange
-            {
-                Surface = Chosen ? SurfaceName.Secondary : null,
-                ToggleSurfaceContainer = Chosen,
-            });
+            var state = context.UseSurface().With(Chosen ? theme.Theme.Components.List.Selected.ToSurfaceChange() : new SurfaceChange());
             var (press, toggle) = (Press, Toggle);
             var parent = Node.Children.Count > 0;
             return ThemeContexts.Surface.Provide(state, new Box

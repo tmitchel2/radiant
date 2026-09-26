@@ -32,4 +32,11 @@ public enum Align
 
     /// <summary>Distribute lines with equal space between and at the edges (multi-line only).</summary>
     SpaceEvenly,
+
+    /// <summary>
+    /// Keep to its own size (align-self only): placed as the parent's <c>align-items</c> places its
+    /// items, except that where they stretch, it sits at the start instead. For a tag or a badge
+    /// that should neither stretch across a column nor leave a row's or a column's centring.
+    /// </summary>
+    Hug,
 }

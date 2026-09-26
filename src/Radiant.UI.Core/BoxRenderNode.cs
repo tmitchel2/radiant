@@ -52,7 +52,7 @@ internal sealed class BoxRenderNode : RenderNode
         }
         if (old is null || old.Layout != Element.Layout)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
         }
     }
 

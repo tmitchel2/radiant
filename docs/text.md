@@ -15,8 +15,11 @@ FontLibrary ────┘                            │
 
 ## Fonts
 
-- **Embedded fonts:** `FontLibrary.Default` holds Inter and JetBrains Mono. Both are variable
-  fonts, both have italics, and both are embedded in the assembly (SIL Open Font License).
+- **Embedded fonts:** `FontLibrary.Default` holds Inter, JetBrains Mono and Source Serif 4. All
+  are variable fonts with italics, embedded in the assembly (SIL Open Font License). Source
+  Serif is cut down to Latin by `tools/fonts/serif.sh` and has an optical-size axis, like Inter.
+  Two icon fonts sit beside them, never used for letters: Material Symbols and Lucide's outline
+  icons (see [components.md](components.md#icons)).
 - **Families:** `FontLibrary.Resolve(family, weight, italic, size)` returns a `FontInstance`. It sets
   `wght` to the weight and `opsz` to the size, so small text gets the design Inter tunes for small
   sizes. Instances are cached per face and axis values.

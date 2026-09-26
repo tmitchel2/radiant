@@ -34,7 +34,9 @@ public sealed partial record SurfaceText : Component, IHasText, IHasLayout
         {
             surface = surface with { Content = surface.Content with { Opacity = legibility } };
         }
-        return new TextBlock(Text ?? "")
+        // Overlines are set in capitals.
+        var text = TextType == Radiant.Theming.TextType.Overline ? (Text ?? "").ToUpper(System.Globalization.CultureInfo.CurrentCulture) : Text ?? "";
+        return new TextBlock(text)
         {
             Style = theme.Text(TextType ?? Radiant.Theming.TextType.BodyMedium) with { Color = theme.ContentColor(surface) },
             MaxLines = MaxLines,

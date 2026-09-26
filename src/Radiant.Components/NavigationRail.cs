@@ -30,7 +30,7 @@ public sealed record NavigationRail(IReadOnlyList<NavItem> Items, int Selected, 
             var item = Items[i];
             var chosen = i == Selected;
             var select = OnSelect;
-            Element icon = new SurfaceIcon(item.Icon) { IconFilled = chosen };
+            Element icon = new SurfaceIcon(item.Icon) { IconFilled = chosen && theme.Theme.Components.Icons.FillChosen };
             if (item.Badge is { } badge)
             {
                 icon = new Badge(icon) { Count = badge == 0 ? null : badge };
@@ -45,13 +45,9 @@ public sealed record NavigationRail(IReadOnlyList<NavItem> Items, int Selected, 
                 Layout = new LayoutStyle { Width = 72, AlignItems = Align.Center, RowGap = 4, Padding = Edges.Symmetric(0, 6) },
                 Children =
                 [
-                    new Surface
+                    (chosen ? SurfaceLooks.Surface(theme.Theme.Components.Navigation.DrawerChosen) : new Surface { ContentColor = SurfaceName.SurfaceVariant, ContentOnToggle = true }) with
                     {
-                        SurfaceColor = chosen ? SurfaceName.Secondary : null,
-                        SurfaceContainerToggle = chosen ? true : null,
-                        ContentColor = chosen ? null : SurfaceName.SurfaceVariant,
-                        ContentOnToggle = chosen ? null : true,
-                        CornerShape = CornerShapeRole.Full,
+                        CornerShape = CornerShapeRole.Control,
                         Layout = new LayoutStyle { Width = 56, Height = 32, AlignItems = Align.Center, JustifyContent = Justify.Center },
                         Children = [icon],
                     },

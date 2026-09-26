@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Radiant.Components;
 using Radiant.Layout;
@@ -21,11 +21,8 @@ public sealed record CallToAction(string Headline) : Component
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return new Surface
+        return Showcase.Panel(context, s => s.CallToAction) with
         {
-            SurfaceColor = SurfaceName.Primary,
-            SurfaceContainerToggle = true,
-            CornerShape = CornerShapeRole.ExtraLarge,
             Layout = new LayoutStyle { AlignSelf = Align.Stretch, AlignItems = Align.Center, RowGap = 16, Padding = Edges.Symmetric(24, 48) },
             Children =
             [

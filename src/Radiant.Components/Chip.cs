@@ -38,14 +38,10 @@ public sealed record Chip(string Label) : Component
         var selected = Selected == true;
         var icon = selected ? "check" : Icon;
         var remove = OnRemove;
-        return new PressableSurface
+        var style = context.UseTheme().Theme.Components.Chip;
+        return SurfaceLooks.Pressable(selected ? style.Chosen : Elevated ? style.Elevated : style.Rest) with
         {
-            SurfaceColor = selected ? SurfaceName.Secondary : Elevated ? SurfaceName.SurfaceContainerLow : null,
-            SurfaceContainerToggle = selected ? true : null,
-            ShowOutline = !selected && !Elevated,
-            OutlineVariant = true,
-            Elevation = Elevated ? ElevationLevel.Level1 : null,
-            CornerShape = CornerShapeRole.Small,
+            CornerShape = style.Shape,
             ShowDisabled = Disabled ? true : null,
             OnPress = OnPress,
             Role = Selected is null ? SemanticsRole.Button : SemanticsRole.CheckBox,
@@ -55,14 +51,14 @@ public sealed record Chip(string Label) : Component
             {
                 FlexDirection = FlexDirection.Row,
                 AlignItems = Align.Center,
-                Height = 32,
-                Padding = new Edges(icon is null ? 16 : 8, 0, remove is null ? 16 : 8, 0),
+                Height = style.Height,
+                Padding = new Edges(icon is null ? style.Padding : 8, 0, remove is null ? style.Padding : 8, 0),
                 ColumnGap = 8,
             },
             Children =
             [
                 icon is null ? null : new SurfaceIcon(icon) { IconSize = 18, Legibility = selected ? null : Legibility.Medium },
-                new SurfaceText(Label) { TextType = TextType.LabelLarge },
+                new SurfaceText(Label) { TextType = style.Label },
                 remove is null ? null : new Box
                 {
                     OnClick = e =>

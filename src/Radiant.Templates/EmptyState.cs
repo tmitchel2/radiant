@@ -1,4 +1,4 @@
-using Radiant.Components;
+﻿using Radiant.Components;
 using Radiant.Layout;
 using Radiant.Theming;
 using Radiant.UI.Core;
@@ -17,22 +17,24 @@ public sealed record EmptyState(string Icon, string Title) : Component
     public Element? Action { get; init; }
 
     /// <inheritdoc/>
-    public override Element? Build(BuildContext context) => new Box
+    public override Element? Build(BuildContext context)
     {
-        Layout = new LayoutStyle { AlignItems = Align.Center, Padding = Edges.All(40), RowGap = 12 },
-        Children =
-        [
-            new Surface
-            {
-                SurfaceColor = SurfaceName.Secondary,
-                SurfaceContainerToggle = true,
-                CornerShape = CornerShapeRole.Full,
-                Layout = new LayoutStyle { Width = 72, Height = 72, AlignItems = Align.Center, JustifyContent = Justify.Center },
-                Children = [new SurfaceIcon(Icon) { IconSize = 36 }],
-            },
-            new SurfaceText(Title) { TextType = TextType.TitleLarge, Alignment = Radiant.Text.TextAlignment.Center },
-            Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium, Alignment = Radiant.Text.TextAlignment.Center, Layout = new LayoutStyle { MaxWidth = 360 } },
-            Action,
-        ],
-    };
+        var style = context.UseTheme().Theme.Components.Showcase;
+        return new Box
+        {
+            Layout = new LayoutStyle { AlignItems = Align.Center, Padding = Edges.All(40), RowGap = 12 },
+            Children =
+            [
+                SurfaceLooks.Surface(style.EmptyIcon) with
+                {
+                    CornerShape = style.EmptyIconShape,
+                    Layout = new LayoutStyle { Width = 72, Height = 72, AlignItems = Align.Center, JustifyContent = Justify.Center },
+                    Children = [new SurfaceIcon(Icon) { IconSize = 36 }],
+                },
+                new SurfaceText(Title) { TextType = TextType.TitleLarge, Alignment = Radiant.Text.TextAlignment.Center },
+                Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium, Alignment = Radiant.Text.TextAlignment.Center, Layout = new LayoutStyle { MaxWidth = 360 } },
+                Action,
+            ],
+        };
+    }
 }

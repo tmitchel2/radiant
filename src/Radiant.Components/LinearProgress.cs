@@ -32,14 +32,15 @@ public sealed record LinearProgress : Component
             : null, indeterminate);
 
         var indicator = theme.Get(SurfaceName.Primary);
+        var thickness = theme.Theme.Components.Selection.TrackThickness;
         Element bar;
         if (Value is { } value)
         {
             bar = new Box
             {
-                Layout = new LayoutStyle { Width = Dimension.Percent(Math.Clamp(value, 0f, 1f) * 100f), Height = 4 },
+                Layout = new LayoutStyle { Width = Dimension.Percent(Math.Clamp(value, 0f, 1f) * 100f), Height = thickness },
                 Background = indicator,
-                CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+                CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
             };
         }
         else
@@ -52,11 +53,11 @@ public sealed record LinearProgress : Component
                 {
                     Position = PositionType.Absolute,
                     Width = Dimension.Percent(40),
-                    Height = 4,
+                    Height = thickness,
                     Inset = new Edges(Dimension.Percent(start * 100f), 0, Dimension.Undefined, Dimension.Undefined),
                 },
                 Background = indicator,
-                CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+                CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
             };
         }
         return new Box
@@ -67,9 +68,9 @@ public sealed record LinearProgress : Component
                 Label = Label,
                 Value = Value is { } v ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{MathF.Round(v * 100)}%") : null,
             },
-            Layout = new LayoutStyle { Height = 4, AlignSelf = Align.Stretch },
-            Background = theme.Get(SurfaceName.Secondary, container: true),
-            CornerRadii = Radiant.Graphics2D.CornerRadii.All(2),
+            Layout = new LayoutStyle { Height = thickness, AlignSelf = Align.Stretch },
+            Background = theme.Track(),
+            CornerRadii = Radiant.Graphics2D.CornerRadii.All(thickness / 2f),
             ClipContent = true,
             Children = [bar],
         };

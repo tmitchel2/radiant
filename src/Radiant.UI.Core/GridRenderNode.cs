@@ -33,7 +33,7 @@ internal sealed class GridRenderNode : RenderNode
         }
         if (old is null || old.Layout != Element.Layout || old.ColumnGap != Element.ColumnGap || old.RowGap != Element.RowGap)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
             YGNodeStyleSetFlexDirection(Yoga, YGFlexDirection.Row);
             YGNodeStyleSetFlexWrap(Yoga, YGWrap.Wrap);
             YGNodeStyleSetGap(Yoga, YGGutter.Column, Element.ColumnGap);

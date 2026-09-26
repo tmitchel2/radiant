@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Radiant.Layout;
+using Radiant.Theming;
 using Radiant.UI.Core;
 
 namespace Radiant.Components;
@@ -30,6 +31,9 @@ public sealed partial record SplitButton(string Text, Action? OnPress, IReadOnly
         ArgumentNullException.ThrowIfNull(context);
         var anchor = context.UseRef(new ElementRef()).Value;
         var open = context.UseState(false);
+        // The arrow is as tall as the button beside it, and square.
+        var theme = context.UseTheme();
+        var height = theme.Theme.Components.Button.Height + theme.DensityOffset;
         return new Fragment(
             new Box
             {
@@ -43,6 +47,7 @@ public sealed partial record SplitButton(string Text, Action? OnPress, IReadOnly
                     {
                         TestId = More,
                         OnPress = () => open.Set(true),
+                        Layout = new LayoutStyle { Width = height, Height = height },
                     },
                 ],
             },

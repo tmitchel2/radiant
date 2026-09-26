@@ -17,14 +17,19 @@ namespace Radiant.UI.Core;
 /// </summary>
 internal static class YogaStyle
 {
-    /// <summary>Sets the node's style to exactly <paramref name="style"/>.</summary>
-    public static void Set(Node node, in LayoutStyle style, bool reset)
+    /// <summary>
+    /// Sets <paramref name="owner"/>'s node (or another node it holds) to exactly
+    /// <paramref name="style"/>. A node that hugs (<see cref="Align.Hug"/>) is registered with the
+    /// root, which resolves it from its parent's direction before each layout.
+    /// </summary>
+    public static void Set(RenderNode owner, Node node, in LayoutStyle style, bool reset)
     {
         if (reset)
         {
             Reset(node);
         }
         Apply(node, style);
+        owner.Owner.Root.TrackHug(node, style.AlignSelf == Align.Hug);
     }
 
     private static void Reset(Node node)
@@ -171,6 +176,8 @@ internal static class YogaStyle
         Align.SpaceBetween => YGAlign.SpaceBetween,
         Align.SpaceAround => YGAlign.SpaceAround,
         Align.SpaceEvenly => YGAlign.SpaceEvenly,
+        // Resolved before layout from the parent's direction (UIRoot.ResolveHugs); start until then.
+        Align.Hug => YGAlign.FlexStart,
         _ => YGAlign.Stretch,
     };
 

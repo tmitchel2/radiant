@@ -20,7 +20,7 @@ internal sealed class PortalRenderNode : RenderNode
         }
         if (old is null || old.Layout != Element.Layout)
         {
-            YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
+            YogaStyle.Set(this, Yoga, Element.Layout, reset: old is not null);
         }
         // Its content is laid out under the root, not where the portal is in the tree: it takes the
         // direction in force there (a menu in a right-to-left app reads right to left).

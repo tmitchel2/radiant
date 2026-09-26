@@ -232,6 +232,7 @@ internal abstract class RenderNode : IDisposable
             child.Parent = null;
         }
         _children.Clear();
+        Owner?.Root.TrackHug(Yoga, false);
         YGNodeFree(Yoga);
     }
 

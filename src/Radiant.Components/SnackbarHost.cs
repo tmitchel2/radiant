@@ -52,6 +52,7 @@ public sealed partial record SnackbarHost(Element? Child) : Component
         }, current);
 
         var message = shown.Value;
+        var toast = context.UseTheme().Theme.Components.Overlay.Snackbar == SnackbarLook.Toast;
         return new Fragment(
             Queue.Provide(queue, Child),
             new Presence(current is not null, progress => message is null ? null : new Portal(new Box
@@ -60,15 +61,16 @@ public sealed partial record SnackbarHost(Element? Child) : Component
                 Layout = new LayoutStyle
                 {
                     Position = PositionType.Absolute,
-                    Inset = new Edges(0, Dimension.Undefined, 0, 16f - 24f * (1f - progress)),
-                    AlignItems = Align.Center,
+                    Inset = new Edges(0, Dimension.Undefined, toast ? 16 : 0, 16f - 24f * (1f - progress)),
+                    // A bar sits at the bottom centre; a toast at the bottom end.
+                    AlignItems = toast ? Align.FlexEnd : Align.Center,
                 },
                 Children =
                 [
-                    new Surface
+                    (toast
+                        ? new Surface { SurfaceColor = SurfaceName.SurfaceBright, ShowOutline = true, OutlineVariant = true, CornerShape = CornerShapeRole.Medium }
+                        : new Surface { SurfaceColor = SurfaceName.Inverse, CornerShape = CornerShapeRole.ExtraSmall }) with
                     {
-                        SurfaceColor = SurfaceName.Inverse,
-                        CornerShape = CornerShapeRole.ExtraSmall,
                         Elevation = ElevationLevel.Level3,
                         Semantics = new Semantics { Role = SemanticsRole.Alert, Label = message.Text },
                         Layout = new LayoutStyle
@@ -92,11 +94,11 @@ public sealed partial record SnackbarHost(Element? Child) : Component
                             message.ActionLabel is null ? null : new SurfaceButton(message.ActionLabel, ButtonVariant.Text)
                             {
                                 TestId = Action,
-                                // Material's inverse primary: the inverse role's container colour itself,
-                                // not the colour on it (which is the snackbar's own).
-                                ContentColor = SurfaceName.Inverse,
-                                ContentOnToggle = true,
-                                ContentContainerToggle = true,
+                                // On a bar, Material's inverse primary: the inverse role's container colour
+                                // itself, not the colour on it (which is the bar's own). On a toast, the accent.
+                                ContentColor = toast ? SurfaceName.Primary : SurfaceName.Inverse,
+                                ContentOnToggle = toast ? null : true,
+                                ContentContainerToggle = toast ? null : true,
                                 OnPress = () =>
                                 {
                                     message.OnAction?.Invoke();

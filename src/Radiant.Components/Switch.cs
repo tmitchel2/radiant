@@ -33,13 +33,39 @@ public sealed record Switch(bool On, Action<bool>? OnChange) : Component
         var progress = context.UseTransition(On ? 1f : 0f, motion.Reduced ? TimeSpan.Zero : motion.MediumDuration, motion.Standard);
         var faded = surface with { Content = surface.Content with { Opacity = Legibility.Low } };
 
+        var recolor = Disabled && theme.RecolorsDisabled();
         var trackOff = theme.Get(SurfaceName.SurfaceContainerHighest);
-        var trackOn = Disabled ? theme.ContentColor(faded) : theme.Get(SurfaceName.Primary);
-        var outline = Disabled ? theme.ContentColor(faded) : theme.Outline;
-        var handleOff = Disabled ? theme.ContentColor(faded) : theme.Outline;
-        var handleOn = Disabled ? theme.SurfaceColor(surface) : theme.Get(SurfaceName.Primary, on: true);
+        var trackOn = recolor ? theme.ContentColor(faded) : theme.Get(SurfaceName.Primary);
+        var outline = recolor ? theme.ContentColor(faded) : theme.Outline;
+        var handleOff = recolor ? theme.ContentColor(faded) : theme.Outline;
+        var handleOn = recolor ? theme.SurfaceColor(surface) : theme.Get(SurfaceName.Primary, on: true);
         var onChange = OnChange;
         var next = !On;
+        var compact = theme.Theme.Components.Selection.Switch == SwitchLook.Compact;
+
+        // Compact: a 36 × 20 track, filled either way, and a 16 px white thumb that slides from 2 to 18.
+        Element Compact(SelectionVisualState state) => new Box
+        {
+            Layout = new LayoutStyle { Width = 36, Height = 20 },
+            Background = Radiant.Graphics2D.Color.Lerp(trackOff, trackOn, progress),
+            CornerRadii = Radiant.Graphics2D.CornerRadii.All(10),
+            Children =
+            [
+                new Box
+                {
+                    Layout = new LayoutStyle
+                    {
+                        Position = PositionType.Absolute,
+                        Width = 16,
+                        Height = 16,
+                        Inset = new Edges(2f + 16f * progress, 2f, Dimension.Undefined, Dimension.Undefined),
+                    },
+                    Background = recolor ? theme.SurfaceColor(surface) : Radiant.Graphics2D.Color.White,
+                    Shadows = theme.Elevation(ElevationLevel.Level1),
+                    CornerRadii = Radiant.Graphics2D.CornerRadii.All(8),
+                },
+            ],
+        };
 
         Element Indicator(SelectionVisualState state)
         {
@@ -71,8 +97,10 @@ public sealed record Switch(bool On, Action<bool>? OnChange) : Component
             };
         }
 
-        return new SelectionControl(Indicator, 52)
+        return new SelectionControl(compact ? Compact : Indicator, compact ? 36 : 52)
         {
+            IndicatorHeight = compact ? 20 : 32,
+            IndicatorRadius = compact ? 10 : 16,
             Label = Label,
             AccessibleLabel = AccessibleLabel,
             Role = SemanticsRole.Switch,

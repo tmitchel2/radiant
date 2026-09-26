@@ -25,6 +25,7 @@ public sealed record MenuBar(IReadOnlyList<MenuBarMenu> Menus) : Component
         var count = Menus.Count;
 
         var titles = new List<Element?>();
+        var selected = context.UseTheme().Theme.Components.List.Selected;
         for (var i = 0; i < Menus.Count; i++)
         {
             var index = i;
@@ -41,11 +42,9 @@ public sealed record MenuBar(IReadOnlyList<MenuBarMenu> Menus) : Component
                 },
                 Children =
                 [
-                    new PressableSurface
+                    (isOpen ? SurfaceLooks.Pressable(selected) : new PressableSurface()) with
                     {
                         InsetFocusRing = true,
-                        SurfaceColor = isOpen ? SurfaceName.Secondary : null,
-                        SurfaceContainerToggle = isOpen ? true : null,
                         CornerShape = CornerShapeRole.ExtraSmall,
                         Label = Menus[i].Title,
                         Expanded = isOpen,

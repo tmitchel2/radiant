@@ -7,7 +7,7 @@ namespace Radiant.UI.Automation.Tests.Gallery;
 public sealed class AuditTests : GalleryTest
 {
     public static IEnumerable<object[]> Destinations =>
-        new[] { "Components", "Dashboard", "Settings", "Sign in", "Empty state", "Table", "Landing page", "Store", "Workspace", "Mail", "New project", "Preferences", "Docking" }
+        new[] { "Components", "Dashboard", "Settings", "Sign in", "Empty state", "Table", "Landing page", "Store", "Workspace", "Mail", "New project", "Preferences", "Docking", "Studio" }
             .Select(d => new object[] { d });
 
     [TestMethod]
@@ -39,6 +39,27 @@ public sealed class AuditTests : GalleryTest
             .ToList();
 
         Assert.AreEqual(0, roleless.Count, $"focusable, but not saying what it is: {string.Join(", ", roleless)}");
+    }
+
+    [TestMethod]
+    [DataRow("Quartz", "Components")]
+    [DataRow("Quartz", "Studio")]
+    [DataRow("Linen", "Components")]
+    [DataRow("Linen", "Studio")]
+    [DataRow("Linen", "Settings")]
+    public async Task EveryControlHasANameAndARoleInEveryTheme(string preset, string destination)
+    {
+        // Themes build some components differently (labels above fields, segmented tabs): they must still say what they are.
+        Themes.Set(Themes.Theme.WithStyle(Radiant.Theming.ThemePresets.Find(preset)!));
+        await OpenAsync(destination);
+
+        var tree = await Driver.TreeAsync("basic,state");
+        var unclear = Flatten(tree.Nodes.Single())
+            .Where(n => n.Focusable == true && (string.IsNullOrWhiteSpace(n.Label) || n.Role is null or "none"))
+            .Select(n => $"{n.Role} \"{n.Label}\" #{n.Id}{(n.TestId is null ? "" : " @" + n.TestId)}")
+            .ToList();
+
+        Assert.AreEqual(0, unclear.Count, $"focusable, but unnamed or without a role: {string.Join(", ", unclear)}");
     }
 
     [TestMethod]

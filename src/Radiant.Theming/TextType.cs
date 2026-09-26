@@ -62,4 +62,7 @@ public enum TextType
 
     /// <summary>Code and figures that must line up, in the monospace family.</summary>
     Code,
+
+    /// <summary>A small label over a group ("TRY ONE", "RECENT"), set in capitals and spaced out.</summary>
+    Overline,
 }

@@ -31,6 +31,47 @@ public class TemplateGoldenTests
     // A block fills the width it's given, as it would in a page.
     private static Element Fill(Element block) => new Box { Layout = new LayoutStyle { AlignSelf = Align.Stretch }, Children = [block] };
 
+    // The showcase blocks in each preset but the default, wide, light and dark: heroes, features,
+    // the featured plan, calls to action and empty states take their looks from the theme.
+    [TestMethod]
+    [DataRow("Quartz")]
+    [DataRow("Linen")]
+    public void ShowcaseInPresets(string preset)
+    {
+        foreach (var dark in new[] { false, true })
+        {
+            var theme = ThemePresets.Find(preset)!;
+            theme = theme with { Colors = theme.Colors with { IsDark = dark } };
+            CheckIn(theme, $"Showcase_{preset}_{(dark ? "dark" : "light")}", Wide, 1500, () => Fill(new Box
+            {
+                Layout = new LayoutStyle { RowGap = 32 },
+                Children =
+                [
+                    new Hero("Desktop apps, built in C#")
+                    {
+                        Eyebrow = "Radiant 1.0",
+                        Text = "A declarative UI, themes you can swap live, sharp text and GPU rendering.",
+                        Actions = [new SurfaceButton("Get started"), new SurfaceButton("Read the docs", ButtonVariant.Text)],
+                    },
+                    new FeatureGrid("Everything a desktop app needs",
+                    [
+                        new Feature("palette", "Themes", "Swap the whole look live."),
+                        new Feature("text_fields", "Text", "Shaping, bidi and sharp glyphs."),
+                        new Feature("bolt", "Fast", "Only what changed is rebuilt."),
+                    ]),
+                    new PricingTiers(
+                    [
+                        new PricingTier("Hobby", "$0", ["1 project"]) { Description = "For trying it out." },
+                        new PricingTier("Pro", "$24", ["Unlimited projects", "Email support"]) { Description = "For professionals.", Featured = true },
+                        new PricingTier("Team", "$96", ["Single sign-on"]) { Description = "For organisations." },
+                    ], _ => { }),
+                    new CallToAction("Ready to build something great?") { Text = "Start free.", Actions = [new SurfaceButton("Get started")] },
+                    new EmptyState("inbox", "No messages") { Description = "When someone writes to you, it'll show up here." },
+                ],
+            }));
+        }
+    }
+
     [TestMethod]
     public void Stats() => CheckBlock("Stats", 780, 200, () => Fill(new StatsGrid(
     [
