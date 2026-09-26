@@ -84,6 +84,21 @@ public class ThemePresetsTests
     }
 
     [TestMethod]
+    public void RaisedContrastStrengthensQuietTextAndBordersInAFixedPalette()
+    {
+        foreach (var preset in new[] { ThemePresets.Quartz, Dark(ThemePresets.Linen) })
+        {
+            var standard = ResolvedTheme.Resolve(preset);
+            var high = ResolvedTheme.Resolve(preset with { Colors = preset.Colors with { ContrastLevel = 1 } });
+            var surface = standard.Get(SurfaceName.Surface);
+
+            Assert.IsTrue(ContrastOf(high.Get(SurfaceName.SurfaceVariant, on: true), surface) > ContrastOf(standard.Get(SurfaceName.SurfaceVariant, on: true), surface), preset.Name);
+            Assert.IsTrue(ContrastOf(high.Outline, surface) > ContrastOf(standard.Outline, surface), preset.Name);
+            Assert.AreEqual(standard.Get(SurfaceName.Primary), high.Get(SurfaceName.Primary), "accents stay as picked");
+        }
+    }
+
+    [TestMethod]
     public void HandPickedColoursIgnoreTheSeed()
     {
         var quartz = ThemePresets.Quartz;

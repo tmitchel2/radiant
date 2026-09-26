@@ -113,8 +113,9 @@ For a theme whose colours aren't worked out from a seed, set `ThemeColors.Light`
 `ThemeColors.Dark` to `ColorRoles`: every role (surfaces, containers, content, outlines, inverse)
 and each family as a `ColorFamily` (colour, on, container, on container). The one for the
 appearance (`IsDark`) replaces the seed's scheme role for role, so components look the same
-either way. The fixed families default to their family's container colours. A fixed palette has
-one contrast level: the seed, variant and contrast level don't change it. The presets' palettes
+either way. The fixed families default to their family's container colours. The seed and
+variant don't change a fixed palette; a raised contrast level (following "increase contrast")
+moves quiet text towards the full text colour and borders towards stronger ones. The presets' palettes
 are tested to keep every family's content at 4.5:1 or more, light and dark.
 
 ## Colour: surfaces, not swatches

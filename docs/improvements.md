@@ -327,12 +327,12 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Theming (`Radiant.Theming`)
 
-- **Hand-picked palettes have one contrast level.** `Quartz` and `Linen` set `ColorRoles` for light
-  and dark, so `ContrastLevel` (and following "increase contrast") does nothing for them, nor do
-  the seed and variant, so the gallery hides its colour picker there. A palette could carry a
-  high-contrast pair of `ColorRoles`, or push content and outlines towards black or white by the
-  contrast level. Deriving a palette's primary family from the seed would also let the user pick
-  an accent while keeping the palette's neutrals.
+- **Hand-picked palettes only raise contrast roughly.** For `ColorRoles`, a raised contrast level
+  moves quiet text and borders towards stronger ones, but accents and containers stay as picked
+  and a reduced level does nothing. A palette could carry its own high-contrast `ColorRoles`. The
+  seed and variant don't touch a palette either, so the gallery hides its colour picker there;
+  deriving a palette's primary family from the seed would let the user pick an accent while
+  keeping the palette's neutrals.
 - **Not every component reads the component styles yet.** Still fixed at one look: `Fab`,
   `DataTable` headers and rows, `TreeView` rows, `DocumentTabs`, `Pagination`'s sizes,
   `MenuBar`, `StatusBar` and the templates' own blocks (a hero's corners, a pricing tier's

@@ -39,8 +39,9 @@ public sealed record ThemeColors
 
     /// <summary>
     /// Hand-picked colours for the light appearance, used instead of the seed's scheme when not
-    /// <see cref="IsDark"/>. A fixed palette has one contrast level: <see cref="ContrastLevel"/>,
-    /// <see cref="Variant"/> and the seed don't change it.
+    /// <see cref="IsDark"/>. The seed and <see cref="Variant"/> don't change them; a raised
+    /// <see cref="ContrastLevel"/> moves quiet text towards the full text colour and borders
+    /// towards stronger ones (a reduced one changes nothing).
     /// </summary>
     public ColorRoles? Light { get; init; }
 

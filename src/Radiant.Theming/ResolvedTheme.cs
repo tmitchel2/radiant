@@ -120,9 +120,20 @@ public sealed class ResolvedTheme
             Argb(scheme, RadiantDynamicColors.Background()));
     }
 
-    // Hand-picked roles fill the families as the seed's scheme's roles do.
+    // Hand-picked roles fill the families as the seed's scheme's roles do. Raised contrast (above
+    // 0, up to 1) moves quiet content towards the full content colour and borders towards stronger ones.
     private static ResolvedTheme FromRoles(Theme theme, ColorRoles c)
     {
+        var level = (float)Math.Clamp(theme.Colors.ContrastLevel, 0, 1);
+        if (level > 0f)
+        {
+            c = c with
+            {
+                OnSurfaceVariant = Oklab.Lerp(c.OnSurfaceVariant, c.OnSurface, 0.6f * level),
+                Outline = Oklab.Lerp(c.Outline, c.OnSurfaceVariant, 0.8f * level),
+                OutlineVariant = Oklab.Lerp(c.OutlineVariant, c.Outline, level),
+            };
+        }
         var roles = new Color[s_names * 4];
         void Set(SurfaceName name, Color color, Color on, Color container, Color onContainer)
         {
