@@ -17,6 +17,7 @@ public sealed record FeatureGrid(string Title, IReadOnlyList<Feature> Features) 
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
+        var style = context.UseTheme().Theme.Components.Showcase;
         var items = new List<Element?>();
         foreach (var feature in Features)
         {
@@ -25,10 +26,8 @@ public sealed record FeatureGrid(string Title, IReadOnlyList<Feature> Features) 
                 Layout = new LayoutStyle { RowGap = 8 },
                 Children =
                 [
-                    new Surface
+                    SurfaceLooks.Surface(style.FeatureIcon) with
                     {
-                        SurfaceColor = SurfaceName.Tertiary,
-                        SurfaceContainerToggle = true,
                         CornerShape = CornerShapeRole.Medium,
                         Layout = new LayoutStyle { Width = 44, Height = 44, AlignItems = Align.Center, JustifyContent = Justify.Center },
                         Children = [new SurfaceIcon(feature.Icon)],

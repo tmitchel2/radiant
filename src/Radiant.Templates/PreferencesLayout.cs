@@ -30,6 +30,7 @@ public sealed record PreferencesLayout(IReadOnlyList<NavItem> Categories, int Se
     {
         ArgumentNullException.ThrowIfNull(context);
         var theme = context.UseTheme();
+        var selected = theme.Theme.Components.List.Selected;
         var refs = context.UseMemo(() => Enumerable.Range(0, Categories.Count).Select(_ => new ElementRef()).ToArray(), Categories.Count);
         var select = OnSelect;
         var count = Categories.Count;
@@ -68,8 +69,8 @@ public sealed record PreferencesLayout(IReadOnlyList<NavItem> Categories, int Se
                     new PressableSurface
                     {
                         InsetFocusRing = true,
-                        SurfaceColor = chosen ? SurfaceName.Secondary : null,
-                        SurfaceContainerToggle = chosen ? true : null,
+                        SurfaceColor = chosen ? selected.Surface : null,
+                        SurfaceContainerToggle = chosen && selected.SurfaceContainer ? true : null,
                         CornerShape = CornerShapeRole.Small,
                         Role = SemanticsRole.Tab,
                         Label = item.Label,

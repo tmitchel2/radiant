@@ -17,7 +17,8 @@ internal static class SurfaceBox
             CornerRadii = theme.Corners(props.CornerShape ?? CornerShapeRole.None),
             Shadows = theme.Elevation(props.Elevation ?? ElevationLevel.Level0),
             BorderWidth = outline ? props.OutlineWidth ?? 1f : 0f,
-            BorderColor = props.OutlineInContentColor == true ? theme.ContentColor(state)
+            BorderColor = props.OutlineColor is { } family ? theme.Get(family)
+                : props.OutlineInContentColor == true ? theme.ContentColor(state)
                 : props.OutlineVariant == true ? theme.OutlineVariant
                 : theme.Outline,
         };

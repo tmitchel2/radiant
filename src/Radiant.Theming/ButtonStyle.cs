@@ -21,6 +21,12 @@ public sealed record ButtonStyle
     /// <summary>The label's text style.</summary>
     public TextType Label { get; init; } = TextType.LabelLarge;
 
+    /// <summary>A floating action button's corners.</summary>
+    public CornerShapeRole FabShape { get; init; } = CornerShapeRole.Large;
+
+    /// <summary>How raised a floating action button is.</summary>
+    public ElevationLevel FabElevation { get; init; } = ElevationLevel.Level3;
+
     /// <summary>The main action.</summary>
     public SurfaceLook Filled { get; init; } = new() { Surface = SurfaceName.Primary };
 

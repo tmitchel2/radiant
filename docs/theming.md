@@ -68,6 +68,8 @@ family, and components read it instead of constants. Two sets are built in:
 | Overlays | Headline dialogs with text buttons; a dark snackbar bar at the bottom centre | Card dialogs with a close button (and an outlined cancel in an `AlertDialog`); toast cards at the bottom end |
 | Lists | 56 px rows in body large; 56 px accordion headers | 44 px rows in body medium, rounded when selected; 48 px accordion headers; rounded calendar days |
 | Tracks | Secondary container | The highest surface container (a neutral grey) |
+| Chosen items | Secondary container (list rows, table and tree rows, menu bar, master–detail, preferences, wizard steps) | The same, which is a neutral grey in the Hairline presets |
+| Showcase | Tinted primary-container hero and call to action, tertiary feature tiles, a raised featured plan, a disc behind an empty state's icon | A quiet outlined hero, a dark (inverse) call to action, accent-filled feature tiles, the featured plan ringed in the accent, an outlined tile behind an empty state's icon |
 | Icons | 24 px, weight 400, chosen ones filled | 20 px, weight 300, never filled |
 | Focus ring | 3 px, 2 out, secondary | 2 px, 2 out, primary |
 | Hover and press | The content colour laid over the control | A shade (black on light, white on dark), so filled controls darken too; buttons shrink to 98% while pressed |
@@ -76,17 +78,20 @@ The records:
 
 - `InteractionStyle`: the focus ring (width, gap, colour family), the `DisabledLook`, the `StateLayerLook` (content colour or shade) and how far buttons shrink when pressed.
 - `IconStyle`: default size, stroke weight, and whether chosen icons fill.
-- `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, and a `SurfaceLook` per variant.
+- `ButtonStyle`, `IconButtonStyle`: size, padding, corners, label, a `SurfaceLook` per variant, the toggle's on look, and the floating action button's corners and elevation (pagination buttons are 4 px smaller than icon buttons).
 - `ChipStyle`: chips' and tags' sizes, corners and looks.
 - `CardStyle`: corners, padding and a look per variant.
 - `OverlayStyle`: menus, dialogs (and their `DialogLook`), popovers, tooltips, snackbars (`SnackbarLook`) and the scrim.
 - `NavigationStyle`: the app bar, the drawer and the `TabsLook`.
 - `FieldStyle`: the `FieldLook`, height, corners and text, and calendar days' shape.
 - `SelectionStyle`: halos, check box and radio sizes, the `SwitchLook`, the `SliderThumb` (for `Slider` and `RangeSlider`), and tracks' thickness and colour.
-- `ListStyle`: list rows' heights, padding, text, corners and selected look, and accordion headers.
+- `ListStyle`: list rows' heights, padding, text, corners and selected look (every chosen row and item uses it), and accordion headers.
+- `ShowcaseStyle`: the templates' hero, call to action, feature icons, featured plan and empty-state icon.
 
 A `SurfaceLook` is a variant's colours as data: surface and content families, on and container
-toggles, outline and elevation, the same things a component's facets set. Where the structure
+toggles, outline (its width, and a family to draw it in) and elevation, the same things a
+component's facets set. `SurfaceLooks.Surface` and `SurfaceLooks.Pressable` turn one into a
+surface, for templates and apps that take their looks from the theme too. Where the structure
 differs, an enum picks it and the component builds that structure around the same behaviour, keys
 and semantics. Tweak a set with `with`, as `Quartz` does for square chips:
 

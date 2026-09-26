@@ -22,11 +22,17 @@ public sealed record SurfaceLook
     /// <summary>The content's legibility, or null for full.</summary>
     public float? ContentLegibility { get; init; }
 
-    /// <summary>Whether a 1 px outline is drawn.</summary>
+    /// <summary>Whether an outline is drawn.</summary>
     public bool Outline { get; init; }
 
     /// <summary>Whether the outline is the quieter variant.</summary>
     public bool OutlineVariant { get; init; }
+
+    /// <summary>The outline's width, 1 px if null.</summary>
+    public float? OutlineWidth { get; init; }
+
+    /// <summary>A colour family to draw the outline in instead of the outline colours.</summary>
+    public SurfaceName? OutlineColor { get; init; }
 
     /// <summary>How raised it is.</summary>
     public ElevationLevel? Elevation { get; init; }

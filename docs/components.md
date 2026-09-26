@@ -22,7 +22,7 @@ Components share props through style facets, generated onto each component by
 | `IHasBackgroundColor` | `SurfaceColor`, `SurfaceLegibility`, `SurfaceOnToggle`, `SurfaceContainerToggle`, `ContentColor`, `ContentLegibility`, `ContentOnToggle`, `ContentContainerToggle`, `ContentFocusedColor`, `ShowSurface`, `ShowError`, `ShowDisabled` |
 | `IHasCornerShape` | `CornerShape` |
 | `IHasElevation` | `Elevation` |
-| `IHasOutline` | `ShowOutline`, `OutlineWidth`, `OutlineVariant` |
+| `IHasOutline` | `ShowOutline`, `OutlineWidth`, `OutlineVariant`, `OutlineInContentColor`, `OutlineColor` |
 | `IHasText` | `Text`, `TextType` |
 | `IHasPressable` | `OnPress` |
 | `IHasLayout` | `Layout` |

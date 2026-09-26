@@ -413,11 +413,7 @@ public sealed partial record DataTable(IReadOnlyList<DataColumn> Columns, int Ro
         {
             var theme = context.UseTheme();
             var hovered = context.UseState(false);
-            var state = context.UseSurface().With(new SurfaceChange
-            {
-                Surface = Selected ? SurfaceName.Secondary : null,
-                ToggleSurfaceContainer = Selected,
-            });
+            var state = context.UseSurface().With(Selected ? theme.Theme.Components.List.Selected.ToSurfaceChange() : new SurfaceChange());
             var (index, press) = (Index, Press);
             var cells = new List<Element?>();
             if (Checkbox is not null)

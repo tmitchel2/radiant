@@ -17,4 +17,7 @@ public interface IHasOutline
 
     /// <summary>Whether to draw it in the content colour instead (a primary ring round today's date).</summary>
     bool? OutlineInContentColor { get; init; }
+
+    /// <summary>A colour family to draw it in instead (a featured plan ringed in the accent).</summary>
+    Radiant.Theming.SurfaceName? OutlineColor { get; init; }
 }

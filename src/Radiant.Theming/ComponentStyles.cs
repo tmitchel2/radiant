@@ -41,6 +41,9 @@ public sealed record ComponentStyles
     /// <summary>List rows and accordion headers.</summary>
     public ListStyle List { get; init; } = new();
 
+    /// <summary>The page templates' showcase blocks.</summary>
+    public ShowcaseStyle Showcase { get; init; } = new();
+
     /// <summary>
     /// Tonal: containers in tonal colours, pill controls, floating labels, underlined tabs, state
     /// layers and halos, and greyed-out disabled controls. The default.
@@ -49,7 +52,7 @@ public sealed record ComponentStyles
 
     /// <summary>
     /// Hairline: flat and neutral. White surfaces edged with 1 px lines, the accent kept for the
-    /// main action and what's on, quiet ink-coloured secondary buttons, compact controls, labels
+    /// main action, what's on and what's featured, quiet ink-coloured secondary buttons, compact controls, labels
     /// above fields, segmented tabs, a ringed slider thumb, no halos, and disabled controls faded.
     /// </summary>
     public static ComponentStyles Hairline { get; } = new()
@@ -72,6 +75,7 @@ public sealed record ComponentStyles
             IconSize = 18f,
             Tonal = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
             ToggleOn = new SurfaceLook { Surface = SurfaceName.Primary, SurfaceContainer = true },
+            FabElevation = ElevationLevel.Level2,
             Outlined = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true },
             Text = new SurfaceLook(),
             Elevated = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Elevation = ElevationLevel.Level1 },
@@ -175,6 +179,16 @@ public sealed record ComponentStyles
             Selected = new SurfaceLook { Surface = SurfaceName.Secondary, SurfaceContainer = true },
             AccordionHeaderHeight = 48f,
             AccordionTitle = TextType.TitleSmall,
+        },
+        Showcase = new ShowcaseStyle
+        {
+            Hero = new SurfaceLook { Surface = SurfaceName.SurfaceContainerLow, Outline = true, OutlineVariant = true },
+            CallToAction = new SurfaceLook { Surface = SurfaceName.Inverse },
+            PanelShape = CornerShapeRole.Large,
+            FeatureIcon = new SurfaceLook { Surface = SurfaceName.Primary },
+            FeaturedTier = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineWidth = 2f, OutlineColor = SurfaceName.Primary, Elevation = ElevationLevel.Level2 },
+            EmptyIcon = new SurfaceLook { Surface = SurfaceName.SurfaceBright, Outline = true, OutlineVariant = true, Content = SurfaceName.SurfaceVariant, ContentOn = true },
+            EmptyIconShape = CornerShapeRole.Medium,
         },
     };
 }

@@ -127,6 +127,7 @@ public sealed partial record MasterDetail(IReadOnlyList<ListEntry> Items, int Se
 
         public override Element? Build(BuildContext context)
         {
+            var selected = context.UseTheme().Theme.Components.List.Selected;
             var arrow = OnArrow;
             return new Box
             {
@@ -145,8 +146,8 @@ public sealed partial record MasterDetail(IReadOnlyList<ListEntry> Items, int Se
                     new PressableSurface
                     {
                         InsetFocusRing = true,
-                        SurfaceColor = Chosen ? SurfaceName.Secondary : null,
-                        SurfaceContainerToggle = Chosen ? true : null,
+                        SurfaceColor = Chosen ? selected.Surface : null,
+                        SurfaceContainerToggle = Chosen && selected.SurfaceContainer ? true : null,
                         CornerShape = CornerShapeRole.Medium,
                         Role = SemanticsRole.ListItem,
                         Label = Entry.Title,

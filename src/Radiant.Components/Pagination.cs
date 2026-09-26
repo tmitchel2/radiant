@@ -72,6 +72,8 @@ public sealed partial record Pagination(int PageCount, int Page, Action<int>? On
     {
         ArgumentNullException.ThrowIfNull(context);
         var page = Math.Clamp(Page, 1, Math.Max(1, PageCount));
+        // Page buttons are a little smaller than icon buttons: 36 px by default.
+        var size = context.UseTheme().Theme.Components.IconButton.Size - 4f;
         var change = OnChange;
         var children = new List<Element?>
         {
@@ -94,7 +96,7 @@ public sealed partial record Pagination(int PageCount, int Page, Action<int>? On
                 Label = current ? $"Page {number}, current" : $"Page {number}",
                 Selected = current,
                 OnPress = () => change?.Invoke(target),
-                Layout = new LayoutStyle { MinWidth = 36, Height = 36, Padding = Edges.Symmetric(6, 0), AlignItems = Align.Center, JustifyContent = Justify.Center },
+                Layout = new LayoutStyle { MinWidth = size, Height = size, Padding = Edges.Symmetric(6, 0), AlignItems = Align.Center, JustifyContent = Justify.Center },
                 Children = [new SurfaceText(number.ToString(CultureInfo.CurrentCulture)) { TextType = TextType.LabelLarge }],
             });
         }

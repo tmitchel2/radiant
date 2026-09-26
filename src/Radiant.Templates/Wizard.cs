@@ -121,6 +121,7 @@ public sealed partial record Wizard(IReadOnlyList<WizardStep> Steps, int Current
     {
         public override Element? Build(BuildContext context)
         {
+            var selected = context.UseTheme().Theme.Components.List.Selected;
             Element?[] children =
             [
                 new Surface
@@ -141,8 +142,8 @@ public sealed partial record Wizard(IReadOnlyList<WizardStep> Steps, int Current
             return Revisit is null
                 ? new Surface
                 {
-                    SurfaceColor = IsCurrent ? SurfaceName.Secondary : null,
-                    SurfaceContainerToggle = IsCurrent ? true : null,
+                    SurfaceColor = IsCurrent ? selected.Surface : null,
+                    SurfaceContainerToggle = IsCurrent && selected.SurfaceContainer ? true : null,
                     CornerShape = CornerShapeRole.Medium,
                     Semantics = new Semantics { Role = SemanticsRole.ListItem, Label = Title, Selected = IsCurrent },
                     Layout = layout,

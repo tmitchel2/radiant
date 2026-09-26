@@ -17,6 +17,7 @@ public sealed partial record PricingTiers(IReadOnlyList<PricingTier> Tiers, Acti
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
+        var featured = context.UseTheme().Theme.Components.Showcase.FeaturedTier;
         var cards = new List<Element?>();
         for (var i = 0; i < Tiers.Count; i++)
         {
@@ -57,7 +58,12 @@ public sealed partial record PricingTiers(IReadOnlyList<PricingTier> Tiers, Acti
                 new Box { Layout = new LayoutStyle { RowGap = 10, Margin = new Edges(0, 8, 0, 0) }, Children = features })
             {
                 Variant = tier.Featured ? CardVariant.Elevated : CardVariant.Outlined,
-                SurfaceColor = tier.Featured ? SurfaceName.SurfaceContainerHigh : null,
+                SurfaceColor = tier.Featured ? featured.Surface : null,
+                SurfaceContainerToggle = tier.Featured && featured.SurfaceContainer ? true : null,
+                ShowOutline = tier.Featured && featured.Outline ? true : null,
+                OutlineWidth = tier.Featured ? featured.OutlineWidth : null,
+                OutlineColor = tier.Featured ? featured.OutlineColor : null,
+                Elevation = tier.Featured ? featured.Elevation : null,
                 Layout = new LayoutStyle { Padding = Edges.All(24), RowGap = 12 },
             });
         }

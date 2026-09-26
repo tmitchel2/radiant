@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Radiant.Components;
 using Radiant.Layout;
 using Radiant.Theming;
@@ -26,11 +26,8 @@ public sealed record Hero(string Headline) : Component
     public ImageSource? Picture { get; init; }
 
     /// <inheritdoc/>
-    public override Element? Build(BuildContext context) => new Surface
+    public override Element? Build(BuildContext context) => Showcase.Panel(context, s => s.Hero) with
     {
-        SurfaceColor = SurfaceName.Primary,
-        SurfaceContainerToggle = true,
-        CornerShape = CornerShapeRole.ExtraLarge,
         ClipContent = true,
         Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, FlexWrap = FlexWrap.Wrap, AlignItems = Align.Center, Padding = Edges.All(40), ColumnGap = 40, RowGap = 24 },
         Children =

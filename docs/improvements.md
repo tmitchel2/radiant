@@ -333,10 +333,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   seed and variant don't touch a palette either, so the gallery hides its colour picker there;
   deriving a palette's primary family from the seed would let the user pick an accent while
   keeping the palette's neutrals.
-- **Not every component reads the component styles yet.** Still fixed at one look: `Fab`,
-  `DataTable` headers and rows, `TreeView` rows, `DocumentTabs`, `Pagination`'s sizes,
-  `MenuBar`, `StatusBar` and the templates' own blocks (a hero's corners, a pricing tier's
-  highlight). Each wants its sizes and looks moved into a style record.
+- **A few desktop components share one look.** `DocumentTabs` (a strip with the chosen tab's
+  accent line), `StatusBar`, and `DataTable`'s header and row heights draw the same in every
+  preset: they're neutral already, but a theme can't size or recolour them beyond the colour
+  roles. Their chosen rows do follow `ListStyle.Selected`.
 - **Fine icons are an approximation.** Hairline draws Material Symbols at weight 300 and 20 px,
   close to a thin outline set but not the same drawing. Another icon font would need a map from
   names to its characters, since icons are drawn by ligature name.
