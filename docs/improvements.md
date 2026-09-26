@@ -156,10 +156,17 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `TextBlock` sized to its text gave trailing spaces no width, so a composition after "a " sat
   against the "a"; the real field needs the caret from text layout, spaces included.
 
-- **Goldens don't cover everything.** Controls, navigation, lists, tables, menus, dialogs,
-  tooltips and a right-to-left sheet have goldens, light and dark. The date and colour pickers,
-  sheets, snackbars, the palette, charts and the templates (the plan's three widths × two
-  densities) don't yet, nor do contrast levels or scheme variants.
+- **Goldens don't cover everything.** Components, the templates' blocks (two widths, light, dark
+  and compact) and a few scheme variants have goldens. Page-sized templates (the gallery's pages),
+  the drawer, the navigation bar, pickers opened as popovers and animation mid-way don't, and
+  there's no third width. About 2.8 MB of PNGs so far.
+- **The last golden batch found five more bugs.** A snackbar's action was drawn in its own
+  background colour (content in the surface's own family is its "on" colour, and toggling to the
+  container gave on-container); shortcut labels named punctuation and arrows by their key codes
+  ("⌘Equal"); the colour picker's gamut edge was stepped; success and warning went grey in the
+  monochrome and neutral schemes; and compact density left text fields and check boxes full
+  size, because fixed 56 px icon boxes and a fixed 40 px ring held them there. Templates also
+  used selected filter chips (with a tick) as status labels; they use the new `Tag` now.
 - **A missing golden passes.** `Golden.AssertMatches` writes a golden that isn't there and passes,
   so a forgotten `git add` goes unnoticed; a switch that fails instead (for a pre-commit run)
   would catch it.

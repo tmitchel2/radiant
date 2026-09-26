@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Radiant.Templates\Radiant.Templates.csproj" />
+    <ProjectReference Include="..\Radiant.Testing\Radiant.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +25,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Radiant.Components.Tests\GoldenSheets.cs" Link="GoldenSheets.cs" />
   </ItemGroup>
 
 </Project>

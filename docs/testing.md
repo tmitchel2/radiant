@@ -57,9 +57,18 @@ at 2×:
 | `Feedback` | circular progress, avatars and an accordion with one section open |
 | `Menu`, `MenuKeyboard`, `Dialog`, `Tooltip` | an open menu, the same moved through with the arrows (its focus ring inside the item), a dialog over its scrim, and a tooltip after hovering |
 | `RightToLeft` | a top app bar, tabs, controls, a text field and a slider laid out right to left |
+| `Calendar`, `ColorPicker` | a month with today, a selected day and disabled weekends (fixed dates and culture); the HCT picker |
+| `Sheet`, `Snackbar`, `CommandPalette` | an end sheet with actions, a snackbar with an action, the palette grouped |
+| `Charts` | an area line chart, a stacked bar chart and a donut |
+| `Buttons_HighContrast_*`, `Buttons_Vibrant_light`, `Buttons_Monochrome_dark` | buttons, a chip, controls and an alert at contrast level 1 and in other scheme variants |
 
-They're in `ComponentGoldenTests` and `MoreComponentGoldenTests`, with `GoldenSheets` for the
-themed surface and the light and dark check.
+They're in `ComponentGoldenTests`, `MoreComponentGoldenTests` and `OverlayAndChartGoldenTests`,
+with `GoldenSheets` for the themed surface and the light and dark check.
+
+`Radiant.Templates.Tests/TemplateGoldenTests` keeps the template blocks (stats, pricing, sign-in,
+empty state, products), each narrow and wide in light, wide in dark, and wide at compact density
+(`Theme.Density = -2`), so reflowing and spacing show up. It links `GoldenSheets` from the
+components' tests.
 
 `Radiant.Tests` has the renderer's own goldens (`Gpu_ReferenceScene`; see
 [rendering.md](rendering.md)) and `Radiant.Testing.Tests` checks the harness itself.

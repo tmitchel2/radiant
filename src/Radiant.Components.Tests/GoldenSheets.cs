@@ -24,7 +24,11 @@ internal static class GoldenSheets
     }
 
     /// <summary>The content on the theme's surface, in light or dark, and right to left if asked.</summary>
-    public static Element Themed(bool dark, Element? content, bool rightToLeft = false)
+    public static Element Themed(bool dark, Element? content, bool rightToLeft = false) =>
+        Themed(new Theme { Colors = new Theme().Colors with { IsDark = dark } }, content, rightToLeft);
+
+    /// <summary>The content on <paramref name="theme"/>'s surface.</summary>
+    public static Element Themed(Theme theme, Element? content, bool rightToLeft = false)
     {
         Element surface = new Surface
         {
@@ -33,7 +37,7 @@ internal static class GoldenSheets
             Children = [content],
         };
         return new ThemeProvider(
-            new ThemeController(new Theme { Colors = new Theme().Colors with { IsDark = dark } }),
+            new ThemeController(theme),
             rightToLeft ? new Directionality(TextDirection.RightToLeft, surface) : surface);
     }
 
@@ -58,6 +62,13 @@ internal static class GoldenSheets
             var snapshot = UISnapshot.Render(canvas, Themed(dark, sheet(), rightToLeft), act: act, frames: frames);
             Golden.AssertMatches(snapshot, $"{name}_{(dark ? "dark" : "light")}");
         }
+    }
+
+    /// <summary>Renders the sheet in <paramref name="theme"/> and checks it against the golden called <paramref name="name"/>.</summary>
+    public static void CheckIn(Theme theme, string name, int width, int height, Func<Element> sheet, Action<UIRoot>? act = null, int frames = 30)
+    {
+        using var canvas = Canvas(width, height);
+        Golden.AssertMatches(UISnapshot.Render(canvas, Themed(theme, sheet()), act: act, frames: frames), name);
     }
 
     public static IEnumerable<SemanticsNode> All(SemanticsNode node) => node.Children.SelectMany(All).Prepend(node);
