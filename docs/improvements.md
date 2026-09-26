@@ -146,6 +146,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **The colour picker's images are cached for good.** A plane per tone step (51) and a tone
+  strip per 3° of hue and 3 of chroma are made once and kept, because image textures aren't
+  freed yet; the gamut's edge is stepped at that resolution. There's no alpha, no eyedropper, no
+  saved swatches, and no contrast readout against a chosen background.
 - **Dates are single and Gregorian.** No range picking (start and end in one calendar), no
   time picker, no month or year view to jump far (only a month at a time), and only the
   Gregorian calendar (`DateOnly`), though names and the first weekday follow the culture.

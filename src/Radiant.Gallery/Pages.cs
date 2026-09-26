@@ -109,6 +109,21 @@ internal static class Pages
                             themes.Set(themes.Theme with { Density = -i });
                         }) { Layout = new LayoutStyle { Width = 200 } }),
                     ]) { Description = "How Radiant looks on this device." },
+                    new SettingsSection("Theme colour",
+                    [
+                        new Box
+                        {
+                            Layout = new LayoutStyle { Padding = Edges.All(16) },
+                            Children =
+                            [
+                                new ColorPicker(unchecked((int)theme.Theme.Colors.Seed.ToArgb()), argb =>
+                                    themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { Seed = Radiant.Graphics2D.Color.FromArgb(argb) } }))
+                                {
+                                    Label = "Theme colour",
+                                },
+                            ],
+                        },
+                    ]) { Description = "Every colour in the app is worked out from this one, in light and dark." },
                     new SettingsSection("Notifications",
                     [
                         new SettingsRow("Push notifications", new Switch(notifications.Value, notifications.Set)) { Description = "Alerts for mentions and replies" },

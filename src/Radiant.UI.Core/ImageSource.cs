@@ -15,6 +15,9 @@ namespace Radiant.UI.Core;
 public sealed class ImageSource
 {
     private readonly byte[] _pixels;
+
+    /// <summary>The pixels, premultiplied BGRA, row by row from the top.</summary>
+    internal ReadOnlyMemory<byte> Pixels => _pixels;
     private readonly ConditionalWeakTable<Renderer2D, Texture2D> _textures = [];
 
     private ImageSource(int width, int height, byte[] premultipliedBgra)
