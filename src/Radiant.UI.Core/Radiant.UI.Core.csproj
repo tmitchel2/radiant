@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Radiant\Radiant.csproj" />
     <ProjectReference Include="..\Radiant.Text\Radiant.Text.csproj" />
+    <ProjectReference Include="..\Radiant.Platform\Radiant.Platform.csproj" />
   </ItemGroup>
 
 </Project>

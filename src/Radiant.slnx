@@ -24,6 +24,11 @@
   <Project Path="Radiant.Theming.Tests/Radiant.Theming.Tests.csproj" />
   <Project Path="Radiant.Components/Radiant.Components.csproj" />
   <Project Path="Radiant.Components.Tests/Radiant.Components.Tests.csproj" />
+  <Project Path="Radiant.Platform/Radiant.Platform.csproj" />
+  <Project Path="Radiant.Platform.Tests/Radiant.Platform.Tests.csproj" />
+  <Project Path="Radiant.Platform.MacOS/Radiant.Platform.MacOS.csproj" />
+  <Project Path="Radiant.Platform.MacOS.Tests/Radiant.Platform.MacOS.Tests.csproj" />
+  <Project Path="PlatformCheck/PlatformCheck.csproj" />
   <Project Path="Radiant.Gallery/Radiant.Gallery.csproj" />
   <Project Path="RadiantCli/RadiantCli.csproj" />
   <Project Path="MsdfBaker/MsdfBaker.csproj" />

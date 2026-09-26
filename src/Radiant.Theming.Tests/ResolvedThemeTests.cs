@@ -16,7 +16,7 @@ public class ResolvedThemeTests
     public void RolesComeFromTheScheme()
     {
         var theme = ResolvedTheme.Resolve(new Theme());
-        var scheme = new DynamicScheme(Hct.FromInt(unchecked((int)0xFF6750A4)), Variant.TonalSpot, false, 0, Platform.Phone, SpecVersion.Spec2021);
+        var scheme = new DynamicScheme(Hct.FromInt(unchecked((int)0xFF6750A4)), Variant.TonalSpot, false, 0, ColorSystem.Platform.Phone, SpecVersion.Spec2021);
 
         Assert.AreEqual((uint)scheme.GetArgb(RadiantDynamicColors.Primary()), theme.Get(SurfaceName.Primary).ToArgb());
         Assert.AreEqual((uint)scheme.GetArgb(RadiantDynamicColors.OnPrimaryContainer()), theme.Get(SurfaceName.Primary, on: true, container: true).ToArgb());

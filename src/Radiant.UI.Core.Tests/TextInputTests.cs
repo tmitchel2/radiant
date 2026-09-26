@@ -215,4 +215,27 @@ public class TextInputTests
         root.Update(Viewport);
         Assert.IsFalse(Text().ShowCaret);
     }
+
+    [TestMethod]
+    public void AFocusedInputIsThePlatformsTextInputClientAndComposesInPlace()
+    {
+        var (root, value) = Mount("ab");
+        using var _ = root;
+        var client = root.TextInputClient;
+        Assert.IsNotNull(client, "focused, the input takes input-method text");
+
+        client.SetMarkedText("か", 1, 0);
+        root.Update(Viewport);
+        Assert.AreEqual(new TextRange(2, 3), value.Value.Composing);
+        Assert.IsTrue(client.CaretRect.Height > 0);
+
+        client.InsertText("感");
+        root.Update(Viewport);
+        Assert.AreEqual("ab感[]", Show(value.Value));
+        Assert.IsNull(value.Value.Composing);
+
+        root.ClearFocus();
+        root.Update(Viewport);
+        Assert.IsNull(root.TextInputClient, "blurred, it lets go");
+    }
 }

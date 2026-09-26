@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Radiant.Components\Radiant.Components.csproj" />
+    <ProjectReference Include="..\Radiant.Platform.MacOS\Radiant.Platform.MacOS.csproj" />
     <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

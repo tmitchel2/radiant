@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Radiant.Graphics2D;
+using Radiant.Platform;
 using Radiant.Text;
 using static Facebook.Yoga.YGNodeAPI;
 using static Facebook.Yoga.YGNodeStyleAPI;
@@ -42,6 +43,7 @@ public sealed class UIRoot : IDisposable
     private bool _focusVisible;
     private (double Time, Vector2 Position, PointerButton Button, int Count) _lastClick;
     private bool _mounted;
+    private ITextInputClient? _textInputClient;
 
     /// <summary>A tree showing <paramref name="element"/>.</summary>
     /// <param name="element">What to show.</param>
@@ -70,6 +72,38 @@ public sealed class UIRoot : IDisposable
 
     /// <summary>Whether focus was last moved by the keyboard, so the focused box should show a focus ring.</summary>
     public bool IsFocusVisible => _focused is not null && _focusVisible;
+
+    /// <summary>
+    /// The pointer's shape: the <see cref="Box.Cursor"/> of the deepest box under the pointer
+    /// that sets one (of the pressed box's path while a press is held), or the arrow.
+    /// <see cref="RadiantUI"/> shows it through the platform.
+    /// </summary>
+    public CursorShape Cursor { get; private set; }
+
+    /// <summary>The <see cref="Cursor"/> changed.</summary>
+    public event Action<CursorShape>? CursorChanged;
+
+    /// <summary>
+    /// Where typed text goes: a text field sets itself here while it has focus, and clears it
+    /// when it loses focus. <see cref="RadiantUI"/> hands it to the platform's text input, which
+    /// then delivers committed and composed (input method) text to it rather than as
+    /// <see cref="TextInput"/> events.
+    /// </summary>
+    public ITextInputClient? TextInputClient
+    {
+        get => _textInputClient;
+        set
+        {
+            if (!ReferenceEquals(_textInputClient, value))
+            {
+                _textInputClient = value;
+                TextInputClientChanged?.Invoke(value);
+            }
+        }
+    }
+
+    /// <summary>The <see cref="TextInputClient"/> changed.</summary>
+    public event Action<ITextInputClient?>? TextInputClientChanged;
 
     internal RenderNode RootRenderNode => _root.RenderNode!;
 
@@ -111,6 +145,8 @@ public sealed class UIRoot : IDisposable
             }
             FlushEffects();
         }
+        // A hovered box's cursor may have changed with its props.
+        RefreshCursor();
     }
 
     /// <summary>
@@ -797,6 +833,27 @@ public sealed class UIRoot : IDisposable
             {
                 enter(new PointerEventArgs(position, PointerButton.Left, modifiers) { LocalPosition = box.ToLocal(position) });
             }
+        }
+        RefreshCursor();
+    }
+
+    /// <summary>Works out <see cref="Cursor"/> from the pressed or hovered path, deepest box first.</summary>
+    private void RefreshCursor()
+    {
+        var path = _pressed ?? _hovered;
+        var cursor = CursorShape.Arrow;
+        for (var i = path.Count - 1; i >= 0; i--)
+        {
+            if (path[i] is BoxRenderNode { Element.Cursor: { } shape })
+            {
+                cursor = shape;
+                break;
+            }
+        }
+        if (cursor != Cursor)
+        {
+            Cursor = cursor;
+            CursorChanged?.Invoke(cursor);
         }
     }
 

@@ -75,7 +75,7 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
         var goalX = context.UseRef<float?>(null);
         var latest = context.UseRef(this);
         latest.Value = this;
-        var clipboard = context.Use(TextInputContexts.Clipboard);
+        var clipboard = context.UsePlatform().Clipboard;
         var root = context.Root;
         var isFocused = focused.Value;
 
@@ -94,6 +94,19 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 blinkOn.Set((int)(elapsed / BlinkSeconds) % 2 == 0);
             }).Dispose;
         }, (isFocused, State));
+
+        // While focused, the input is the platform's text input client: typing and input-method
+        // composition arrive through it, and the candidate window is placed at its caret.
+        var client = context.UseRef<InputClient?>(null);
+        client.Value ??= new InputClient();
+        var inputClient = client.Value;
+        context.UseEffect(() => () =>
+        {
+            if (ReferenceEquals(root.TextInputClient, inputClient))
+            {
+                root.TextInputClient = null;
+            }
+        }, default(ValueTuple));
 
         void Change(TextEditState next, bool coalesce = false)
         {
@@ -213,6 +226,46 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
             e.Handled |= handled;
         }
 
+        inputClient.Insert = typed =>
+        {
+            if (!Editable())
+            {
+                return;
+            }
+            var state = latest.Value.State;
+            if (!latest.Value.Multiline)
+            {
+                typed = typed.Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal);
+            }
+            if (typed.Length == 0 && state.Composing is null)
+            {
+                return;
+            }
+            Change(TextEditing.Insert(state, typed), coalesce: typed.Length == 1 && typed != " " && state.Composing is null);
+        };
+        inputClient.Mark = (marked, start, length) =>
+        {
+            if (Editable())
+            {
+                latest.Value.OnChange(TextEditing.SetComposing(latest.Value.State, marked, start, length));
+            }
+        };
+        inputClient.Unmark = () =>
+        {
+            if (latest.Value.State.Composing is not null)
+            {
+                Change(TextEditing.EndComposing(latest.Value.State));
+            }
+        };
+        inputClient.Caret = () =>
+        {
+            var state = latest.Value.State;
+            // While composing, the composition's start: the candidate window then stays put as the user types.
+            var position = state.Composing is { } composing ? new TextPosition(composing.Start) : state.Selection.FocusPosition;
+            var caret = text.CaretRect(position);
+            return new System.Drawing.RectangleF(caret.Left, caret.Top, 1f, caret.Height);
+        };
+
         void OnPointerDown(PointerEventArgs e)
         {
             var props = latest.Value;
@@ -249,14 +302,20 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
             Ref = Ref,
             Semantics = new Semantics { Role = SemanticsRole.TextField, Label = Label ?? Placeholder, Value = State.Text, Disabled = Disabled },
             Layout = Layout,
+            Cursor = Radiant.Platform.CursorShape.IBeam,
             OnFocus = _ =>
             {
                 focused.Set(true);
+                root.TextInputClient = inputClient;
                 latest.Value.OnFocusChange?.Invoke(true);
             },
             OnBlur = _ =>
             {
                 focused.Set(false);
+                if (ReferenceEquals(root.TextInputClient, inputClient))
+                {
+                    root.TextInputClient = null;
+                }
                 drag.Value = (false, 0);
                 var props = latest.Value;
                 if (props.State.Composing is not null)
@@ -303,6 +362,26 @@ public sealed record TextInput(TextEditState State, Action<TextEditState> OnChan
                 },
             ],
         };
+    }
+
+    /// <summary>The input's face to the platform's input methods, forwarding to the latest build's handlers.</summary>
+    private sealed class InputClient : Radiant.Platform.ITextInputClient
+    {
+        public Action<string> Insert { get; set; } = _ => { };
+
+        public Action<string, int, int> Mark { get; set; } = (_, _, _) => { };
+
+        public Action Unmark { get; set; } = () => { };
+
+        public Func<System.Drawing.RectangleF> Caret { get; set; } = () => default;
+
+        public System.Drawing.RectangleF CaretRect => Caret();
+
+        public void InsertText(string text) => Insert(text);
+
+        public void SetMarkedText(string text, int selectionStart, int selectionLength) => Mark(text, selectionStart, selectionLength);
+
+        public void UnmarkText() => Unmark();
     }
 
     /// <summary>Undo and redo stacks of whole states, with runs of typing kept as one step.</summary>

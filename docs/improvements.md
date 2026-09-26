@@ -38,15 +38,67 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `MouseButton`; the P7 platform layer should expose only Radiant types.
 - **Wheel units are a guess.** GLFW reports notches, converted at `UIAppOptions.WheelStep` (40 px).
   Trackpads send precise deltas that this over-scales. Fix with the P7 platform input.
-- **No key repeat or IME.** Input has no key-repeat flag, and text arrives one `char` at a time.
-  Fix with P7's `NSTextInputClient`.
+- **No key repeat.** Input has no key-repeat flag. Typing without a text input client still
+  arrives from GLFW one `char` at a time as `TextInput` events; with a client, the platform
+  delivers whole strings and compositions (see [platform.md](platform.md)).
 - **`ScrollArea` is basic.** It has no thumb dragging, no keyboard scrolling, and no fading
   indicators (`Auto` behaves like `Always`).
 - **`ElementRef.Bounds` ignores transforms.** It gives the untransformed rectangle.
 - **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
   tree yet, which the P7 accessibility bridge needs.
 
+## Platform (`Radiant.Platform`)
+
+- **Three copies of the Objective-C interop.** `Radiant.Platform.MacOS.ObjC` is the full one;
+  `Radiant.Host.MacObjc` and a private copy in `RadiantApplication` predate it. They were left
+  alone so P7 didn't disturb the host. Point both at one shared interop, either
+  `Radiant.Platform.MacOS` or a small interop assembly that both it and `Radiant` reference.
+- **The platform is opt-in.** `UIAppOptions.Platform` defaults to headless because
+  `Radiant.UI.Core` mustn't reference an implementation, so an app that forgets it gets no
+  clipboard, cursors or input methods. A desktop package that references every implementation
+  and picks one by operating system would make it the default.
+- **GLFW's methods are replaced class-wide.** The text input methods are swapped on
+  `GLFWContentView` itself, which every GLFW window shares. Views without a Radiant input pass
+  through to GLFW, but it's still a global change. A per-window subclass (`object_setClass` to
+  a Radiant subclass of GLFW's view) would confine it to the windows that asked.
+- **The input method sees only the composition.** `ITextInputClient` doesn't expose the
+  client's text or selection, so the marked range starts at 0, `attributedSubstringForProposedRange:`
+  returns nil, and `replacementRange` is ignored. Reconversion and context-aware prediction need
+  the text field to expose its text, selection and composition range, and a rectangle for any
+  range.
+- **Every key is held back while composing.** On macOS, `keyDown:` skips GLFW for any key
+  during a composition, shortcuts included, because the input method may use any of them. Asking
+  the input context whether it handled the event (`[[view inputContext] handleEvent:]`) and
+  passing on only what it didn't would be finer.
+- **Clicks don't reach the input method.** GLFW's `mouseDown:` doesn't offer events to
+  `[[self inputContext] handleEvent:]`, so clicking inside a composition doesn't move within it
+  or pick a clause.
+- **Marked text loses its styling.** The input method's attributes (which clause is being
+  converted, thick and thin underlines) are dropped; the client only gets the selection.
+- **There's no UI synchronization context.** Dialog tasks complete on the main thread, and an
+  `await` without a synchronization context continues inline there, which is the UI thread only
+  because of that. A `SynchronizationContext` that posts to the frame loop would make every
+  `await` in UI code safe.
+- **Dialogs without a window block.** A platform created with no window runs panels app-modally
+  (`runModal`), which stops the frame loop until the user answers.
+- **Panels have no filter menu.** macOS allows every filter's files at once. An accessory view
+  with a pop-up of the filters, as other apps have, would let the user choose.
+- **Some cursors are missing.** Diagonal resize cursors need macOS 15's
+  `frameResizeCursorFromPosition:inDirections:` (or private cursors before it), and there's no
+  way to hide the cursor (`[NSCursor hide]` counts must balance).
+- **The self-test ends by exiting the process.** Nothing in the UI can end
+  `RadiantUI.Run`, so `PlatformCheck --selftest` calls `Environment.Exit`. `UIRoot` or the
+  platform should be able to close the window.
+- **`Radiant.Platform` shadows ColorSystem's `Platform` enum.** Inside `Radiant.*` namespaces,
+  `Platform` now means the namespace, so theming code writes `ColorSystem.Platform.Phone`.
+  Renaming the enum (to `DevicePlatform`, say) would avoid the surprise.
+
 ## Components (`Radiant.Components`)
+
+- **No text field yet.** `PlatformCheck`'s input field is a sketch of what a `TextField` needs
+  (a text input client, marked text underlined, the caret at the composition's start). In it, a
+  `TextBlock` sized to its text gave trailing spaces no width, so a composition after "a " sat
+  against the "a"; the real field needs the caret from text layout, spaces included.
 
 - **No golden images yet.** The plan's matrix (variants × enabled, hover, focus, pressed,
   disabled × light and dark) doesn't exist yet. The gallery's `--snapshot` renders offscreen to
@@ -82,9 +134,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## Editing (`TextInput`)
 
-- **No input method yet.** The composition model is in place (`SetComposing`/`EndComposing`),
-  but nothing feeds it until the P7 text-input client connects `TextInput` to the platform. The
-  clipboard is likewise process-private until then.
+- **Input methods need checking by hand.** `TextInput` is the platform's text input client while
+  focused, so macOS input methods compose in place. That's verified only through the headless
+  platform and the check program's manual steps (`docs/platform.md`), not in a live gallery field.
 - **Every keystroke reshapes the whole text.** That's fine for fields; a code editor wants
   incremental layout per line.
 - **Dragging doesn't scroll.** Neither a one-line input dragged past its end nor a multiline one
