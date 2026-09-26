@@ -59,6 +59,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Button heights are fixed.** They are 40 px plus density; Material 3's newer button sizes
   (XS–XL) aren't modelled.
 
+- **`Anchored` checks its anchor every frame.** It runs a ticker while shown, which keeps frames
+  coming. Layout-change notifications from the render tree would avoid the polling.
+- **Unplaced content can still be clicked.** Before its first placement, `Anchored` content is
+  invisible (opacity 0) but its children can still be hit for that one frame.
+- **Escape only dismisses from inside.** `DismissableLayer` sees Escape only when focus is within
+  it; Radix listens on the document. Add a root key observer if layers without focus need it.
+
 ## Theming (`Radiant.Theming`)
 
 - **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,

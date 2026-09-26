@@ -32,6 +32,20 @@ turns a filled button red.
 | `SurfaceButton` | Filled, tonal, outlined, text and elevated buttons: a pill-shaped `PressableSurface` with a label |
 | `Card` | Elevated, filled and outlined cards |
 
+## Primitives (`Radiant.Components.Primitives`)
+
+These are the headless building blocks of overlays, like Radix's:
+
+| Primitive | What |
+|---|---|
+| `DismissableLayer` | Calls `OnDismiss` on a press outside it (content it shows through a portal counts as inside) or Escape inside it |
+| `FocusScope` | Moves focus in when shown, keeps Tab inside (`Box.TrapFocus`), gives focus back when it goes |
+| `Anchored` | Floating content in a portal, placed against an `ElementRef`: side, alignment, offset, flip, shift, match width. It follows the anchor as it moves and stays hidden until placed |
+| `AnchoredPlacement` | The placement maths on its own |
+
+They rest on UI core hooks: `UIRoot.ObservePointerDown`, `SaveFocus`/`FocusSnapshot.Restore`,
+`FocusFirst` and `Box.TrapFocus`.
+
 ## Colours are opaque
 
 Legibility (text at 0.87, secondary text at 0.6) and state layers (hover at 0.08) are *mixed

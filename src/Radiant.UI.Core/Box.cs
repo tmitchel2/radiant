@@ -58,6 +58,12 @@ public sealed record Box : HostElement
     /// <summary>Tab order: 0 in tree order, negative to skip the box when tabbing.</summary>
     public int TabIndex { get; init; }
 
+    /// <summary>
+    /// Whether Tab stays inside the box: while it's the most recently shown trap, keyboard focus
+    /// cycles among its focusable children only (a modal dialog, an open menu).
+    /// </summary>
+    public bool TrapFocus { get; init; }
+
     /// <summary>A handle that gives code the box's bounds and a way to focus it.</summary>
     public ElementRef? Ref { get; init; }
 

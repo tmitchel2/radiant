@@ -28,6 +28,17 @@ internal sealed class BoxRenderNode : RenderNode
     {
         Element = (Box)element;
         var old = previous as Box;
+        if ((old?.TrapFocus ?? false) != Element.TrapFocus)
+        {
+            if (Element.TrapFocus)
+            {
+                Owner.Root.AddFocusTrap(this);
+            }
+            else
+            {
+                Owner.Root.RemoveFocusTrap(this);
+            }
+        }
         if (!ReferenceEquals(old?.Ref, Element.Ref))
         {
             if (old?.Ref is { } oldRef && ReferenceEquals(oldRef.Node, this))
@@ -47,6 +58,7 @@ internal sealed class BoxRenderNode : RenderNode
 
     public override void Dispose()
     {
+        Owner.Root.RemoveFocusTrap(this);
         if (Element?.Ref is { } elementRef && ReferenceEquals(elementRef.Node, this))
         {
             elementRef.Node = null;

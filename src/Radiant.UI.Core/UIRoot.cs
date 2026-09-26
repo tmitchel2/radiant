@@ -32,6 +32,8 @@ public sealed class UIRoot : IDisposable
     private readonly HashSet<ScrollRenderNode> _animating = [];
     private readonly List<PortalRenderNode> _portals = [];
     private readonly List<Func<double, bool>> _tickers = [];
+    private readonly List<BoxRenderNode> _focusTraps = [];
+    private readonly List<Action<PointerDownObservation>> _pointerDownObservers = [];
     private bool _portalsChanged;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private List<RenderNode> _hovered = [];
@@ -502,6 +504,15 @@ public sealed class UIRoot : IDisposable
         // The press is captured: its moves and release go to where it began.
         _pressed = path;
 
+        if (_pointerDownObservers.Count > 0)
+        {
+            var observation = new PointerDownObservation(position, button, path);
+            foreach (var observer in _pointerDownObservers.ToArray())
+            {
+                observer(observation);
+            }
+        }
+
         var focusable = path.FindLast(node => node is BoxRenderNode { Element.Focusable: true });
         SetFocus(focusable, visible: false);
 
@@ -563,11 +574,14 @@ public sealed class UIRoot : IDisposable
         Dispatch(FocusPath(), new TextInputEventArgs(text), box => null, box => box.OnTextInput);
     }
 
-    /// <summary>Moves focus to the next (or previous) focusable box in tree order, wrapping around.</summary>
+    /// <summary>
+    /// Moves focus to the next (or previous) focusable box in tree order, wrapping around: within
+    /// the most recent focus trap, if one is showing.
+    /// </summary>
     public void MoveFocus(bool forward)
     {
         var order = new List<RenderNode>();
-        CollectTabStops(RootRenderNode, order);
+        CollectTabStops(_focusTraps.Count > 0 ? _focusTraps[^1] : RootRenderNode, order);
         if (order.Count == 0)
         {
             return;
@@ -578,21 +592,69 @@ public sealed class UIRoot : IDisposable
             : (index + (forward ? 1 : order.Count - 1)) % order.Count;
         SetFocus(order[next], visible: true);
 
-        static void CollectTabStops(RenderNode node, List<RenderNode> into)
+    }
+
+    private static void CollectTabStops(RenderNode node, List<RenderNode> into)
+    {
+        if (node is BoxRenderNode { Element: { Focusable: true, TabIndex: >= 0 } })
         {
-            if (node is BoxRenderNode { Element: { Focusable: true, TabIndex: >= 0 } })
-            {
-                into.Add(node);
-            }
-            foreach (var child in node.Children)
-            {
-                CollectTabStops(child, into);
-            }
+            into.Add(node);
+        }
+        foreach (var child in node.Children)
+        {
+            CollectTabStops(child, into);
         }
     }
 
     /// <summary>Takes focus away from whatever has it.</summary>
     public void ClearFocus() => SetFocus(null, visible: false);
+
+    /// <summary>
+    /// Remembers what has focus now, so it can be given back: a dialog saves focus when it opens
+    /// and restores it when it closes.
+    /// </summary>
+    public FocusSnapshot SaveFocus() => new(this, _focused, _focusVisible);
+
+    internal void RestoreFocus(RenderNode? node, bool visible)
+    {
+        if (node is null || node.Owner.Mounted)
+        {
+            SetFocus(node, visible);
+        }
+    }
+
+    /// <summary>Focuses the first focusable box inside <paramref name="scope"/>'s box (or the box itself); false if there is none.</summary>
+    public bool FocusFirst(ElementRef scope, bool visible = true)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (scope.Node is not { } node)
+        {
+            return false;
+        }
+        var order = new List<RenderNode>();
+        CollectTabStops(node, order);
+        if (order.Count == 0)
+        {
+            return false;
+        }
+        SetFocus(order[0], visible);
+        return true;
+    }
+
+    /// <summary>
+    /// Calls <paramref name="observer"/> for every pointer press anywhere, before it's dispatched,
+    /// until the result is disposed: how a popover notices a press outside it.
+    /// </summary>
+    public IDisposable ObservePointerDown(Action<PointerDownObservation> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        _pointerDownObservers.Add(observer);
+        return new Ticker(() => _pointerDownObservers.Remove(observer));
+    }
+
+    internal void AddFocusTrap(BoxRenderNode trap) => _focusTraps.Add(trap);
+
+    internal void RemoveFocusTrap(BoxRenderNode trap) => _focusTraps.Remove(trap);
 
     internal void Focus(RenderNode node, bool visible) => SetFocus(node, visible);
 
