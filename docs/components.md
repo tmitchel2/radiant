@@ -44,6 +44,11 @@ turns a filled button red.
 | `Menu` | Drops from an anchor: arrow keys and Tab move, a choice closes it, as do Escape and an outside press; icons, shortcuts, dividers, disabled items |
 | `Dialog` | Modal: scrim, focus trap, Escape and scrim close (unless it must be answered), focus restored, fade and scale |
 | `Tooltip` | After the pointer rests 600 ms, a small inverse-surface label beside its child |
+| `Chip` | Assist, filter (tick and tonal fill when chosen) and input (trailing ×) chips, elevated or outlined |
+| `Badge` | A dot or a count (99+) in the error colour on the top right of its child |
+| `LinearProgress` | Determinate, or an indeterminate sliding segment |
+| `Slider` | Continuous or stepped; drag, press the track, or use arrows, Page Up/Down, Home and End |
+| `Tabs` | Tabs with optional icons and an indicator that slides to the chosen tab; Left and Right choose neighbours |
 | `TextField` | Filled and outlined fields: the label floats up and shrinks on focus or text (cutting the outline); primary or error indicator; supporting text, error, character count; leading and trailing icons (the trailing one pressable); controlled or uncontrolled |
 
 Buttons take a leading icon (`Icon = "add"`). The selection controls are *controlled*, like

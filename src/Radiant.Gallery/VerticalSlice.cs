@@ -35,6 +35,9 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var menu = context.UseState(StartWithMenu);
         var menuAnchor = context.UseRef(new ElementRef()).Value;
         var last = context.UseState("nothing yet");
+        var volume = context.UseState(0.4f);
+        var tab = context.UseState(0);
+        var filters = context.UseState(("Open", true, false));
         var themes = Themes;
         return new ScrollArea
         {
@@ -87,6 +90,27 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     },
                     new Tooltip("Tooltips wait 600 ms", new IconButton("info", "About tooltips")),
                     new SurfaceText($"Last menu choice: {last.Value}") { Legibility = Legibility.Medium }),
+                new Tabs([new Tab("Overview") { Icon = "dashboard" }, new Tab("Activity") { Icon = "history" }, new Tab("Settings") { Icon = "settings" }], tab.Value, tab.Set),
+                new Row(
+                    new Chip("Assist") { Icon = "event" },
+                    new Chip("Open") { Selected = filters.Value.Item2, OnPress = () => filters.Set(filters.Value with { Item2 = !filters.Value.Item2 }) },
+                    new Chip("Closed") { Selected = filters.Value.Item3, OnPress = () => filters.Set(filters.Value with { Item3 = !filters.Value.Item3 }) },
+                    new Chip("tom@example.com") { Icon = "person", OnRemove = () => { } },
+                    new Badge(new SurfaceIcon("notifications")) { Count = 3 },
+                    new Badge(new SurfaceIcon("mail")) { Count = 120 },
+                    new Badge(new SurfaceIcon("chat"))) { Gap = 12 },
+                new Box
+                {
+                    Layout = new LayoutStyle { MaxWidth = 480, RowGap = 12 },
+                    Children =
+                    [
+                        new SurfaceText($"Volume {volume.Value:0%}") { TextType = TextType.LabelLarge },
+                        new Slider(volume.Value, volume.Set) { Label = "Volume" },
+                        new Slider(volume.Value, volume.Set) { Step = 0.25f, Label = "Stepped" },
+                        new LinearProgress { Value = volume.Value, Label = "Progress" },
+                        new LinearProgress { Label = "Loading" },
+                    ],
+                },
                 new Row(
                     new TextField("Name") { SupportingText = "As it appears on your card", Layout = new LayoutStyle { Width = 260 } },
                     new TextField("Email") { Variant = TextFieldVariant.Outlined, LeadingIcon = "mail", InitialText = "tom@example.com", Layout = new LayoutStyle { Width = 260 } },
