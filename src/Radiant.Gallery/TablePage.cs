@@ -11,8 +11,10 @@ using Radiant.UI.Core;
 namespace Radiant.Gallery;
 
 /// <summary>A hundred thousand generated people in a sortable, selectable table.</summary>
-internal sealed record TablePage : Component
+internal sealed partial record TablePage : Component
 {
+    [TestId<SurfaceButton>] public static partial string Invite { get; }
+
     private static readonly string[] s_first = ["Ada", "Grace", "Alan", "Katherine", "Edsger", "Barbara", "Donald", "Frances", "Linus", "Margaret"];
     private static readonly string[] s_last = ["Lovelace", "Hopper", "Turing", "Johnson", "Dijkstra", "Liskov", "Knuth", "Allen", "Torvalds", "Hamilton"];
     private static readonly string[] s_cities = ["London", "Paris", "Berlin", "Tokyo", "Lagos", "Lima", "Oslo", "Seoul"];
@@ -59,8 +61,8 @@ internal sealed record TablePage : Component
             [
                 new PageHeading("People")
                 {
-                    Description = $"{Count.ToString("N0", CultureInfo.InvariantCulture)} rows, {selection.Value.Count.ToString(CultureInfo.InvariantCulture)} selected",
-                    Actions = [new SurfaceButton("Invite") { Icon = "add" }],
+                    Description = $"{Count.ToString("N0", CultureInfo.InvariantCulture)} rows, {selection.Value.Count.ToString("N0", CultureInfo.InvariantCulture)} selected",
+                    Actions = [new SurfaceButton("Invite") { TestId = Invite, Icon = "add" }],
                 },
                 new Surface
                 {

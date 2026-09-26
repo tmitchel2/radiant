@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Radiant.Platform;
 using Radiant.Text;
@@ -33,4 +34,19 @@ public sealed record UIAppOptions
     /// mustn't depend on any operating system's implementation.
     /// </summary>
     public Func<NativeWindow, IPlatform>? Platform { get; init; }
+
+    /// <summary>
+    /// Whether to run without a window: frames are run by a loop on the calling thread, on the
+    /// headless platform, until <see cref="UIAppSession.Exit"/>. For automated tests and agents.
+    /// </summary>
+    public bool Headless { get; init; }
+
+    /// <summary>How the app tells time; <see cref="UIClockMode.Fixed"/> makes runs repeatable.</summary>
+    public UIClockMode Clock { get; init; } = UIClockMode.Real;
+
+    /// <summary>Pixels per logical pixel when headless (a window uses its display's); 1 if null.</summary>
+    public float? PixelScale { get; init; }
+
+    /// <summary>What plugs into the app once it's running: an automation server, a recorder.</summary>
+    public IReadOnlyList<IUIAppExtension> Extensions { get; init; } = [];
 }

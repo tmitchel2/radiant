@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Numerics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Radiant.Layout;
@@ -166,13 +167,17 @@ public class PlatformTests
         binding.Attach(platform);
         var client = new FakeClient();
 
-        root.TextInputClient = client;
-        Assert.AreSame(client, platform.TextInput.Client);
+        var reported = new List<string?>();
+        root.InputReceived += e => reported.Add(e.Text);
 
-        // Composition reaches the client from the platform.
+        root.TextInputClient = client;
+        Assert.IsNotNull(platform.TextInput.Client);
+
+        // Composition reaches the client from the platform, and what's committed is reported as typed.
         platform.TextInput.Compose("你", 1);
         platform.TextInput.Type("你好");
         CollectionAssert.AreEqual(new[] { "marked:你:1:0", "insert:你好" }, client.Calls);
+        CollectionAssert.AreEqual(new[] { "你好" }, reported);
 
         root.TextInputClient = null;
         Assert.IsNull(platform.TextInput.Client);
@@ -189,7 +194,8 @@ public class PlatformTests
 
         binding.Attach(platform);
 
-        Assert.AreSame(client, platform.TextInput.Client);
+        platform.TextInput.Type("x");
+        CollectionAssert.AreEqual(new[] { "insert:x" }, client.Calls, "the platform's text reaches it");
     }
 
     [TestMethod]
@@ -267,6 +273,24 @@ public class PlatformTests
             Calls.Add($"marked:{text}:{selectionStart}:{selectionLength}");
 
         public void UnmarkText() => Calls.Add("unmark");
+    }
+
+    [TestMethod]
+    public void TestIdsBecomeIdentifiersAndBoxesNamedOnlyForTestsAreLeftOut()
+    {
+        using var root = new UIRoot(new Box
+        {
+            Children = [new Box { TestId = "panel", Children = [new Box { TestId = "save", Focusable = true, Semantics = new Semantics { Role = SemanticsRole.Button, Label = "Save" } }] }],
+        });
+        root.Update(new Vector2(200, 100));
+        var platform = new HeadlessPlatform();
+        using var binding = new PlatformBinding(root);
+        binding.Attach(platform);
+
+        var tree = platform.Accessibility.Provider!.Root();
+
+        var save = tree.Children.Single();
+        Assert.AreEqual((AccessibilityRole.Button, "save"), (save.Role, save.Identifier), "the panel's children take its place");
     }
 
     [TestMethod]

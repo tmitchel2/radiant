@@ -56,7 +56,7 @@ public sealed record HoverCard(Element? Trigger, Element? Content) : Component
                     visible.Set(over);
                     ticker?.Dispose();
                 }
-            });
+            }, TickerKind.Timer, "hover card delay");
             return ticker.Dispose;
         }, (over, shown));
 

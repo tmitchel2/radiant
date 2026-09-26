@@ -14,8 +14,62 @@ namespace Radiant.Gallery;
 /// The first milestone: a card with filled, tonal and outlined buttons, and a button that shuffles
 /// the theme (seed, variant, light or dark, corner scale), animating everything to it.
 /// </summary>
-internal sealed record VerticalSlice(ThemeController Themes) : Component
+internal sealed partial record VerticalSlice(ThemeController Themes) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Filled { get; }
+    [TestId<SurfaceButton>] public static partial string Tonal { get; }
+    [TestId<SurfaceButton>] public static partial string Outlined { get; }
+    [TestId<SurfaceButton>] public static partial string TextButton { get; }
+    [TestId<SurfaceButton>] public static partial string Elevated { get; }
+    [TestId<SurfaceButton>] public static partial string ShuffleTheme { get; }
+    [TestId<SurfaceButton>] public static partial string Error { get; }
+    [TestId<SurfaceButton>] public static partial string Success { get; }
+    [TestId<SurfaceButton>] public static partial string DisabledButton { get; }
+    [TestId<SurfaceButton>] public static partial string Add { get; }
+    [TestId<SurfaceButton>] public static partial string Download { get; }
+    [TestId<IconButton>] public static partial string SearchIcon { get; }
+    [TestId<IconButton>] public static partial string Favourite { get; }
+    [TestId<IconButton>] public static partial string Settings { get; }
+    [TestId<IconButton>] public static partial string DeleteIcon { get; }
+    [TestId<Checkbox>] public static partial string IAgree { get; }
+    [TestId<Checkbox>] public static partial string NotifyMe { get; }
+    [TestId<Checkbox>] public static partial string Some { get; }
+    [TestId<Switch>] public static partial string WiFi { get; }
+    [TestId<Switch>] public static partial string WiFiOff { get; }
+    [TestId<RadioGroup>] public static partial string Size { get; }
+    [TestId<Checkbox>] public static partial string DisabledCheckbox { get; }
+    [TestId<SurfaceButton>] public static partial string OpenDialog { get; }
+    [TestId<SurfaceButton>] public static partial string MenuButton { get; }
+    [TestId<IconButton>] public static partial string AboutTooltips { get; }
+    [TestId<Slider>] public static partial string Volume { get; }
+    [TestId<Slider>] public static partial string Stepped { get; }
+    [TestId<TextField>] public static partial string Name { get; }
+    [TestId<TextField>] public static partial string Email { get; }
+    [TestId<TextField>] public static partial string Code { get; }
+    [TestId<ComboBox>] public static partial string City { get; }
+    [TestId<DatePicker>] public static partial string StartDate { get; }
+    [TestId<IconButton>] public static partial string Undo { get; }
+    [TestId<IconButton>] public static partial string Redo { get; }
+    [TestId<SplitButton>] public static partial string Save { get; }
+    [TestId<Fab>] public static partial string Compose { get; }
+    [TestId<SurfaceButton>] public static partial string Upgrade { get; }
+    [TestId<NumberField>] public static partial string Quantity { get; }
+    [TestId<NumberField>] public static partial string Width { get; }
+    [TestId<RangeSlider>] public static partial string Price { get; }
+    [TestId<SearchField>] public static partial string SearchComponents { get; }
+    [TestId<Link>] public static partial string ReadTheDocs { get; }
+    [TestId<SurfaceButton>] public static partial string OpenSheet { get; }
+    [TestId<SurfaceButton>] public static partial string PopoverButton { get; }
+    [TestId<SurfaceButton>] public static partial string OpenDeleteDialog { get; }
+    [TestId<TextField>] public static partial string SearchFilter { get; }
+    [TestId<Checkbox>] public static partial string InStock { get; }
+    [TestId<Checkbox>] public static partial string OnSale { get; }
+    [TestId<SurfaceButton>] public static partial string Reset { get; }
+    [TestId<SurfaceButton>] public static partial string Apply { get; }
+    [TestId<SurfaceButton>] public static partial string GotIt { get; }
+    [TestId<SurfaceButton>] public static partial string Cancel { get; }
+    [TestId<SurfaceButton>] public static partial string ConfirmDelete { get; }
+
     /// <summary>Open the dialog on the first frame (for snapshots).</summary>
     public bool StartWithDialog { get; init; }
 
@@ -26,6 +80,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
 
     private static readonly Variant[] s_variants = [Variant.TonalSpot, Variant.Vibrant, Variant.Expressive, Variant.Fidelity, Variant.Content, Variant.Neutral];
     private static readonly float[] s_corners = [0f, 0.5f, 1f, 1.5f, 2f];
+    private static readonly string[] s_sizes = ["Small", "Medium"];
 
     public override Element? Build(BuildContext context)
     {
@@ -66,44 +121,43 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     new SurfaceText("A card on elevation 1 with each kind of button. Shuffle the theme and every colour, "
                         + "corner and shadow follows, animated.") { Legibility = Legibility.Medium },
                     new Row(
-                        new SurfaceButton("Filled") { OnPress = () => presses.Update(n => n + 1) },
-                        new SurfaceButton("Tonal", ButtonVariant.Tonal),
-                        new SurfaceButton("Outlined", ButtonVariant.Outlined),
-                        new SurfaceButton("Text", ButtonVariant.Text),
-                        new SurfaceButton("Elevated", ButtonVariant.Elevated)) { Gap = 8 },
+                        new SurfaceButton("Filled") { TestId = Filled, OnPress = () => presses.Update(n => n + 1) },
+                        new SurfaceButton("Tonal", ButtonVariant.Tonal) { TestId = Tonal },
+                        new SurfaceButton("Outlined", ButtonVariant.Outlined) { TestId = Outlined },
+                        new SurfaceButton("Text", ButtonVariant.Text) { TestId = TextButton },
+                        new SurfaceButton("Elevated", ButtonVariant.Elevated) { TestId = Elevated }) { Gap = 8 },
                     new SurfaceText($"Filled pressed {presses.Value} times") { TextType = TextType.LabelMedium, Legibility = Legibility.Medium })
                 {
                     Layout = new LayoutStyle { MaxWidth = 640, Padding = Edges.All(20), RowGap = 12 },
                 },
                 new Row(
-                    new SurfaceButton("Shuffle theme", ButtonVariant.Tonal) { Icon = "palette", OnPress = () => Shuffle(themes) },
-                    new SurfaceButton("Error") { SurfaceColor = SurfaceName.Error },
-                    new SurfaceButton("Success") { SurfaceColor = SurfaceName.Success },
-                    new SurfaceButton("Disabled") { ShowDisabled = true }),
+                    new SurfaceButton("Shuffle theme", ButtonVariant.Tonal) { TestId = ShuffleTheme, Icon = "palette", OnPress = () => Shuffle(themes) },
+                    new SurfaceButton("Error") { TestId = Error, SurfaceColor = SurfaceName.Error },
+                    new SurfaceButton("Success") { TestId = Success, SurfaceColor = SurfaceName.Success },
+                    new SurfaceButton("Disabled") { TestId = DisabledButton, ShowDisabled = true }),
                 new Row(
-                    new SurfaceButton("Add", ButtonVariant.Filled) { Icon = "add" },
-                    new SurfaceButton("Download", ButtonVariant.Outlined) { Icon = "download" },
-                    new IconButton("search", "Search"),
-                    new IconButton("favorite", "Favourite", IconButtonVariant.Filled) { IconFilled = true },
-                    new IconButton("settings", "Settings", IconButtonVariant.Tonal),
-                    new IconButton("delete", "Delete", IconButtonVariant.Outlined)),
+                    new SurfaceButton("Add", ButtonVariant.Filled) { TestId = Add, Icon = "add" },
+                    new SurfaceButton("Download", ButtonVariant.Outlined) { TestId = Download, Icon = "download" },
+                    new IconButton("search", "Search") { TestId = SearchIcon },
+                    new IconButton("favorite", "Favourite", IconButtonVariant.Filled) { TestId = Favourite, IconFilled = true },
+                    new IconButton("settings", "Settings", IconButtonVariant.Tonal) { TestId = Settings },
+                    new IconButton("delete", "Delete", IconButtonVariant.Outlined) { TestId = DeleteIcon }),
                 new Row(
-                    new Checkbox(agreed.Value, agreed.Set) { Label = "I agree" },
-                    new Checkbox(notify.Value, notify.Set) { Label = "Notify me" },
-                    new Checkbox(false, null) { Label = "Some", Indeterminate = true },
-                    new Switch(wifi.Value, wifi.Set) { Label = "Wi-Fi" },
-                    new Switch(!wifi.Value, v => wifi.Set(!v)),
-                    new Radio(size.Value == "Small", () => size.Set("Small")) { Label = "Small" },
-                    new Radio(size.Value == "Medium", () => size.Set("Medium")) { Label = "Medium" },
-                    new Checkbox(true, null) { Label = "Disabled", Disabled = true }) { Gap = 12 },
+                    new Checkbox(agreed.Value, agreed.Set) { TestId = IAgree, Label = "I agree" },
+                    new Checkbox(notify.Value, notify.Set) { TestId = NotifyMe, Label = "Notify me" },
+                    new Checkbox(false, null) { TestId = Some, Label = "Some", Indeterminate = true },
+                    new Switch(wifi.Value, wifi.Set) { TestId = WiFi, Label = "Wi-Fi" },
+                    new Switch(!wifi.Value, v => wifi.Set(!v)) { TestId = WiFiOff, AccessibleLabel = "Wi-Fi off" },
+                    new RadioGroup(s_sizes, Array.IndexOf(s_sizes, size.Value), i => size.Set(s_sizes[i])) { TestId = Size, Label = "Size", Horizontal = true },
+                    new Checkbox(true, null) { TestId = DisabledCheckbox, Label = "Disabled", Disabled = true }) { Gap = 12 },
                 new Row(
-                    new SurfaceButton("Open dialog", ButtonVariant.Outlined) { Icon = "open_in_new", OnPress = () => dialog.Set(true) },
+                    new SurfaceButton("Open dialog", ButtonVariant.Outlined) { TestId = OpenDialog, Icon = "open_in_new", OnPress = () => dialog.Set(true) },
                     new Box
                     {
                         Ref = menuAnchor,
-                        Children = [new SurfaceButton("Menu", ButtonVariant.Tonal) { Icon = "menu", OnPress = () => menu.Set(true) }],
+                        Children = [new SurfaceButton("Menu", ButtonVariant.Tonal) { TestId = MenuButton, Icon = "menu", OnPress = () => menu.Set(true) }],
                     },
-                    new Tooltip("Tooltips wait 600 ms", new IconButton("info", "About tooltips")),
+                    new Tooltip("Tooltips wait 600 ms", new IconButton("info", "About tooltips") { TestId = AboutTooltips }),
                     new SurfaceText($"Last menu choice: {last.Value}") { Legibility = Legibility.Medium }),
                 new Tabs([new Tab("Overview") { Icon = "dashboard" }, new Tab("Activity") { Icon = "history" }, new Tab("Settings") { Icon = "settings" }], tab.Value, tab.Set),
                 new Row(
@@ -120,20 +174,21 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     Children =
                     [
                         new SurfaceText($"Volume {volume.Value:0%}") { TextType = TextType.LabelLarge },
-                        new Slider(volume.Value, volume.Set) { Label = "Volume" },
-                        new Slider(volume.Value, volume.Set) { Step = 0.25f, Label = "Stepped" },
+                        new Slider(volume.Value, volume.Set) { TestId = Volume, Label = "Volume" },
+                        new Slider(volume.Value, volume.Set) { TestId = Stepped, Step = 0.25f, Label = "Stepped" },
                         new LinearProgress { Value = volume.Value, Label = "Progress" },
                         new LinearProgress { Label = "Loading" },
                         new Row(new CircularProgress { Value = volume.Value, Label = "Done" }, new CircularProgress { Label = "Working" }) { Gap = 16 },
                     ],
                 },
                 new Row(
-                    new TextField("Name") { SupportingText = "As it appears on your card", Layout = new LayoutStyle { Width = 260 } },
-                    new TextField("Email") { Variant = TextFieldVariant.Outlined, LeadingIcon = "mail", InitialText = "tom@example.com", Layout = new LayoutStyle { Width = 260 } },
-                    new TextField("Code") { Error = "That code has expired", MaxLength = 6, InitialText = "12345", Layout = new LayoutStyle { Width = 220 } }) { Gap = 16 },
+                    new TextField("Name") { TestId = Name, SupportingText = "As it appears on your card", Layout = new LayoutStyle { Width = 260 } },
+                    new TextField("Email") { TestId = Email, Variant = TextFieldVariant.Outlined, LeadingIcon = "mail", InitialText = "tom@example.com", Layout = new LayoutStyle { Width = 260 } },
+                    new TextField("Code") { TestId = Code, Error = "That code has expired", MaxLength = 6, InitialText = "12345", Layout = new LayoutStyle { Width = 220 } }) { Gap = 16 },
                 new Row(
                     new ComboBox("City", ["Berlin", "Lagos", "Lima", "London", "Oslo", "Paris", "Seoul", "Tokyo"], city.Value, city.Set)
                     {
+                        TestId = City,
                         Variant = TextFieldVariant.Outlined,
                         LeadingIcon = "language",
                         Layout = new LayoutStyle { Width = 260 },
@@ -144,35 +199,35 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                         new AccordionItem("Returns", new SurfaceText("Free within thirty days.") { Legibility = Legibility.Medium }) { Icon = "archive" },
                     ]) { InitiallyOpen = new HashSet<int> { 0 }, Layout = new LayoutStyle { Width = 360 } }) { Gap = 16 },
                 new Row(
-                    new DatePicker("Start date", date.Value, date.Set) { Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
+                    new DatePicker("Start date", date.Value, date.Set) { TestId = StartDate, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
                     new Card(new Calendar(date.Value, d => date.Set(d))) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(0) } }) { Gap = 16 },
                 new Row(
                     new Toolbar(
                     [
-                        new IconButton("undo", "Undo"),
-                        new IconButton("redo", "Redo"),
+                        new IconButton("undo", "Undo") { TestId = Undo },
+                        new IconButton("redo", "Redo") { TestId = Redo },
                         new Divider { Vertical = true },
                         new ToggleGroup([("format_bold", "Bold"), ("format_italic", "Italic"), ("format_underlined", "Underline")], formats.Value, formats.Set) { Multiple = true, Label = "Style" },
                         new Divider { Vertical = true },
                         new ToggleGroup([("format_align_left", "Left"), ("format_align_center", "Centre"), ("format_align_right", "Right")], align.Value, align.Set) { Label = "Alignment" },
                     ]) { Label = "Formatting" },
-                    new SplitButton("Save", () => { }, [new MenuItem("Save as…", () => { }), new MenuItem("Save all", () => { })]) { Icon = "save" },
-                    new Fab("edit", "Compose") { Extended = true }) { Gap = 16 },
-                new Alert("Your trial ends in 3 days") { Kind = AlertKind.Info, Text = "Add a payment method to keep your projects.", Actions = [new SurfaceButton("Upgrade", ButtonVariant.Text)], OnDismiss = () => { } },
+                    new SplitButton("Save", () => { }, [new MenuItem("Save as…", () => { }), new MenuItem("Save all", () => { })]) { TestId = Save, Icon = "save" },
+                    new Fab("edit", "Compose") { TestId = Compose, Extended = true }) { Gap = 16 },
+                new Alert("Your trial ends in 3 days") { Kind = AlertKind.Info, Text = "Add a payment method to keep your projects.", Actions = [new SurfaceButton("Upgrade", ButtonVariant.Text) { TestId = Upgrade }], OnDismiss = () => { } },
                 new Row(
                     new Alert("Saved") { Kind = AlertKind.Success, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
                     new Alert("Low disk space") { Kind = AlertKind.Warning, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
                     new Alert("Sync failed") { Kind = AlertKind.Error, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } }) { Gap = 12 },
                 new Row(
-                    new NumberField("Quantity", quantity.Value, quantity.Set) { Min = 0, Max = 99, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 180 } },
-                    new NumberField("Width", width.Value, width.Set) { Min = 0, Max = 4000, Step = 10, Suffix = "px", Layout = new LayoutStyle { Width = 180 } },
+                    new NumberField("Quantity", quantity.Value, quantity.Set) { TestId = Quantity, Min = 0, Max = 99, Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 180 } },
+                    new NumberField("Width", width.Value, width.Set) { TestId = Width, Min = 0, Max = 4000, Step = 10, Suffix = "px", Layout = new LayoutStyle { Width = 180 } },
                     new Box
                     {
                         Layout = new LayoutStyle { Width = 300, RowGap = 4 },
                         Children =
                         [
                             new SurfaceText($"Price ${price.Value.Item1:0} to ${price.Value.Item2:0}") { TextType = TextType.LabelLarge },
-                            new RangeSlider(price.Value.Item1, price.Value.Item2, (l, h) => price.Set((l, h))) { Min = 0, Max = 500, Step = 5, Label = "Price" },
+                            new RangeSlider(price.Value.Item1, price.Value.Item2, (l, h) => price.Set((l, h))) { TestId = Price, Min = 0, Max = 500, Step = 5, Label = "Price" },
                         ],
                     }) { Gap = 16 },
                 new Grid
@@ -204,14 +259,14 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                 },
                 new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
                 new Row(
-                    new SearchField("Search components") { Layout = new LayoutStyle { Width = 260 } },
+                    new SearchField("Search components") { TestId = SearchComponents, Layout = new LayoutStyle { Width = 260 } },
                     new Pagination(20, pageNumber.Value, pageNumber.Set),
-                    new Link("Read the docs", () => { }),
+                    new Link("Read the docs", () => { }) { TestId = ReadTheDocs },
                     new Kbd("⌘", "K")) { Gap = 16 },
                 new Row(
-                    new SurfaceButton("Open sheet", ButtonVariant.Tonal) { Icon = "tune", OnPress = () => sheet.Set(true) },
-                    new Box { Ref = popoverAnchor, Children = [new SurfaceButton("Popover", ButtonVariant.Outlined) { OnPress = () => popover.Set(true) }] },
-                    new SurfaceButton("Delete…", ButtonVariant.Text) { Icon = "delete", OnPress = () => alert.Set(true) },
+                    new SurfaceButton("Open sheet", ButtonVariant.Tonal) { TestId = OpenSheet, Icon = "tune", OnPress = () => sheet.Set(true) },
+                    new Box { Ref = popoverAnchor, Children = [new SurfaceButton("Popover", ButtonVariant.Outlined) { TestId = PopoverButton, OnPress = () => popover.Set(true) }] },
+                    new SurfaceButton("Delete…", ButtonVariant.Text) { TestId = OpenDeleteDialog, Icon = "delete", OnPress = () => alert.Set(true) },
                     new ContextMenu(new Card(new SurfaceText("Right-click here") { Legibility = Legibility.Medium }) { Variant = CardVariant.Filled },
                     [
                         new MenuItem("Copy", () => last.Set("Copy")) { Icon = "content_copy" },
@@ -222,14 +277,14 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     Layout = new LayoutStyle { RowGap = 16 },
                     Children =
                     [
-                        new TextField("Search") { LeadingIcon = "search", Variant = TextFieldVariant.Outlined },
-                        new Checkbox(filters.Value.Item2, v => filters.Set(filters.Value with { Item2 = v })) { Label = "In stock" },
-                        new Checkbox(filters.Value.Item3, v => filters.Set(filters.Value with { Item3 = v })) { Label = "On sale" },
+                        new TextField("Search") { TestId = SearchFilter, LeadingIcon = "search", Variant = TextFieldVariant.Outlined },
+                        new Checkbox(filters.Value.Item2, v => filters.Set(filters.Value with { Item2 = v })) { TestId = InStock, Label = "In stock" },
+                        new Checkbox(filters.Value.Item3, v => filters.Set(filters.Value with { Item3 = v })) { TestId = OnSale, Label = "On sale" },
                     ],
                 })
                 {
                     Title = "Filters",
-                    Actions = [new SurfaceButton("Reset", ButtonVariant.Text), new SurfaceButton("Apply") { OnPress = () => sheet.Set(false) }],
+                    Actions = [new SurfaceButton("Reset", ButtonVariant.Text) { TestId = Reset }, new SurfaceButton("Apply") { TestId = Apply, OnPress = () => sheet.Set(false) }],
                 },
                 new Popover(popoverAnchor, popover.Value, () => popover.Set(false), new Box
                 {
@@ -238,7 +293,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     [
                         new SurfaceText("Popovers hold any content") { TextType = TextType.TitleSmall },
                         new SurfaceText("They close on Escape or a press outside, and give focus back.") { Legibility = Legibility.Medium },
-                        new SurfaceButton("Got it", ButtonVariant.Text) { OnPress = () => popover.Set(false) },
+                        new SurfaceButton("Got it", ButtonVariant.Text) { TestId = GotIt, OnPress = () => popover.Set(false) },
                     ],
                 }) { Label = "About popovers" },
                 new AlertDialog(alert.Value, "Delete this project?", () => alert.Set(false), () => alert.Set(false))
@@ -271,8 +326,8 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                     Text = "It will be gone for good. The dialog traps focus, closes on Escape or a press outside, and animates.",
                     Actions =
                     [
-                        new SurfaceButton("Cancel", ButtonVariant.Text) { OnPress = () => dialog.Set(false) },
-                        new SurfaceButton("Delete", ButtonVariant.Text) { OnPress = () => dialog.Set(false) },
+                        new SurfaceButton("Cancel", ButtonVariant.Text) { TestId = Cancel, OnPress = () => dialog.Set(false) },
+                        new SurfaceButton("Delete", ButtonVariant.Text) { TestId = ConfirmDelete, OnPress = () => dialog.Set(false) },
                     ],
                 },
                 new Row(

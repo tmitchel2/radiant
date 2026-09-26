@@ -12,8 +12,11 @@ namespace Radiant.Components;
 /// <param name="Title">The question.</param>
 /// <param name="OnConfirm">What confirming does (the dialog closes through <see cref="OnCancel"/>'s owner or this).</param>
 /// <param name="OnCancel">What cancelling does.</param>
-public sealed record AlertDialog(bool Open, string Title, Action OnConfirm, Action OnCancel) : Component
+public sealed partial record AlertDialog(bool Open, string Title, Action OnConfirm, Action OnCancel) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Confirm { get; }
+    [TestId<SurfaceButton>] public static partial string Cancel { get; }
+
     /// <summary>What happens, in a sentence.</summary>
     public string? Text { get; init; }
 
@@ -38,10 +41,10 @@ public sealed record AlertDialog(bool Open, string Title, Action OnConfirm, Acti
         Dismissible = false,
         Actions =
         [
-            new SurfaceButton(CancelText, ButtonVariant.Text) { OnPress = OnCancel },
+            new SurfaceButton(CancelText, ButtonVariant.Text) { TestId = Cancel, OnPress = OnCancel },
             Destructive
-                ? new SurfaceButton(ConfirmText) { OnPress = OnConfirm, SurfaceColor = Radiant.Theming.SurfaceName.Error }
-                : new SurfaceButton(ConfirmText) { OnPress = OnConfirm },
+                ? new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm, SurfaceColor = Radiant.Theming.SurfaceName.Error }
+                : new SurfaceButton(ConfirmText) { TestId = Confirm, OnPress = OnConfirm },
         ],
     };
 }

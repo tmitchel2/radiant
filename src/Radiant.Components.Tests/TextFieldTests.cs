@@ -34,7 +34,10 @@ public class TextFieldTests
     private static TextBlock LabelOf(UIRoot root, string label) =>
         All(root.RootRenderNode).OfType<TextRenderNode>().Select(t => t.Element).First(t => t.Text == label);
 
-    private static SemanticsNode Field(UIRoot root) => root.GetSemantics().Children.Single(n => n.Role == SemanticsRole.TextField);
+    // The field is inside the text field's root, a scope named for tests.
+    private static SemanticsNode Field(UIRoot root) => Semantic(root.GetSemantics()).Single(n => n.Role == SemanticsRole.TextField);
+
+    private static IEnumerable<SemanticsNode> Semantic(SemanticsNode node) => node.Children.SelectMany(Semantic).Prepend(node);
 
     [TestMethod]
     public void TheLabelFloatsAndShrinksWhenTheFieldIsFocused()

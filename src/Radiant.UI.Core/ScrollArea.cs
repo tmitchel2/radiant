@@ -28,6 +28,9 @@ public sealed record ScrollArea : HostElement
     /// <summary>The colour of the scroll indicators; transparent to hide them.</summary>
     public Vector4 IndicatorColor { get; init; } = new(0f, 0f, 0f, 0.35f);
 
+    /// <summary>What assistive technology is told about the area; a <see cref="SemanticsRole.ScrollArea"/> if null.</summary>
+    public Semantics? Semantics { get; init; }
+
     /// <summary>The content.</summary>
     public IReadOnlyList<Element?> Children { get; init; } = [];
 

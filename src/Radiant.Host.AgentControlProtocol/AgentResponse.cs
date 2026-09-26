@@ -3,11 +3,14 @@
 namespace Radiant.Host.AgentControlProtocol;
 
 /// <summary>
-/// A response from a running application instance to a CLI command.
-/// Written as <c>responses/cmd-&lt;id&gt;.json</c>.
+/// A response from a running application instance to a CLI command: written as
+/// <c>responses/cmd-&lt;id&gt;.json</c> by the file transport, or sent as one line by the socket transport.
 /// </summary>
 public sealed class AgentResponse
 {
+    /// <summary>The message type on the socket transport, <c>"res"</c>; omitted by the file transport.</summary>
+    public string? Type { get; set; }
+
     /// <summary>Command ID this response corresponds to.</summary>
     public string Id { get; set; } = "";
 
@@ -26,6 +29,9 @@ public sealed class AgentResponse
     /// <summary>UTC timestamp in ISO 8601 format.</summary>
     public string Timestamp { get; set; } = "";
 
+    /// <summary>The receiver's frame number when it answered, if it counts frames.</summary>
+    public long? Frame { get; set; }
+
     /// <summary>Creates a success response with a pre-serialized result.</summary>
     public static AgentResponse Ok(string id, JsonElement? result, double durationMs) => new()
     {
@@ -41,23 +47,31 @@ public sealed class AgentResponse
     {
         Id = id,
         Status = "accepted",
-        Result = ToElement(new Dictionary<string, string> { ["message"] = message }),
+        Result = MessageElement(message),
         Timestamp = DateTime.UtcNow.ToString("o"),
     };
 
     /// <summary>Creates an error response.</summary>
-    public static AgentResponse Err(string id, string code, string message) => new()
+    public static AgentResponse Err(string id, string code, string message, JsonElement? details = null) => new()
     {
         Id = id,
         Status = "error",
-        Error = new AgentError { Code = code, Message = message },
+        Error = new AgentError { Code = code, Message = message, Details = details },
         Timestamp = DateTime.UtcNow.ToString("o"),
     };
 
-    private static JsonElement ToElement(Dictionary<string, string> dict)
+    // Written by hand rather than through a serializer, which would need reflection under AOT.
+    private static JsonElement MessageElement(string message)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(dict);
-        return JsonDocument.Parse(bytes).RootElement.Clone();
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("message", message);
+            writer.WriteEndObject();
+        }
+        using var document = JsonDocument.Parse(buffer.WrittenMemory);
+        return document.RootElement.Clone();
     }
 }
 
@@ -71,4 +85,10 @@ public sealed class AgentError
 
     /// <summary>Human-readable error message.</summary>
     public string Message { get; set; } = "";
+
+    /// <summary>
+    /// What the receiver knew when it failed, for diagnosis: for a UI action, say, why the app wasn't
+    /// idle, the nodes a selector nearly matched, or what covered the node it meant to tap.
+    /// </summary>
+    public JsonElement? Details { get; set; }
 }

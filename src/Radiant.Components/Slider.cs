@@ -13,6 +13,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Value">The value.</param>
 /// <param name="OnChange">Called with the new value while it's changed.</param>
+[RequiresTestId]
 public sealed record Slider(float Value, Action<float>? OnChange) : Component
 {
     /// <summary>The least value.</summary>
@@ -31,6 +32,24 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
     public string? Label { get; init; }
 
     /// <inheritdoc/>
+    /// <summary>
+    /// One step on from <paramref name="value"/> in <paramref name="direction"/>. With snapping steps, a
+    /// value between two goes to the next one that way, not a whole step past it.
+    /// </summary>
+    internal static float Toward(float value, float min, float step, bool snaps, int direction)
+    {
+        if (!snaps)
+        {
+            return value + step * direction;
+        }
+        var position = (value - min) / step;
+        var nearest = MathF.Round(position);
+        var target = MathF.Abs(position - nearest) < 1e-4f
+            ? nearest + direction
+            : direction > 0 ? MathF.Ceiling(position) : MathF.Floor(position);
+        return min + target * step;
+    }
+
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -127,10 +146,10 @@ public sealed record Slider(float Value, Action<float>? OnChange) : Component
                 var handled = true;
                 switch (e.Key.ForDirection(rightToLeft))
                 {
-                    case KeyCode.Right or KeyCode.Up: Set(props.Value + step); break;
-                    case KeyCode.Left or KeyCode.Down: Set(props.Value - step); break;
-                    case KeyCode.PageUp: Set(props.Value + step * 10f); break;
-                    case KeyCode.PageDown: Set(props.Value - step * 10f); break;
+                    case KeyCode.Right or KeyCode.Up: Set(Toward(props.Value, props.Min, step, props.Step is not null, 1)); break;
+                    case KeyCode.Left or KeyCode.Down: Set(Toward(props.Value, props.Min, step, props.Step is not null, -1)); break;
+                    case KeyCode.PageUp: Set(Toward(props.Value, props.Min, step, props.Step is not null, 1) + step * 9f); break;
+                    case KeyCode.PageDown: Set(Toward(props.Value, props.Min, step, props.Step is not null, -1) - step * 9f); break;
                     case KeyCode.Home: Set(props.Min); break;
                     case KeyCode.End: Set(props.Max); break;
                     default: handled = false; break;

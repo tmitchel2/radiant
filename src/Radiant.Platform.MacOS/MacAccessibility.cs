@@ -151,6 +151,7 @@ internal sealed unsafe class MacAccessibility : IAccessibility
         ObjC.Send(element, "setAccessibilityLabel:", node.Label is null ? 0 : ObjC.String(node.Label));
         ObjC.Send(element, "setAccessibilityValue:", ValueOf(node));
         ObjC.Send(element, "setAccessibilityHelp:", node.Description is null ? 0 : ObjC.String(node.Description));
+        ObjC.Send(element, "setAccessibilityIdentifier:", node.Identifier is null ? 0 : ObjC.String(node.Identifier));
         ObjC.SendBool(element, "setAccessibilityEnabled:", !node.Disabled);
         ObjC.SendBool(element, "setAccessibilitySelected:", node.Selected);
         if (node.Expanded is { } expanded)

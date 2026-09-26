@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" />
     <ProjectReference Include="..\Radiant.UI.Core\Radiant.UI.Core.csproj" />
+    <ProjectReference Include="..\Radiant.UI.Driver\Radiant.UI.Driver.csproj" />
   </ItemGroup>
 
   <ItemGroup>

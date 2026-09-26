@@ -39,6 +39,7 @@ turns a filled button red.
 | `Checkbox` | Controlled check box: checked, indeterminate, error, disabled; the tick fades in. `AccessibleLabel` names it without showing a label (as do `Radio`'s and `Switch`'s) |
 | `Switch` | Controlled switch; the handle slides and grows (bigger still while pressed) |
 | `Radio` | Controlled radio button; selecting calls `OnSelect`, and the dot grows in |
+| `RadioGroup` | A set of radios with one chosen, as a platform's group behaves: arrows move the choice and wrap, and only the chosen one is a Tab stop |
 
 | `Divider` | A thin outline-variant line, across or down, optionally inset |
 | `ListItem` | One-, two- or three-line rows with leading and trailing icon or text; pressable and selectable |

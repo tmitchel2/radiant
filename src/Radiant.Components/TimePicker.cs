@@ -16,6 +16,7 @@ namespace Radiant.Components;
 /// <param name="Label">What the time is for.</param>
 /// <param name="Value">The time, or null for none yet.</param>
 /// <param name="OnChange">Called with the new time.</param>
+[RequiresTestId]
 public sealed record TimePicker(string Label, TimeOnly? Value, Action<TimeOnly?>? OnChange) : Component
 {
     /// <summary>The culture whose AM and PM designators it shows and whose clock it follows; the current culture by default.</summary>

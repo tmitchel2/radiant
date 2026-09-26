@@ -9,8 +9,10 @@ namespace Radiant.Templates;
 
 /// <summary>A product in a store's grid: its picture, badge, name, detail, rating, price and an add-to-cart button.</summary>
 /// <param name="Product">The product.</param>
-public sealed record ProductCard(Product Product) : Component
+public sealed partial record ProductCard(Product Product) : Component
 {
+    [TestId<IconButton>] public static partial string AddToCart { get; }
+
     /// <summary>What the add-to-cart button does.</summary>
     public Action? OnAddToCart { get; init; }
 
@@ -54,7 +56,7 @@ public sealed record ProductCard(Product Product) : Component
                 Children =
                 [
                     new SurfaceText(product.Price) { TextType = TextType.TitleLarge },
-                    new IconButton("shopping_cart", $"Add {product.Name} to cart", IconButtonVariant.Tonal) { OnPress = OnAddToCart },
+                    new IconButton("shopping_cart", $"Add {product.Name} to cart", IconButtonVariant.Tonal) { TestId = AddToCart, OnPress = OnAddToCart },
                 ],
             })
         {

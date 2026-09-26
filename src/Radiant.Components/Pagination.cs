@@ -15,8 +15,12 @@ namespace Radiant.Components;
 /// <param name="PageCount">How many pages.</param>
 /// <param name="Page">The current page, from 1.</param>
 /// <param name="OnChange">Called with the page to go to.</param>
-public sealed record Pagination(int PageCount, int Page, Action<int>? OnChange) : Component
+public sealed partial record Pagination(int PageCount, int Page, Action<int>? OnChange) : Component
 {
+    [TestId] public static partial string PageButton { get; }
+    [TestId<IconButton>] public static partial string Previous { get; }
+    [TestId<IconButton>] public static partial string Next { get; }
+
     /// <summary>How many pages to show either side of the current one.</summary>
     public int Siblings { get; init; } = 1;
 
@@ -71,7 +75,7 @@ public sealed record Pagination(int PageCount, int Page, Action<int>? OnChange) 
         var change = OnChange;
         var children = new List<Element?>
         {
-            new IconButton("chevron_left", "Previous page") { OnPress = page > 1 ? () => change?.Invoke(page - 1) : null, ShowDisabled = page <= 1 ? true : null },
+            new IconButton("chevron_left", "Previous page") { TestId = Previous, OnPress = page > 1 ? () => change?.Invoke(page - 1) : null, ShowDisabled = page <= 1 ? true : null },
         };
         foreach (var number in Pages(PageCount, page, Siblings))
         {
@@ -84,6 +88,7 @@ public sealed record Pagination(int PageCount, int Page, Action<int>? OnChange) 
             var current = number == page;
             children.Add(new PressableSurface
             {
+                TestId = PageButton,
                 SurfaceColor = current ? SurfaceName.Primary : null,
                 CornerShape = CornerShapeRole.Full,
                 Label = current ? $"Page {number}, current" : $"Page {number}",
@@ -93,7 +98,7 @@ public sealed record Pagination(int PageCount, int Page, Action<int>? OnChange) 
                 Children = [new SurfaceText(number.ToString(CultureInfo.CurrentCulture)) { TextType = TextType.LabelLarge }],
             });
         }
-        children.Add(new IconButton("chevron_right", "Next page") { OnPress = page < PageCount ? () => change?.Invoke(page + 1) : null, ShowDisabled = page >= PageCount ? true : null });
+        children.Add(new IconButton("chevron_right", "Next page") { TestId = Next, OnPress = page < PageCount ? () => change?.Invoke(page + 1) : null, ShowDisabled = page >= PageCount ? true : null });
         return new Box
         {
             Semantics = new Semantics { Role = SemanticsRole.Group, Label = "Pagination" },

@@ -17,4 +17,19 @@ public abstract record Element
     /// element at the same position in its parent's children, if it is of the same type.
     /// </summary>
     public Key? Key { get; init; }
+
+    /// <summary>
+    /// A name for tests and agents to find this element by (<c>@save</c>), which never shows. Set on a
+    /// component, it names what the component draws when that's a single box; the outermost wins, so it
+    /// can be set where a component is used. Assistive technology on macOS sees it as the accessibility
+    /// identifier.
+    /// </summary>
+    public string? TestId { get; init; }
+
+    /// <summary>
+    /// The test ID this element's root has when nothing sets one: generated as the type's name for a
+    /// component that declares parts (<see cref="TestIdAttribute"/>), so its parts can be found within it.
+    /// An explicit <see cref="TestId"/> anywhere on the chain wins.
+    /// </summary>
+    protected internal virtual string? DefaultTestId => null;
 }

@@ -17,8 +17,12 @@ namespace Radiant.Templates;
 /// <param name="Steps">The steps.</param>
 /// <param name="Current">The current step's index.</param>
 /// <param name="OnStep">Called with the step to go to.</param>
-public sealed record Wizard(IReadOnlyList<WizardStep> Steps, int Current, Action<int>? OnStep) : Component
+public sealed partial record Wizard(IReadOnlyList<WizardStep> Steps, int Current, Action<int>? OnStep) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Back { get; }
+    [TestId<SurfaceButton>] public static partial string Next { get; }
+    [TestId<SurfaceButton>] public static partial string Cancel { get; }
+
     /// <summary>The flow's name, over the list of steps.</summary>
     public string? Title { get; init; }
 
@@ -95,11 +99,12 @@ public sealed record Wizard(IReadOnlyList<WizardStep> Steps, int Current, Action
                             Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 8, Padding = Edges.Symmetric(24, 12) },
                             Children =
                             [
-                                OnCancel is null ? null : new SurfaceButton("Cancel", ButtonVariant.Text) { OnPress = OnCancel },
+                                OnCancel is null ? null : new SurfaceButton("Cancel", ButtonVariant.Text) { TestId = Cancel, OnPress = OnCancel },
                                 new Box { Layout = new LayoutStyle { FlexGrow = 1 } },
-                                new SurfaceButton("Back", ButtonVariant.Outlined) { OnPress = () => go?.Invoke(current - 1), ShowDisabled = current == 0 ? true : null },
+                                new SurfaceButton("Back", ButtonVariant.Outlined) { TestId = Back, OnPress = () => go?.Invoke(current - 1), ShowDisabled = current == 0 ? true : null },
                                 new SurfaceButton(last ? FinishText : "Next")
                                 {
+                                    TestId = Next,
                                     OnPress = last ? () => finish?.Invoke() : () => go?.Invoke(current + 1),
                                     ShowDisabled = step is { CanContinue: false } ? true : null,
                                 },

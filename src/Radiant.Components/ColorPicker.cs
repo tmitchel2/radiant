@@ -20,8 +20,11 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Argb">The colour, as ARGB.</param>
 /// <param name="OnChange">Called with the new colour.</param>
-public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
+[RequiresTestId]
+public sealed partial record ColorPicker(int Argb, Action<int>? OnChange) : Component
 {
+    [TestId<TextField>] public static partial string HexField { get; }
+
     // The plane's image: hue in 2° columns, chroma in rows of 2 from MaxChroma down.
     private const int PlaneColumns = 180;
     private const int PlaneRows = 60;
@@ -313,6 +316,7 @@ public sealed record ColorPicker(int Argb, Action<int>? OnChange) : Component
                         },
                         new TextField("Hex")
                         {
+                            TestId = HexField,
                             Value = hex.Value,
                             OnChange = hex.Set,
                             Variant = TextFieldVariant.Outlined,

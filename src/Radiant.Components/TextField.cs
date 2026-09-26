@@ -17,8 +17,12 @@ namespace Radiant.Components;
 /// </para>
 /// </summary>
 /// <param name="Label">The label.</param>
-public sealed record TextField(string Label) : Component
+[RequiresTestId]
+public sealed partial record TextField(string Label) : Component
 {
+    [TestId] public static partial string Input { get; }
+    [TestId<IconButton>] public static partial string TrailingButton { get; }
+
     /// <summary>The text, selection and composition, for a controlled field.</summary>
     public TextEditState? Value { get; init; }
 
@@ -37,7 +41,10 @@ public sealed record TextField(string Label) : Component
     /// <summary>An error, shown instead of the supporting text, turning the field to the error colour.</summary>
     public string? Error { get; init; }
 
-    /// <summary>Shows a count of characters out of this many, under the field.</summary>
+    /// <summary>
+    /// The most characters it takes: a count of them out of this many shows under the field, and an edit
+    /// that would take the text past it is cut to fit (an input method's unfinished text excepted).
+    /// </summary>
     public int? MaxLength { get; init; }
 
     /// <summary>A leading icon.</summary>
@@ -80,6 +87,32 @@ public sealed record TextField(string Label) : Component
     public LayoutStyle? Layout { get; init; }
 
     /// <inheritdoc/>
+    // An edit that would take the text past the limit, cut to fit: what was inserted is shortened, and
+    // the caret goes after what's kept of it. Composing text isn't cut, so an input method can finish.
+    internal static TextEditState Limit(TextEditState old, TextEditState next, int limit)
+    {
+        if (next.Text.Length <= limit || next.Text.Length <= old.Text.Length || next.Composing is not null)
+        {
+            return next;
+        }
+        var shorter = Math.Min(old.Text.Length, next.Text.Length);
+        var prefix = 0;
+        while (prefix < shorter && old.Text[prefix] == next.Text[prefix])
+        {
+            prefix++;
+        }
+        var suffix = 0;
+        while (suffix < shorter - prefix && old.Text[^(suffix + 1)] == next.Text[^(suffix + 1)])
+        {
+            suffix++;
+        }
+        var inserted = next.Text.Length - prefix - suffix;
+        var room = Math.Max(0, limit - (next.Text.Length - inserted));
+        var kept = Math.Min(room, inserted);
+        var text = next.Text[..(prefix + kept)] + next.Text[^suffix..];
+        return new TextEditState(text, TextSelection.Caret(prefix + kept));
+    }
+
     public override Element? Build(BuildContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -91,7 +124,9 @@ public sealed record TextField(string Label) : Component
         var input = InputRef ?? ownInput;
         var focusChange = OnFocusChange;
         var state = Value ?? own.Value;
-        var onChange = OnChange ?? own.Set;
+        var change = OnChange ?? own.Set;
+        var maxLength = MaxLength;
+        Action<TextEditState> onChange = maxLength is { } limit ? next => change(Limit(state, next, limit)) : change;
         var error = Error is not null;
         var filled = Variant == TextFieldVariant.Filled;
 
@@ -168,6 +203,7 @@ public sealed record TextField(string Label) : Component
                                 },
                                 new TextInput(state, onChange)
                                 {
+                                    TestId = Input,
                                     Ref = input,
                                     Label = Label,
                                     Disabled = Disabled,
@@ -200,7 +236,7 @@ public sealed record TextField(string Label) : Component
                             [
                                 OnTrailingIconPress is null
                                     ? new SurfaceIcon(TrailingIcon) { Legibility = Disabled ? Legibility.Low : Legibility.Medium }
-                                    : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { OnPress = OnTrailingIconPress },
+                                    : new IconButton(TrailingIcon, TrailingIconLabel ?? TrailingIcon, IconButtonVariant.Standard) { TestId = TrailingButton, OnPress = OnTrailingIconPress },
                             ],
                         },
                         !filled ? null : new Box

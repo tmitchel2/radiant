@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- radiant-agent: drive Radiant UI apps from a shell, for agents and people. Talks to apps over the
+       agent protocol only, so it needs no GPU and publishes ahead of time:
+       `dotnet publish src/Radiant.AgentCli -c Release -r osx-arm64`. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Radiant.AgentCli</RootNamespace>
+    <AssemblyName>radiant-agent</AssemblyName>
+    <DebugType>embedded</DebugType>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>$(NoWarn);CA2007;CA1303</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Radiant.UI.Automation.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Radiant.Host.AgentControlProtocol\Radiant.Host.AgentControlProtocol.csproj" />
+  </ItemGroup>
+
+</Project>

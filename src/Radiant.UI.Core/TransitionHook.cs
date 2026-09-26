@@ -43,7 +43,7 @@ internal sealed class TransitionHook<T>(ElementNode owner, T initial) : IHook
             {
                 Stop();
             }
-        });
+        }, TickerKind.Animation, "transition");
     }
 
     public void Release() => Stop();

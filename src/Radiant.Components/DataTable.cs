@@ -27,8 +27,12 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="Columns">The columns.</param>
 /// <param name="RowCount">How many rows.</param>
-public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) : Component
+public sealed partial record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) : Component
 {
+    [TestId] public static partial string Row { get; }
+    [TestId<Checkbox>] public static partial string SelectAll { get; }
+    [TestId<Checkbox>] public static partial string SelectRow { get; }
+
     private const float CheckboxWidth = 52f;
 
     /// <summary>What assistive technology calls the table.</summary>
@@ -205,6 +209,7 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
             Checkbox = checkboxes
                 ? new Checkbox(RowCount > 0 && selection.Count == RowCount, all => Select(all ? Range(0, RowCount - 1) : new HashSet<int>()))
                 {
+                    TestId = SelectAll,
                     AccessibleLabel = "Select all",
                     Indeterminate = selection.Count > 0 && selection.Count < RowCount,
                 }
@@ -226,7 +231,7 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
             }
             : new VirtualList(RowCount, rowHeight, i => new TableRow(i, columns, columnWidths, selection.Contains(i), i == activeRow && showRing, Press)
             {
-                Checkbox = checkboxes ? new Checkbox(selection.Contains(i), _ => Toggle(i)) { AccessibleLabel = "Select row" } : null,
+                Checkbox = checkboxes ? new Checkbox(selection.Contains(i), _ => Toggle(i)) { TestId = SelectRow, AccessibleLabel = "Select row" } : null,
             })
             {
                 Controller = scroll,
@@ -245,6 +250,8 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
                 new Box
                 {
                     Focusable = RowCount > 0,
+                    // What takes focus to move through the rows: named for it, not heard as an empty group.
+                    Semantics = new Semantics { Role = SemanticsRole.Group, Label = Label is null ? "Rows" : $"{Label} rows" },
                     Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                     OnKeyDown = Key,
                     OnFocus = e =>
@@ -429,6 +436,7 @@ public sealed record DataTable(IReadOnlyList<DataColumn> Columns, int RowCount) 
             }
             return ThemeContexts.Surface.Provide(state, new Box
             {
+                TestId = Row,
                 Semantics = new Semantics { Role = SemanticsRole.Row, Selected = Selected, Value = (Index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) },
                 Background = hovered.Value ? theme.StateLayerColor(state, theme.Theme.StateLayers.Hover) : Selected ? theme.SurfaceColor(state) : null,
                 BorderWidth = Ring ? 2f : 0f,

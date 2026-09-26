@@ -13,8 +13,10 @@ namespace Radiant.Components;
 /// <param name="Items">The buttons' icons and labels.</param>
 /// <param name="Selected">Which are on.</param>
 /// <param name="OnChange">Called with which should be on.</param>
-public sealed record ToggleGroup(IReadOnlyList<(string Icon, string Label)> Items, IReadOnlySet<int> Selected, Action<IReadOnlySet<int>>? OnChange) : Component
+public sealed partial record ToggleGroup(IReadOnlyList<(string Icon, string Label)> Items, IReadOnlySet<int> Selected, Action<IReadOnlySet<int>>? OnChange) : Component
 {
+    [TestId<ToggleButton>] public static partial string Item { get; }
+
     /// <summary>Whether several can be on, and all off.</summary>
     public bool Multiple { get; init; }
 
@@ -45,7 +47,7 @@ public sealed record ToggleGroup(IReadOnlyList<(string Icon, string Label)> Item
                 {
                     change?.Invoke(next);
                 }
-            }));
+            }) { TestId = Item, Exclusive = !multiple });
         }
         return new Box
         {

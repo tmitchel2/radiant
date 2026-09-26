@@ -12,10 +12,20 @@ public static class InstanceRegistry
     /// <summary>
     /// Root directory for all instance registrations. Every process of one application must agree on it;
     /// an application sets it through <c>RadiantAppIdentity.Use</c>, or directly when it does not reference
-    /// the host. Defaults to <c>~/.radiant/instances</c>.
+    /// the host. Defaults to <c>$RADIANT_INSTANCES_DIR</c> if that's set (to keep tests apart), else
+    /// <c>~/.radiant/instances</c>.
     /// </summary>
     public static string RootDir { get; set; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".radiant", "instances");
+        Environment.GetEnvironmentVariable("RADIANT_INSTANCES_DIR") is { Length: > 0 } fromEnvironment
+            ? fromEnvironment
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".radiant", "instances");
+
+    /// <summary>
+    /// Where interaction logs go: <c>logs</c> beside <see cref="RootDir"/>, since an instance's own
+    /// directory is deleted when it deregisters.
+    /// </summary>
+    public static string LogsDir =>
+        Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(RootDir)) ?? RootDir, "logs");
 
     /// <summary>
     /// Registers a new instance. Creates the instance directory, writes instance.json,
@@ -156,6 +166,25 @@ public static class InstanceRegistry
     /// </summary>
     public static string GetResponsesDir(string name) =>
         Path.Combine(RootDir, name, "responses");
+
+    /// <summary>Gets the directory of a named instance.</summary>
+    public static string GetInstanceDir(string name) => Path.Combine(RootDir, name);
+
+    /// <summary>
+    /// Gets the socket a named instance's socket transport listens on: <c>agent.sock</c> in its directory,
+    /// or, where that path is too long for a Unix socket (about 104 bytes), a name in the temp directory
+    /// derived from it.
+    /// </summary>
+    public static string GetSocketPath(string name)
+    {
+        var path = Path.Combine(RootDir, name, "agent.sock");
+        if (System.Text.Encoding.UTF8.GetByteCount(path) <= 100)
+        {
+            return path;
+        }
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(path)))[..16];
+        return Path.Combine(Path.GetTempPath(), $"radiant-{hash.ToLowerInvariant()}.sock");
+    }
 
     /// <summary>
     /// Checks if a process with the given PID is still running.

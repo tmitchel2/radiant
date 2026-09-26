@@ -12,8 +12,11 @@ namespace Radiant.Components;
 /// "…" button that shows them.
 /// </summary>
 /// <param name="Crumbs">The steps, from the top down; the last is the current page.</param>
-public sealed record Breadcrumb(IReadOnlyList<Crumb> Crumbs) : Component
+public sealed partial record Breadcrumb(IReadOnlyList<Crumb> Crumbs) : Component
 {
+    [TestId<IconButton>] public static partial string ShowAll { get; }
+    [TestId<Link>] public static partial string Crumb { get; }
+
     /// <summary>The most steps shown before the middle ones fold away.</summary>
     public int MaxVisible { get; init; } = 4;
 
@@ -31,7 +34,7 @@ public sealed record Breadcrumb(IReadOnlyList<Crumb> Crumbs) : Component
             if (fold && i == 1)
             {
                 children.Add(Separator());
-                children.Add(new IconButton("more_horiz", "Show all steps") { OnPress = () => expanded.Set(true), Layout = new LayoutStyle { Width = 28, Height = 28 } });
+                children.Add(new IconButton("more_horiz", "Show all steps") { TestId = ShowAll, OnPress = () => expanded.Set(true), Layout = new LayoutStyle { Width = 28, Height = 28 } });
                 i = Crumbs.Count - tail - 1;
                 continue;
             }
@@ -43,7 +46,7 @@ public sealed record Breadcrumb(IReadOnlyList<Crumb> Crumbs) : Component
             var current = i == Crumbs.Count - 1;
             Element label = current || crumb.OnPress is null
                 ? new SurfaceText(crumb.Label) { TextType = TextType.LabelLarge, MaxLines = 1 }
-                : new Link(crumb.Label, crumb.OnPress) { TextType = TextType.LabelLarge };
+                : new Link(crumb.Label, crumb.OnPress) { TestId = Crumb, TextType = TextType.LabelLarge };
             children.Add(crumb.Icon is null ? label : new Box
             {
                 Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 4 },

@@ -15,8 +15,11 @@ namespace Radiant.Components;
 /// pauses.
 /// </summary>
 /// <param name="Slides">The slides.</param>
-public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
+public sealed partial record Carousel(IReadOnlyList<Element?> Slides) : Component
 {
+    [TestId<IconButton>] public static partial string PreviousSlide { get; }
+    [TestId<IconButton>] public static partial string NextSlide { get; }
+
     // How long scrolling must pause before the carousel settles on a slide.
     private const double SettleAfter = 0.15;
 
@@ -75,7 +78,7 @@ public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
                     index.Set(current);
                 }
                 idle = 0;
-                ticker ??= root.AddTicker(Settle);
+                ticker ??= root.AddTicker(Settle, TickerKind.Animation, "carousel settle");
             }
             void OnExtents(ScrollMetrics metrics) => viewport.Set(metrics.LayoutMeasurement.X);
             scroll.Scroll += OnScroll;
@@ -166,11 +169,13 @@ public sealed record Carousel(IReadOnlyList<Element?> Slides) : Component
                         },
                         at <= 0 ? null : new IconButton("chevron_left", "Previous slide", IconButtonVariant.Tonal)
                         {
+                            TestId = PreviousSlide,
                             OnPress = () => GoTo(at - 1),
                             Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = new Edges(8, Dimension.Undefined, Dimension.Undefined, Dimension.Undefined) },
                         },
                         at >= count - 1 ? null : new IconButton("chevron_right", "Next slide", IconButtonVariant.Tonal)
                         {
+                            TestId = NextSlide,
                             OnPress = () => GoTo(at + 1),
                             Layout = new LayoutStyle { Position = PositionType.Absolute, Inset = new Edges(Dimension.Undefined, Dimension.Undefined, 8, Dimension.Undefined) },
                         },

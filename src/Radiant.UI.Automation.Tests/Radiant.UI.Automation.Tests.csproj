@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Radiant.UI.Automation.Tests</RootNamespace>
+    <DebugType>embedded</DebugType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1707;CA1515;CA1861;CA2007;CA1859;CA1849;MSTEST0037</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Radiant.UI.Driver\Radiant.UI.Driver.csproj" />
+    <ProjectReference Include="..\Radiant.UI.Driver.MSTest\Radiant.UI.Driver.MSTest.csproj" />
+    <ProjectReference Include="..\Radiant.Components\Radiant.Components.csproj" />
+    <ProjectReference Include="..\Radiant.Theming\Radiant.Theming.csproj" />
+    <ProjectReference Include="..\Radiant.Gallery\Radiant.Gallery.csproj" />
+    <ProjectReference Include="..\Radiant.AgentCli\Radiant.AgentCli.csproj" />
+    <!-- Test IDs for FormApp, typed locators for every component with parts, and the mandatory-ID rule. -->
+    <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.0.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.0.2" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

@@ -28,7 +28,7 @@ public sealed record LinearProgress : Component
 
         // The indeterminate segment is driven by the root's frames while shown.
         context.UseEffect(() => indeterminate && !theme.Theme.Motion.Reduced
-            ? root.AddTicker(seconds => phase.Update(p => (p + seconds / 1.8) % 1.0)).Dispose
+            ? root.AddTicker(seconds => phase.Update(p => (p + seconds / 1.8) % 1.0), TickerKind.Continuous, "linear progress").Dispose
             : null, indeterminate);
 
         var indicator = theme.Get(SurfaceName.Primary);

@@ -13,6 +13,7 @@ namespace Radiant.Components;
     typeof(IHasBackgroundColor), typeof(IHasCornerShape), typeof(IHasElevation), typeof(IHasOutline), typeof(IHasLayout), typeof(IHasPressable))]
 [ForwardFacets(typeof(SurfaceText), "Label", typeof(IHasText))]
 [ForwardFacets(typeof(SurfaceIcon), "LeadingIcon", typeof(IHasIcon))]
+[RequiresTestId]
 public sealed partial record SurfaceButton : Component, IHasBackgroundColor, IHasCornerShape, IHasElevation, IHasOutline, IHasLayout, IHasPressable, IHasText, IHasIcon
 {
     /// <summary>A button with a label.</summary>

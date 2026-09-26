@@ -89,13 +89,13 @@ public class ActionBitsTests
         (string, string)[] items = [("format_align_left", "Left"), ("format_align_center", "Centre"), ("format_align_right", "Right")];
         using var root = Mount(new Host(ctx => new ToggleGroup(items, ctx.Watch(selected), s => selected.Value = s)));
 
-        Click(root, Find(root, SemanticsRole.Button, "Right"));
+        Click(root, Find(root, SemanticsRole.RadioButton, "Right"));
         var moved = selected.Value.ToArray();
-        Click(root, Find(root, SemanticsRole.Button, "Right"));
+        Click(root, Find(root, SemanticsRole.RadioButton, "Right"));
 
         CollectionAssert.AreEqual(new[] { 2 }, moved);
         CollectionAssert.AreEqual(new[] { 2 }, selected.Value.ToArray(), "pressing the one that's on keeps it on");
-        Assert.IsTrue(Find(root, SemanticsRole.Button, "Right").Semantics.Selected);
+        Assert.IsTrue(Find(root, SemanticsRole.RadioButton, "Right").Semantics.Checked == true, "a one-of group is heard as radio buttons, checked or not");
     }
 
     [TestMethod]
@@ -105,9 +105,9 @@ public class ActionBitsTests
         (string, string)[] items = [("format_bold", "Bold"), ("format_italic", "Italic")];
         using var root = Mount(new Host(ctx => new ToggleGroup(items, ctx.Watch(selected), s => selected.Value = s) { Multiple = true }));
 
-        Click(root, Find(root, SemanticsRole.Button, "Bold"));
-        Click(root, Find(root, SemanticsRole.Button, "Italic"));
-        Click(root, Find(root, SemanticsRole.Button, "Bold"));
+        Click(root, Find(root, SemanticsRole.CheckBox, "Bold"));
+        Click(root, Find(root, SemanticsRole.CheckBox, "Italic"));
+        Click(root, Find(root, SemanticsRole.CheckBox, "Bold"));
 
         CollectionAssert.AreEqual(new[] { 1 }, selected.Value.ToArray());
     }

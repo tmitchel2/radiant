@@ -82,6 +82,13 @@ a change of order throws.
 `RadiantUI.Run(element, options)` does all of that for a window. Rebuilding one leaf in a
 5,000-node tree and laying out again takes about 0.3 ms.
 
+The loop itself is a `UIAppSession`: it owns the root and its platform, keeps the clock (real, or
+fixed at 1/60 s a frame) and the frame count, and runs work posted from other threads,
+`BeforeFrame`, the advance and update, then `AfterUpdate`. The window, the headless loop
+(`UIAppOptions.Headless`, `RadiantUI.RunHeadless`) and tests stepping by hand
+(`UIAppSession.CreateManual(...).Step()`) all run one, and extensions (`UIAppOptions.Extensions`,
+such as the automation's `AgentServer`) plug into it.
+
 ## Idle
 
 `RadiantUI.Run` draws a frame only while the tree has something to do (`UIRoot.NeedsUpdate`: a
@@ -90,6 +97,18 @@ rebuild, an effect, a scroll or a ticker). Otherwise the window waits for input
 (`UIRoot.FrameRequested` → `RadiantApplication.RequestFrame`). An idle window uses no CPU. The
 first step after waiting is capped at 50 ms, so an animation starting then doesn't finish at
 once. Keep components to this: register tickers only while something moves.
+
+Frames and being busy are separate questions. `UIRoot.IsIdle` is what tests and agents wait for:
+mounted, nothing to rebuild or run, no scroll moving, no `TickerKind.Animation` ticker and no
+unfinished busy work; `BusyReasons()` says what's still going. Say what a ticker is when adding it:
+
+- **`TickerKind.Animation`** (the default): moving to an end, a transition or a settle. The UI is busy.
+- **`TickerKind.Continuous`**: moving for as long as it's shown, a spinner, a skeleton, the caret's
+  blink. Never busy.
+- **`TickerKind.Timer`**: waiting to do something, a tooltip's delay, a snackbar's timeout. Never busy.
+
+Work outside the UI that it's waiting on (a request, a file) marks it busy with
+`root.BeginBusy(reason)` or `root.TrackBusy(task, reason)`, from any thread.
 
 ## Events
 
@@ -245,9 +264,23 @@ Event handlers and effects aren't guarded: an exception there still throws.
 - **Semantics:** `Box.Semantics` gives a box a role, label, value and states.
   `UIRoot.GetSemantics()` builds the accessibility tree:
   - Boxes with semantics or focus appear, and so does text.
+  - A scroll area appears as a `ScrollArea` (`ScrollArea.Semantics` overrides it).
+  - A box named only by a test ID appears with role `None` and no label; the platform passes over it.
   - Other boxes pass their children up.
   - A control without a label is named by the text inside it.
   - Text with a `HeadingLevel` is a heading (`SurfaceText.HeadingLevel` in components).
+- **Test IDs:** `Element.TestId` names any element for tests and agents. Components declare their
+  parts as `[TestId]` partial properties (`SignInForm.Email`), which the generator fills in, naming the
+  component's root after it (`Element.DefaultTestId`). An explicit ID on a component names the one box
+  it draws, the outermost winning; `Semantics.TestId` overrides it. Controls marked
+  `[RequiresTestId]` must be given a declared one (analyzer rules `RAD030`, `RAD031`).
+  `SemanticsNode.TestId` carries it, and on macOS it's the accessibility identifier. See
+  [automation.md](automation.md#test-ids).
+- **Inspection:** `UIRoot.RootNode`, `FindNode(id)` and `HitTest(point)` give `UINode`s: a laid-out
+  node's kind, bounds after transforms, the part that can be seen (`VisibleBounds`, cut by clips and
+  the window), effective opacity, scroll position, text and test ID. `UIRoot.ScrollIntoView(id)`
+  and `ScrollTo(id, offset)` scroll; `InputReceived` reports every input before it's dispatched. The
+  automation ([automation.md](automation.md)) is built on these.
 
 ## Style facets
 

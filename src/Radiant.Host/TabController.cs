@@ -173,6 +173,19 @@ internal sealed class TabController
         return true;
     }
 
+    /// <summary>
+    /// Registers the host's actions (<c>tab.*</c>, <c>window.focus</c>) with <paramref name="dispatcher"/>, which
+    /// runs them one at a time on the host's thread and lists them with its own <c>actions.list</c>.
+    /// </summary>
+    public void Register(AgentDispatcher dispatcher)
+    {
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        foreach (var definition in s_actionDefs.Where(d => d.Name != "actions.list"))
+        {
+            dispatcher.Register(definition, ActionKind.Mutation, context => AgentOperation.Done(Handle(context.Command)));
+        }
+    }
+
     /// <summary>Dispatch a <c>tab.*</c> (or <c>actions.list</c>) command and return its response.</summary>
     public AgentResponse Handle(AgentCommand cmd)
     {

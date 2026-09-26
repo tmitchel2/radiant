@@ -24,6 +24,8 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
 
     public Action? OnToggle { get; init; }
 
+    public int TabIndex { get; init; }
+
     public override Element? Build(BuildContext context)
     {
         var theme = context.UseTheme();
@@ -45,6 +47,7 @@ internal sealed record SelectionControl(Func<SelectionVisualState, Element> Indi
         return new Box
         {
             Focusable = !disabled,
+            TabIndex = TabIndex,
             Semantics = new Semantics { Role = Role, Label = AccessibleLabel ?? Label, Checked = Checked, Disabled = disabled },
             // A check box or radio sits in its 40-wide state-layer ring, which spaces its label; a
             // switch is wider than the ring, so its label needs the space itself.

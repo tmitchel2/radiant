@@ -48,7 +48,7 @@ public sealed record Tooltip(string Text, Element? Child) : Component
                     visible.Set(true);
                     ticker?.Dispose();
                 }
-            });
+            }, TickerKind.Timer, "tooltip delay");
             return ticker.Dispose;
         }, (isHovered, visible.Value));
 

@@ -11,8 +11,12 @@ namespace Radiant.Templates;
 
 /// <summary>A cart: each line with its picture, name, quantity and amount, then subtotal, shipping, total and checkout.</summary>
 /// <param name="Lines">What's in the cart.</param>
-public sealed record CartSummary(IReadOnlyList<CartLine> Lines) : Component
+public sealed partial record CartSummary(IReadOnlyList<CartLine> Lines) : Component
 {
+    [TestId<IconButton>] public static partial string Fewer { get; }
+    [TestId<IconButton>] public static partial string More { get; }
+    [TestId<SurfaceButton>] public static partial string CheckOut { get; }
+
     /// <summary>Shipping, added to the total.</summary>
     public decimal Shipping { get; init; }
 
@@ -51,9 +55,9 @@ public sealed record CartSummary(IReadOnlyList<CartLine> Lines) : Component
                             new SurfaceText(Money(line.UnitPrice)) { Legibility = Legibility.Medium },
                         ],
                     },
-                    new IconButton("remove", "Fewer") { OnPress = () => change?.Invoke(index, line.Quantity - 1) },
+                    new IconButton("remove", "Fewer") { TestId = Fewer, OnPress = () => change?.Invoke(index, line.Quantity - 1) },
                     new SurfaceText(line.Quantity.ToString(CultureInfo.InvariantCulture)) { TextType = TextType.LabelLarge },
-                    new IconButton("add", "More") { OnPress = () => change?.Invoke(index, line.Quantity + 1) },
+                    new IconButton("add", "More") { TestId = More, OnPress = () => change?.Invoke(index, line.Quantity + 1) },
                     new SurfaceText(Money(line.UnitPrice * line.Quantity)) { TextType = TextType.LabelLarge, Layout = new LayoutStyle { MinWidth = 64 }, Alignment = Radiant.Text.TextAlignment.End },
                 ],
             });
@@ -62,7 +66,7 @@ public sealed record CartSummary(IReadOnlyList<CartLine> Lines) : Component
         rows.Add(Total("Subtotal", Money(subtotal), false));
         rows.Add(Total("Shipping", Shipping == 0 ? "Free" : Money(Shipping), false));
         rows.Add(Total("Total", Money(subtotal + Shipping), true));
-        rows.Add(new SurfaceButton("Check out") { Icon = "lock", OnPress = OnCheckout, Layout = new LayoutStyle { AlignSelf = Align.Stretch } });
+        rows.Add(new SurfaceButton("Check out") { TestId = CheckOut, Icon = "lock", OnPress = OnCheckout, Layout = new LayoutStyle { AlignSelf = Align.Stretch } });
         return new Card(rows.ToArray()) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { MaxWidth = 480, Padding = Edges.All(20), RowGap = 12 } };
 
         static Element Total(string label, string value, bool strong) => new Box

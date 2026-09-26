@@ -6,8 +6,11 @@ using Radiant.UI.Core;
 namespace Radiant.Gallery;
 
 /// <summary>The gallery: the component showcase and a page per template family, in the sidebar shell.</summary>
-internal sealed record GalleryApp(ThemeController Themes) : Component
+internal sealed partial record GalleryApp(ThemeController Themes) : Component
 {
+    [TestId<IconButton>] public static partial string Search { get; }
+    [TestId<IconButton>] public static partial string Notifications { get; }
+
     public int StartPage { get; init; }
 
     public bool StartWithDialog { get; init; }
@@ -86,8 +89,8 @@ internal sealed record GalleryApp(ThemeController Themes) : Component
         {
             Actions =
             [
-                new Tooltip($"Search ({KeyChord.Command(KeyCode.K)})", new IconButton("search", "Search") { OnPress = () => palette.Set(true) }),
-                new Tooltip("Notifications", new IconButton("notifications", "Notifications")),
+                new Tooltip($"Search ({KeyChord.Command(KeyCode.K)})", new IconButton("search", "Search") { TestId = Search, OnPress = () => palette.Set(true) }),
+                new Tooltip("Notifications", new IconButton("notifications", "Notifications") { TestId = Notifications }),
                 new Avatar("Tom Mitchell") { Size = 32 },
             ],
         }, new CommandPalette(palette.Value, () => palette.Set(false), commands), new ThemeCommands(Themes), new CommandMenuBar { DrawWithoutPlatformMenuBar = false }));

@@ -11,6 +11,7 @@ namespace Radiant.Components;
 /// </summary>
 /// <param name="On">Whether it's on.</param>
 /// <param name="OnChange">Called with the new value when pressed.</param>
+[RequiresTestId]
 public sealed record Switch(bool On, Action<bool>? OnChange) : Component
 {
     /// <summary>A label beside it, which can also be pressed.</summary>

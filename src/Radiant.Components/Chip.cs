@@ -49,6 +49,8 @@ public sealed record Chip(string Label) : Component
             ShowDisabled = Disabled ? true : null,
             OnPress = OnPress,
             Role = Selected is null ? SemanticsRole.Button : SemanticsRole.CheckBox,
+            // A filter chip is a check box, heard as checked or not.
+            Checked = Selected is null ? null : selected,
             Layout = new LayoutStyle
             {
                 FlexDirection = FlexDirection.Row,

@@ -12,8 +12,10 @@ namespace Radiant.Components;
 /// alert.
 /// </summary>
 /// <param name="Title">What it says, in brief.</param>
-public sealed record Alert(string Title) : Component
+public sealed partial record Alert(string Title) : Component
 {
+    [TestId<IconButton>] public static partial string Dismiss { get; }
+
     /// <summary>Info, success, warning or error.</summary>
     public AlertKind Kind { get; init; }
 
@@ -63,7 +65,7 @@ public sealed record Alert(string Title) : Component
                         },
                     ],
                 },
-                OnDismiss is null ? null : new IconButton("close", "Dismiss") { OnPress = OnDismiss, Layout = new LayoutStyle { Width = 32, Height = 32 } },
+                OnDismiss is null ? null : new IconButton("close", "Dismiss") { TestId = Dismiss, OnPress = OnDismiss, Layout = new LayoutStyle { Width = 32, Height = 32 } },
             ],
         };
     }

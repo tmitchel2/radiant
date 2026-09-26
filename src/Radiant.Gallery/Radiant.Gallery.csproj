@@ -17,8 +17,13 @@
   <Import Project="..\Directory.Publish.props" />
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Radiant.UI.Automation.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Radiant.Templates\Radiant.Templates.csproj" />
     <ProjectReference Include="..\Radiant.Platform.MacOS\Radiant.Platform.MacOS.csproj" />
+    <ProjectReference Include="..\Radiant.UI.Automation\Radiant.UI.Automation.csproj" />
     <ProjectReference Include="..\Radiant.Generators\Radiant.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

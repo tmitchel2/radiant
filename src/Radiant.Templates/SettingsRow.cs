@@ -28,7 +28,7 @@ public sealed record SettingsRow(string Label, Element? Control) : Component
                     Description is null ? null : new SurfaceText(Description) { Legibility = Legibility.Medium },
                 ],
             },
-            Control,
+            AccessibleNames.Name(Control, Label),
         ],
     };
 }

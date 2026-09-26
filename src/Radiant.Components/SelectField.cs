@@ -12,8 +12,11 @@ namespace Radiant.Components;
 /// <param name="Options">The choices.</param>
 /// <param name="Selected">The chosen option's index, or -1 for none.</param>
 /// <param name="OnSelect">Called with the chosen index.</param>
-public sealed record SelectField(string Label, IReadOnlyList<string> Options, int Selected, Action<int>? OnSelect) : Component
+[RequiresTestId]
+public sealed partial record SelectField(string Label, IReadOnlyList<string> Options, int Selected, Action<int>? OnSelect) : Component
 {
+    [TestId<TextField>] public static partial string Field { get; }
+
     /// <summary>Filled or outlined, as <see cref="TextField"/>.</summary>
     public TextFieldVariant Variant { get; init; }
 
@@ -65,6 +68,7 @@ public sealed record SelectField(string Label, IReadOnlyList<string> Options, in
                 [
                     new TextField(Label)
                     {
+                        TestId = Field,
                         Value = TextEditState.From(text),
                         ReadOnly = true,
                         Disabled = Disabled,

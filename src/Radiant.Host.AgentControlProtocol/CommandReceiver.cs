@@ -31,9 +31,9 @@ public sealed class CommandReceiver : IDisposable
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
             EnableRaisingEvents = true,
         };
-        _watcher.Created += (_, e) => _pendingFiles.Enqueue(e.FullPath);
-        _watcher.Changed += (_, e) => _pendingFiles.Enqueue(e.FullPath);
-        _watcher.Renamed += (_, e) => _pendingFiles.Enqueue(e.FullPath);
+        _watcher.Created += (_, e) => Arrived(e.FullPath);
+        _watcher.Changed += (_, e) => Arrived(e.FullPath);
+        _watcher.Renamed += (_, e) => Arrived(e.FullPath);
 
         // Process any commands already in the directory
         foreach (var file in Directory.GetFiles(_commandsDir, "cmd-*.json"))
@@ -41,6 +41,12 @@ public sealed class CommandReceiver : IDisposable
             _pendingFiles.Enqueue(file);
         }
     }
+
+    /// <summary>
+    /// Raised on a watcher thread when a command file appears, so an application that draws frames only
+    /// when it must can wake up and drain it.
+    /// </summary>
+    public event Action? CommandArrived;
 
     /// <summary>
     /// Drains all pending commands. Call once per frame from the render thread.
@@ -129,6 +135,12 @@ public sealed class CommandReceiver : IDisposable
         _disposed = true;
         _watcher.EnableRaisingEvents = false;
         _watcher.Dispose();
+    }
+
+    private void Arrived(string path)
+    {
+        _pendingFiles.Enqueue(path);
+        CommandArrived?.Invoke();
     }
 
     private static void WriteAtomically(string path, string content)

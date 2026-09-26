@@ -3,7 +3,8 @@
 `Radiant` draws a window. `Radiant.Host` turns one executable into a desktop application: a
 Chrome-style tabbed window whose tabs are separate processes, tear-off and merge between windows, one
 Dock tile for all of them, a native File menu, recent files, headless GPU rendering for tests, and a
-filesystem control protocol an agent or a CLI can drive. `tools/bundle-macos-app.sh` and
+filesystem control protocol an agent or a CLI can drive. UI apps answer the same protocol over a socket
+as well, for automation: see [automation.md](automation.md). `tools/bundle-macos-app.sh` and
 `src/Directory.Publish.props` take the result to a Native AOT `.app`.
 
 Three assemblies:
@@ -12,7 +13,7 @@ Three assemblies:
 |---|---|---|
 | `Radiant.Host` | the compositing host (`LiveHost`, `HostCompositor`, the tab strip and its gestures), the drag overlay, the renderer half (`TabSession`), macOS integration, `RadiantAppIdentity` | `Radiant`, the two below |
 | `Radiant.Host.Ipc` | the data plane: `SharedFrameBuffer`, `InputRing`, `TabProtocol`, `RecentFilesStore` | nothing |
-| `Radiant.Host.AgentControlProtocol` | the control plane: `InstanceRegistry`, `CommandReceiver`, `CommandClient`, the command/response records | nothing |
+| `Radiant.Host.AgentControlProtocol` | the control plane: `InstanceRegistry`, the `AgentDispatcher`, the file and socket transports, `AgentClient`, `AgentLauncher`, selectors and log entries | nothing |
 
 A renderer that only publishes frames needs `Radiant.Host.Ipc`; a CLI that only sends commands needs
 `Radiant.Host.AgentControlProtocol`. Neither needs a window.
@@ -49,9 +50,13 @@ the `tab.*` actions against the live registry.
 
 **Control plane (low rate): the filesystem.** `InstanceRegistry` keeps
 `<data directory>/instances/<name>/instance.json` per live process, with PID-liveness checks and
-automatic cleanup of the dead. `CommandClient` writes `commands/cmd-<id>.json`; the target's
-`CommandReceiver` watches with a `FileSystemWatcher` and answers in `responses/`. The host registers as
-an instance with the `tab` capability and answers these actions:
+automatic cleanup of the dead (`$RADIANT_INSTANCES_DIR` moves it, to keep test runs apart).
+`CommandClient` writes `commands/cmd-<id>.json`; the target's `FileDropTransport` (a
+`CommandReceiver` watching with a `FileSystemWatcher`) queues each command on an `AgentDispatcher`,
+which the target pumps once a frame on its own thread, and the answer is written to `responses/`. UI
+apps also listen on a Unix domain socket, which is faster and can push events
+([automation.md](automation.md)). The host registers as an instance of kind `host` with the `tab`
+capability; `TabController.Register` puts these actions on its dispatcher:
 
 | Action | Description |
 |---|---|
@@ -63,7 +68,7 @@ an instance with the `tab` capability and answers these actions:
 | `tab.adopt` | take a renderer owned by another host into this strip; optional `cursorX` picks the slot |
 | `tab.handoff` | give a tab this host owns to another host (the source side of a live re-merge) |
 | `window.focus` | raise this host's window (the Dock menu uses it) |
-| `actions.list` | the above |
+| `actions.list` | the above (the dispatcher's own) |
 
 Each renderer registers under its own name, so an application's own actions address each tab
 directly. An application serialises its action results through its own
@@ -88,7 +93,9 @@ Silk.NET.WebGPU (wgpu-native) exposes no IOSurface/DMABUF import. One active tab
 
 ## Protocol versioning
 
-`TabProtocol.Version` (currently **3**) stamps the contract: both layouts and the `tab.*` actions. A
+There are two versions. `AgentProtocol.Version` (currently **2**, in `InstanceInfo.AgentProtocolVersion`)
+covers the control plane's commands, transports and the UI actions; see
+[automation.md](automation.md). `TabProtocol.Version` (currently **3**) stamps the contract: both layouts and the `tab.*` actions. A
 renderer advertises it in `InstanceInfo.ProtocolVersion`; the host adopts a renderer only when it
 publishes frames **and** speaks the same version, and logs and skips it otherwise without opening its
 buffer. The magic and version words in each transport are a second guard. Bump `Version` on any

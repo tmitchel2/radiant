@@ -26,8 +26,9 @@ public sealed class CommandClient
     /// <param name="action">Action name, e.g. "scene.load".</param>
     /// <param name="paramsJson">Raw JSON params string, or null.</param>
     /// <param name="timeoutMs">Timeout in milliseconds (default 30 seconds).</param>
+    /// <param name="commandTimeoutMs">How long the receiver may take, sent with the command; its default if null.</param>
     /// <returns>The response, or an error response on timeout.</returns>
-    public AgentResponse Send(string action, string? paramsJson = null, int timeoutMs = 30000)
+    public AgentResponse Send(string action, string? paramsJson = null, int timeoutMs = 30000, int? commandTimeoutMs = null)
     {
         var id = Guid.NewGuid().ToString("N")[..12];
         var command = new AgentCommand
@@ -36,6 +37,7 @@ public sealed class CommandClient
             Action = action,
             Params = paramsJson != null ? JsonDocument.Parse(paramsJson).RootElement : null,
             Timestamp = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+            TimeoutMs = commandTimeoutMs,
         };
 
         // Write command file atomically

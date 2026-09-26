@@ -17,11 +17,26 @@ namespace Radiant.Host.AgentControlProtocol;
 [JsonSerializable(typeof(AgentCommand))]
 [JsonSerializable(typeof(AgentResponse))]
 [JsonSerializable(typeof(AgentError))]
+[JsonSerializable(typeof(AgentHello))]
+[JsonSerializable(typeof(AgentEvent))]
 [JsonSerializable(typeof(ActionDefinition))]
 [JsonSerializable(typeof(ActionDefinition[]))]
 [JsonSerializable(typeof(Dictionary<string, JsonElement>))]
 [JsonSerializable(typeof(BoolResult))]
 [JsonSerializable(typeof(ExitResult))]
 [JsonSerializable(typeof(ScreenshotResult))]
+[JsonSerializable(typeof(Selector))]
+[JsonSerializable(typeof(TextMatch))]
+[JsonSerializable(typeof(LogEntry))]
 [JsonSerializable(typeof(string[]))]
-public sealed partial class AgentJsonContext : JsonSerializerContext;
+public sealed partial class AgentJsonContext : JsonSerializerContext
+{
+    /// <summary>
+    /// The same types written without indentation, so each message is one line: what the socket
+    /// transport and the interaction log write.
+    /// </summary>
+    public static AgentJsonContext Compact => s_compact ??= new(new JsonSerializerOptions(Default.Options) { WriteIndented = false });
+
+    // Made on first use: a static initializer here could run before the generated Default exists.
+    private static AgentJsonContext? s_compact;
+}

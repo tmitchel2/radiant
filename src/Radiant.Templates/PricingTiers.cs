@@ -10,8 +10,10 @@ namespace Radiant.Templates;
 /// <summary>Plans side by side, each with its price, what it includes and a button; the featured plan stands out.</summary>
 /// <param name="Tiers">The plans.</param>
 /// <param name="OnChoose">Called with a plan's index when its button is pressed.</param>
-public sealed record PricingTiers(IReadOnlyList<PricingTier> Tiers, Action<int>? OnChoose) : Component
+public sealed partial record PricingTiers(IReadOnlyList<PricingTier> Tiers, Action<int>? OnChoose) : Component
 {
+    [TestId<SurfaceButton>] public static partial string Choose { get; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -48,6 +50,7 @@ public sealed record PricingTiers(IReadOnlyList<PricingTier> Tiers, Action<int>?
                 },
                 new SurfaceButton(tier.Featured ? "Get started" : "Choose plan", tier.Featured ? ButtonVariant.Filled : ButtonVariant.Outlined)
                 {
+                    TestId = Choose,
                     OnPress = () => choose?.Invoke(index),
                     Layout = new LayoutStyle { AlignSelf = Align.Stretch },
                 },

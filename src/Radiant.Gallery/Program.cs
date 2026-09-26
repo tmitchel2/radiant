@@ -6,11 +6,13 @@ using Radiant.Graphics;
 using Radiant.Graphics2D;
 using Radiant.Platform.MacOS;
 using Radiant.Theming;
+using Radiant.UI.Automation;
 using Radiant.UI.Core;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
+// radiant-gallery --agent [--headless]    the same, driven by an agent or a test (RADIANT_AGENT=1 does the same)
 // radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-12] [--dialog] [--menu] [--palette] [--sheet] [--rtl] [--bench N [--bench-theme]]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
@@ -57,8 +59,11 @@ if (snapshot is null)
 {
     // In a window the theme follows the system's dark mode, accent and accessibility settings,
     // unless colours were chosen on the command line.
-    RadiantUI.Run(app with { FollowAppearance = followSystem },
-        new UIAppOptions { Title = "Radiant Gallery", Width = 1200, Height = 800, Background = ResolvedTheme.Resolve(theme).Background, Platform = MacPlatform.CreateOrHeadless });
+    // Under automation (RADIANT_AGENT=1 or --agent) it also answers agents and tests, and may run headless.
+    var options = RadiantAutomation.Configure(
+        new UIAppOptions { Title = "Radiant Gallery", Width = 1200, Height = 800, Background = ResolvedTheme.Resolve(theme).Background, Platform = MacPlatform.CreateOrHeadless },
+        args, "radiant-gallery");
+    RadiantUI.Run(app with { FollowAppearance = followSystem }, options);
     return;
 }
 

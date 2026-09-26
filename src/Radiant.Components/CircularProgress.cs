@@ -34,7 +34,7 @@ public sealed record CircularProgress : Component
         var root = context.Root;
         var spinning = Value is null;
         context.UseEffect(() => spinning && !theme.Theme.Motion.Reduced
-            ? root.AddTicker(seconds => time.Update(t => t + seconds)).Dispose
+            ? root.AddTicker(seconds => time.Update(t => t + seconds), TickerKind.Continuous, "circular progress").Dispose
             : null, spinning);
 
         var indicator = (Vector4)theme.Get(SurfaceName.Primary);

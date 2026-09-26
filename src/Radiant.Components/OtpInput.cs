@@ -15,6 +15,7 @@ namespace Radiant.Components;
 /// it's whole.
 /// </summary>
 /// <param name="OnComplete">Called with the whole code.</param>
+[RequiresTestId]
 public sealed record OtpInput(Action<string> OnComplete) : Component
 {
     /// <summary>How many characters the code has.</summary>
