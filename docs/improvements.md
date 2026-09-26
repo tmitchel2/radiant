@@ -183,6 +183,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   tertiary under some seeds), there's no zooming, panning, time axis, logarithmic scale or
   keyboard way to read values (only the pointer and the text summary), and a chart repaints its
   plot every frame it's drawn rather than caching it.
+- **Navigation keeps only the page showing.** A `StackNavigator` rebuilds a page when it's
+  revealed again, so its state (scroll position, typed text) is lost on the way back, and the
+  page going away doesn't animate out. Keeping pages mounted but hidden, or saving their state by
+  key, would fix both; deep links and history (forward) aren't there either.
 - **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
   multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
   item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every

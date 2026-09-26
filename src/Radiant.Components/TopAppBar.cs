@@ -19,6 +19,9 @@ public sealed record TopAppBar(string Title) : Component
     /// <summary>What the navigation button does.</summary>
     public Action? OnNavigation { get; init; }
 
+    /// <summary>What assistive technology calls the navigation button ("Back", "Open menu").</summary>
+    public string NavigationLabel { get; init; } = "Navigate";
+
     /// <summary>Action buttons on the right (usually icon buttons).</summary>
     public IReadOnlyList<Element?> Actions { get; init; } = [];
 
@@ -44,7 +47,7 @@ public sealed record TopAppBar(string Title) : Component
             },
             Children =
             [
-                NavigationIcon is null ? new Box { Layout = new LayoutStyle { Width = 12 } } : new IconButton(NavigationIcon, "Navigate") { OnPress = OnNavigation },
+                NavigationIcon is null ? new Box { Layout = new LayoutStyle { Width = 12 } } : new IconButton(NavigationIcon, NavigationLabel) { OnPress = OnNavigation },
                 new SurfaceText(Title) { TextType = TextType.TitleLarge, MaxLines = 1, Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 } },
                 .. Actions,
             ],
