@@ -168,6 +168,29 @@ public sealed partial record SurfaceButton : Component, IHasCornerShape, IHasOut
 - **`UIRoot.AddTicker`** is the general hook for anything that animates itself; theme transitions
   use it.
 
+## Editing text
+
+- **`TextEditState`:** text, a `TextSelection` (anchor, focus, affinity) and the input method's
+  composing range.
+- **`TextEditing`:** the edits as pure functions over the state. Typing replaces the selection or
+  composing text. Deletion goes by grapheme, word or line. Movement goes through the laid-out
+  `Paragraph`, so arrows follow bidi text on screen and up and down keep their column. There are
+  word and line selection, and input-method composition.
+- **`EditableText`:** a host element that draws the text with its selection, composing underline
+  and caret. A single line scrolls sideways to keep the caret in view. `EditableTextRef` gives hit
+  testing and the caret's bounds.
+- **`TextInput`:** a controlled component (`State` in, `OnChange` out) with a Mac text field's
+  behaviour:
+  - pointer caret placement, drag selection, double-click for a word and triple-click for a line;
+  - arrows, Option for words, Command for line and document ends, Shift to extend;
+  - Backspace and Delete by character, word or to the line start;
+  - Command-A, C, X, V, Z and Shift-Z, with runs of typing undone at once;
+  - Enter submits a one-line input or breaks a multiline one;
+  - a blinking caret.
+
+  Copy and paste use `TextInputContexts.Clipboard`, which is process-private unless the app
+  provides the platform clipboard.
+
 ## Not yet
 
 - **Host elements:** `Image`, and a canvas for custom drawing.

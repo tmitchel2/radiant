@@ -76,6 +76,20 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Escape only dismisses from inside.** `DismissableLayer` sees Escape only when focus is within
   it; Radix listens on the document. Add a root key observer if layers without focus need it.
 
+## Editing (`TextInput`)
+
+- **No input method yet.** The composition model is in place (`SetComposing`/`EndComposing`),
+  but nothing feeds it until the P7 text-input client connects `TextInput` to the platform. The
+  clipboard is likewise process-private until then.
+- **Every keystroke reshapes the whole text.** That's fine for fields; a code editor wants
+  incremental layout per line.
+- **Dragging doesn't scroll.** Neither a one-line input dragged past its end nor a multiline one
+  dragged past its bottom scrolls.
+- **Vertical movement bypasses history.** Up and Down call `OnChange` directly, not through the
+  change helper that clears the goal column, which is intended but not obvious; a shared "move"
+  path would read better.
+- **No context menu, spell check or drag-and-drop of text.**
+
 ## Theming (`Radiant.Theming`)
 
 - **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,
@@ -141,6 +155,14 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   spring-based; add a spring driver (Radiant has `SmoothDamp`, and `Decay` for momentum).
 
 ## Rendering (`Radiant.Graphics2D`)
+
+- **MSDF text has no gamma correction.** Its edges aren't gamma-corrected as coverage and Slug
+  text are; at the sizes it's used for that barely shows.
+- **MSDF can't resolve very thin strokes.** At the 40 px generation em it can't resolve strokes
+  under about 2 texels, which shows only at Inter weight 100. Generate the thinnest weights at a
+  larger em.
+- **The MSDF atlas-trim test uses small pages.** It sets internal 128-texel pages, because filling
+  real pages under coverage instrumentation took minutes.
 
 - **Slug is costly and soft when small.** It isn't pixel-snapped, so it's a little softer than
   coverage at small sizes. It also costs 3–4× coverage on the GPU: ~3.7 ms for a full 1080p
