@@ -42,6 +42,24 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Semantics have no actions.** Nodes can't be pressed, incremented or scrolled through the
   tree yet, which the P7 accessibility bridge needs.
 
+## Theming (`Radiant.Theming`)
+
+- **A theme change rebuilds every reader.** Components reading the theme rebuild on every change,
+  and on every frame of a transition. The plan's goal is zero rebuilds: render nodes keep
+  symbolic tokens (colour roles, shape roles) and resolve them at paint time. Doing that needs a
+  token type `Box` can take and a paint-time theme scope, so a dark section can sit inside a
+  light app.
+- **The theme ticker never stops.** `ThemeProvider` keeps it registered for its lifetime, so
+  `UIRoot.NeedsUpdate` is always true. Register it only while the controller is animating.
+- **Schemes use the Phone platform.** Material's phone and watch are the only platforms upstream;
+  check whether a desktop tuning is wanted.
+- **The type scale is sized for phones.** Material 3's body text is 14 px, larger than typical
+  desktop UI (13 px on macOS). Consider a desktop `TypeScale`, or density scaling type.
+- **Monochrome custom families are grey.** Custom families take the variant's primary palette, so
+  success, warning and info are grey under Monochrome.
+- **Some role mappings are judgement calls.** Containers use `SurfaceContainer`, and `Inverse`'s
+  container is `inversePrimary` with `inverseSurface` content. Revisit when components use them.
+
 ## Generators (`Radiant.Generators`)
 
 - **Props equality still compares callbacks.** Delegate-ignoring equality isn't generated, because
