@@ -76,6 +76,11 @@ turns a filled button red.
 | `Kbd` | Keycaps for a key or chord (`Kbd.For(KeyChord.Command(KeyCode.K))`) |
 | `Breadcrumb`, `Crumb` | Links to each level above the current page; long trails fold their middle into "…" |
 | `Pagination` | Previous, next, the ends, the current page's neighbourhood and gaps |
+| `Alert`, `AlertKind` | An in-page message: info, success, warning or error colour and icon, title, text, actions, dismiss; announced as an alert |
+| `Fab` | The floating main action: a 56 px rounded square, or extended with its label |
+| `ToggleButton`, `ToggleGroup` | Icon buttons that stay on; groups of one-of (alignment) or any (bold, italic) |
+| `Toolbar` | A row of controls where Left/Right/Home/End move focus, stopping at its ends |
+| `SplitButton` | The usual action with a joined arrow dropping its alternatives |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

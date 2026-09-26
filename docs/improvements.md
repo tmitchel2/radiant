@@ -175,6 +175,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Context menus are drawn in the window.** They're Radiant menus at the pointer, not the
   platform's (NSMenu on macOS), so they can't extend past the window and don't get system
   services items. A platform menu service (P7's `IMenuService`) would give native ones.
+- **Toolbars aren't a single Tab stop.** Arrows move within a toolbar, but Tab still visits every
+  control in it; a roving tab index (only the last-focused control tabbable) needs `TabIndex` on
+  `IconButton` and the other controls, which only `PressableSurface` and `ToggleButton` have.
 - **Trees are a first cut.** No type-ahead (a letter jumps to the next item starting with it), no
   multiple selection, no drag and drop, no lazily loaded children (a "loading" row while an
   item fetches its children), and `*` doesn't expand siblings. The rows are re-flattened on every

@@ -40,6 +40,8 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var menu = context.UseState(StartWithMenu);
         var sheet = context.UseState(StartWithSheet);
         var pageNumber = context.UseState(7);
+        var formats = context.UseState((IReadOnlySet<int>)new HashSet<int> { 0 });
+        var align = context.UseState((IReadOnlySet<int>)new HashSet<int> { 0 });
         var popover = context.UseState(false);
         var alert = context.UseState(false);
         var popoverAnchor = context.UseRef(new ElementRef()).Value;
@@ -139,6 +141,23 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                 new Row(
                     new DatePicker("Start date", date.Value, date.Set) { Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
                     new Card(new Calendar(date.Value, d => date.Set(d))) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(0) } }) { Gap = 16 },
+                new Row(
+                    new Toolbar(
+                    [
+                        new IconButton("undo", "Undo"),
+                        new IconButton("redo", "Redo"),
+                        new Divider { Vertical = true },
+                        new ToggleGroup([("format_bold", "Bold"), ("format_italic", "Italic"), ("format_underlined", "Underline")], formats.Value, formats.Set) { Multiple = true, Label = "Style" },
+                        new Divider { Vertical = true },
+                        new ToggleGroup([("format_align_left", "Left"), ("format_align_center", "Centre"), ("format_align_right", "Right")], align.Value, align.Set) { Label = "Alignment" },
+                    ]) { Label = "Formatting" },
+                    new SplitButton("Save", () => { }, [new MenuItem("Save as…", () => { }), new MenuItem("Save all", () => { })]) { Icon = "save" },
+                    new Fab("edit", "Compose") { Extended = true }) { Gap = 16 },
+                new Alert("Your trial ends in 3 days") { Kind = AlertKind.Info, Text = "Add a payment method to keep your projects.", Actions = [new SurfaceButton("Upgrade", ButtonVariant.Text)], OnDismiss = () => { } },
+                new Row(
+                    new Alert("Saved") { Kind = AlertKind.Success, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
+                    new Alert("Low disk space") { Kind = AlertKind.Warning, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } },
+                    new Alert("Sync failed") { Kind = AlertKind.Error, Layout = new LayoutStyle { FlexGrow = 1, FlexBasis = 0 } }) { Gap = 12 },
                 new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
                 new Row(
                     new SearchField("Search components") { Layout = new LayoutStyle { Width = 260 } },
