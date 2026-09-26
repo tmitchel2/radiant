@@ -146,6 +146,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   exposed to assistive technology (a row is named by its cells' text joined). The keyboard moves
   by row only; spreadsheet-style cell focus isn't there. Select-all builds a set of every index,
   which is fine at 100k rows but wants a range representation beyond that.
+- **Dates are single and Gregorian.** No range picking (start and end in one calendar), no
+  time picker, no month or year view to jump far (only a month at a time), and only the
+  Gregorian calendar (`DateOnly`), though names and the first weekday follow the culture.
+  Typed dates use the culture's short pattern; "3 Oct" or "next Friday" aren't understood.
 - **Combo boxes are single-choice and synchronous.** No multiple selection (chips in the field),
   no options loaded as you type (a loading row, debouncing), no grouped options, and the list
   isn't virtualised, so thousands of options would build every row.

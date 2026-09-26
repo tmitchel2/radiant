@@ -29,6 +29,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var theme = context.UseTheme();
         var presses = context.UseState(0);
         var city = context.UseState((string?)"London");
+        var date = context.UseState((DateOnly?)DateOnly.FromDateTime(DateTime.Today).AddDays(3));
         var agreed = context.UseState(true);
         var notify = context.UseState(false);
         var wifi = context.UseState(true);
@@ -128,6 +129,9 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                         new AccordionItem("Shipping", new SurfaceText("Two to four days, tracked.") { Legibility = Legibility.Medium }) { Icon = "schedule" },
                         new AccordionItem("Returns", new SurfaceText("Free within thirty days.") { Legibility = Legibility.Medium }) { Icon = "archive" },
                     ]) { InitiallyOpen = new HashSet<int> { 0 }, Layout = new LayoutStyle { Width = 360 } }) { Gap = 16 },
+                new Row(
+                    new DatePicker("Start date", date.Value, date.Set) { Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
+                    new Card(new Calendar(date.Value, d => date.Set(d))) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(0) } }) { Gap = 16 },
                 new Card(
                     new ListItem("Inbox") { LeadingIcon = "inbox", TrailingText = "24", OnPress = () => { }, Selected = true },
                     new ListItem("Starred") { LeadingIcon = "star", SupportingText = "Messages you marked", OnPress = () => { } },

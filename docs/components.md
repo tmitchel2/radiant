@@ -64,6 +64,8 @@ turns a filled button red.
 | `CommandPalette`, `Command` | ⌘K-style search over commands: ranked by `FuzzyMatch` on titles and keywords, grouped when nothing is typed; arrows, Enter or a press run one; Escape or outside closes |
 | `Accordion`, `AccordionItem` | Sections that open under their headers in an outlined card, one at a time or several; chevrons turn, content fades in; Up/Down/Home/End between headers; controlled or not |
 | `ComboBox` | A text field that suggests options as you type, ranked by `FuzzyMatch`, with focus staying in the field; arrows, Enter or a press pick, Escape puts the text back; custom text kept only with `AllowCustom` |
+| `Calendar` | A month grid: the culture's first weekday, today ringed, the chosen day filled; arrows, pages, Home/End and Enter, one Tab stop; minimum, maximum and refused days |
+| `DatePicker` | A date field read in the culture's short format (errors for text that isn't a choosable date), with a calendar that opens from its button or Down, focused on the date |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

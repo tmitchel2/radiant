@@ -14,4 +14,7 @@ public interface IHasOutline
 
     /// <summary>Whether to use the quieter outline-variant colour.</summary>
     bool? OutlineVariant { get; init; }
+
+    /// <summary>Whether to draw it in the content colour instead (a primary ring round today's date).</summary>
+    bool? OutlineInContentColor { get; init; }
 }

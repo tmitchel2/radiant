@@ -29,6 +29,9 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
     /// <summary>Whether what it shows or hides is showing (a disclosure, a menu button); null if it doesn't.</summary>
     public bool? Expanded { get; init; }
 
+    /// <summary>Tab order: 0 in tree order, negative to skip it when tabbing (a roving group's other items).</summary>
+    public int TabIndex { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -64,6 +67,7 @@ public sealed partial record PressableSurface : Component, IHasBackgroundColor, 
         return ThemeContexts.Surface.Provide(state, SurfaceBox.For(this, theme, state) with
         {
             Focusable = !disabled,
+            TabIndex = TabIndex,
             Semantics = new Semantics { Role = Role, Label = Label, Disabled = disabled, Selected = Selected, Expanded = Expanded },
             OnPointerEnter = _ => hovered.Set(true),
             OnPointerLeave = _ =>
