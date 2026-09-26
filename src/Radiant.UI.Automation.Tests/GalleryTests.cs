@@ -35,14 +35,16 @@ public sealed class GalleryTests : RadiantUITest
     }
 
     [TestMethod]
-    public async Task ADestinationBelowTheWindowCannotBeReached()
+    public async Task ADestinationBelowTheWindowIsScrolledTo()
     {
-        // The sidebar doesn't scroll (docs/improvements.md), so at this height its last items are
-        // off the window: the tap says so rather than pressing something else.
-        var error = await Assert.ThrowsAsync<AppDriverException>(() => Driver.Get("role=tab label=Docking").TapAsync());
+        var before = await Driver.Get("role=tab label=Docking").InspectAsync("visibility");
+        Assert.IsNull(before.Visible, "the sidebar starts scrolled to its top, Docking below the window");
 
-        Assert.AreEqual(Radiant.Host.AgentControlProtocol.AgentErrorCodes.NotVisible, error.Code);
-        StringAssert.Contains(error.Message, "tab \"Docking\"");
+        await Driver.Get("role=tab label=Docking").TapAsync();
+
+        await Driver.Get("role=tab label=Docking selected").Expect().ToBeVisibleAsync();
+        var root = (await Driver.TreeAsync("basic,geometry", depth: 1)).Nodes.Single();
+        Assert.IsTrue(root.Children!.All(c => c.Bounds!.Y + c.Bounds.H <= 800.5f), "the shell fits the window");
     }
 
     [TestMethod]

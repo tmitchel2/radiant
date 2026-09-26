@@ -464,11 +464,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   everywhere.
 - **The host's `tab.*` actions are on files only.** `LiveHost` pumps a dispatcher now, but doesn't
   serve the socket or write a log.
-- **The gallery's shell doesn't scroll at small heights.** Found by the automation: at 1200×800 the
-  sidebar and the page run past the bottom of the window (the last destinations, "Mail" onwards, are
-  at y > 800), and there's no scroll area to bring them in, so `tap` answers `not_visible`.
-  `SidebarLayout` should scroll its destinations, and the content should fill the window, not its
-  content's height.
 - **Typing is recorded twice where a platform sends both.** Committed text is reported from the text
   input client and from `UIRoot.TextInput`; macOS sends one or the other, but a platform that sent
   both would log the text twice.

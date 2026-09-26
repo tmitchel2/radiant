@@ -43,7 +43,9 @@ public sealed record SidebarLayout(string Title, IReadOnlyList<NavItem> Items, i
         return new Surface
         {
             SurfaceColor = SurfaceName.Surface,
-            Layout = new LayoutStyle { FlexGrow = 1, FlexDirection = FlexDirection.Row },
+            // Shrinks to fit what it's given: the drawer and the page scroll, rather than growing the
+            // shell past the window to fit the longer of them.
+            Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, FlexDirection = FlexDirection.Row },
             Children =
             [
                 new NavigationDrawer(Items, Selected, OnSelect) { Title = Title, Width = 260 },

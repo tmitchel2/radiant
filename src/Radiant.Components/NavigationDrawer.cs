@@ -71,12 +71,21 @@ public sealed record NavigationDrawer(IReadOnlyList<NavItem> Items, int Selected
                 ],
             });
         }
+        // The destinations scroll when there are more than the window's height shows.
         return new Surface
         {
             SurfaceColor = SurfaceName.SurfaceContainerLow,
             Semantics = new Semantics { Role = SemanticsRole.TabList, Label = Title },
-            Layout = new LayoutStyle { Width = Width, Padding = Edges.Symmetric(12, 0), AlignSelf = Align.Stretch },
-            Children = rows,
+            Layout = new LayoutStyle { Width = Width, AlignSelf = Align.Stretch },
+            Children =
+            [
+                new ScrollArea
+                {
+                    Layout = new LayoutStyle { FlexGrow = 1 },
+                    ContentLayout = new LayoutStyle { Padding = Edges.Symmetric(12, 0) },
+                    Children = rows,
+                },
+            ],
         };
     }
 }
