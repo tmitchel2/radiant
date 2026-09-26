@@ -219,8 +219,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Docks are fixed.** `WorkspaceLayout`'s parts can't be dragged to other docks, the panel can't
   be maximised or closed from its header, editors can't be split into groups, and splitter sizes
   aren't remembered between runs.
-- **Search fields are full-size text fields.** `MasterDetail` uses a 56 px outlined `TextField`
-  for search; lists want a compact search field (32–36 px, a clear button).
 - **Icons for source control and mail are missing.** The embedded subset lacks `account_tree`,
   `call_split`, `reply` and `drafts`, so the gallery's workspace and mail use stand-ins. Add them
   to `tools/icons/icons.txt` and re-subset.

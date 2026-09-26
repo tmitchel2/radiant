@@ -93,7 +93,7 @@ public sealed record MasterDetail(IReadOnlyList<ListEntry> Items, int Selected, 
                 Searchable ? new Box
                 {
                     Layout = new LayoutStyle { Padding = new Edges(12, 8, 12, 8) },
-                    Children = [new TextField("Search") { Value = query.Value, OnChange = query.Set, LeadingIcon = "search", Variant = TextFieldVariant.Outlined }],
+                    Children = [new SearchField("Search") { Value = query.Value, OnChange = query.Set }],
                 } : null,
                 shown.Count == 0
                     ? new SurfaceText("No matches") { Legibility = Legibility.Medium, Layout = new LayoutStyle { Padding = Edges.All(16) } }

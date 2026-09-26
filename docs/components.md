@@ -71,6 +71,11 @@ turns a filled button red.
 | `Popover` | A floating panel of any content beside an anchor; takes focus, closes on Escape or an outside press, doesn't dim the app |
 | `Sheet` | A modal panel sliding in from the end, start or bottom edge over a scrim, with a title, close button and actions |
 | `AlertDialog` | A decision that must be answered: a dialog Escape and the scrim don't close, confirm in the error colour when destructive |
+| `SearchField` | A compact 36 px search box: icon, text, a clear button once there's text; Escape clears, Enter submits |
+| `Link` | Primary-coloured text that presses, underlined under the pointer or focus, a link to assistive technology |
+| `Kbd` | Keycaps for a key or chord (`Kbd.For(KeyChord.Command(KeyCode.K))`) |
+| `Breadcrumb`, `Crumb` | Links to each level above the current page; long trails fold their middle into "…" |
+| `Pagination` | Previous, next, the ends, the current page's neighbourhood and gaps |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

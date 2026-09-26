@@ -39,6 +39,7 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var dialog = context.UseState(StartWithDialog);
         var menu = context.UseState(StartWithMenu);
         var sheet = context.UseState(StartWithSheet);
+        var pageNumber = context.UseState(7);
         var popover = context.UseState(false);
         var alert = context.UseState(false);
         var popoverAnchor = context.UseRef(new ElementRef()).Value;
@@ -138,6 +139,12 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
                 new Row(
                     new DatePicker("Start date", date.Value, date.Set) { Variant = TextFieldVariant.Outlined, Layout = new LayoutStyle { Width = 260 } },
                     new Card(new Calendar(date.Value, d => date.Set(d))) { Variant = CardVariant.Outlined, Layout = new LayoutStyle { Padding = Edges.All(0) } }) { Gap = 16 },
+                new Breadcrumb([new Crumb("Home", () => { }) { Icon = "home" }, new Crumb("Projects", () => { }), new Crumb("Radiant", () => { }), new Crumb("Components")]),
+                new Row(
+                    new SearchField("Search components") { Layout = new LayoutStyle { Width = 260 } },
+                    new Pagination(20, pageNumber.Value, pageNumber.Set),
+                    new Link("Read the docs", () => { }),
+                    new Kbd("⌘", "K")) { Gap = 16 },
                 new Row(
                     new SurfaceButton("Open sheet", ButtonVariant.Tonal) { Icon = "tune", OnPress = () => sheet.Set(true) },
                     new Box { Ref = popoverAnchor, Children = [new SurfaceButton("Popover", ButtonVariant.Outlined) { OnPress = () => popover.Set(true) }] },
