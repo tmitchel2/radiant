@@ -58,6 +58,7 @@ turns a filled button red.
 | `SnackbarHost`, `Snackbars` | Brief messages at the bottom: queued, timed, with an optional action; `context.UseSnackbars().Show(…)` |
 | `Avatar` | Initials on a container colour chosen stably from the name, or a person icon |
 | `Skeleton` | A gently pulsing placeholder in the shape of content still loading |
+| `VirtualList` | A scrolling list that builds only the rows in view, so a million rows cost a screenful; fixed row height; `ScrollToIndex` brings a row into view |
 | `Splitter` | Two panes and a divider to drag between them: side by side or stacked, either pane sized, minimums for both, keyboard steps, double click to restore; controlled or not |
 | `DocumentTabs` | An editor's open documents: the chosen tab joins the page below, close buttons on the chosen and hovered tabs, a dot for unsaved changes, middle click to close, sideways scrolling |
 | `StatusBar`, `StatusItem` | The thin bar along a window's bottom, with small text-and-icon items at each end, pressable when they do something |

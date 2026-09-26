@@ -140,6 +140,13 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
+- **Virtual lists need a fixed row height.** Variable heights want measured rows and an
+  estimated-height index (a Fenwick tree of heights). Past 2^24 px (560k rows of 30 px) the scroll
+  offset is a float and moves in 2 px steps; rows stay aligned, because whole-pixel tops and
+  their differences are exact. Scrolling by the wheel through a million rows is slow without a
+  draggable scroll thumb, which `ScrollArea` doesn't have yet.
+- **The range lags a frame on resize.** `ScrollController.ExtentsChanged` is raised during
+  layout, so a list that grows builds its new rows on the next frame.
 - **Splitter handles overlap panes by tree order.** The divider's grip reaches 4 px into both
   panes; it's placed inside the second pane's wrapper so it's later in the tree and above both.
   That's why the second pane clips through an inner box. A z-index or an overlay layer for

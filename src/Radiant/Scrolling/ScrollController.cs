@@ -52,6 +52,9 @@ public sealed class ScrollController : IAnimating
     public bool CanScrollHorizontal => HorizontalEnabled && _x.MaxOffset > 0f;
 
     public event Action<ScrollMetrics>? Scroll;
+
+    /// <summary>Raised when the viewport or content size changes (a resize, content growing), after layout.</summary>
+    public event Action<ScrollMetrics>? ExtentsChanged;
     public event Action<ScrollMetrics>? ScrollBeginDrag;
     public event Action<ScrollMetrics>? ScrollEndDrag;
     public event Action<ScrollMetrics>? MomentumBegin;
@@ -63,8 +66,13 @@ public sealed class ScrollController : IAnimating
     /// <summary>Set the visible viewport and total content extents.</summary>
     public void SetExtents(Vector2 viewport, Vector2 content)
     {
+        var changed = viewport != ViewportSize || content != ContentSize;
         _x.SetExtents(viewport.X, content.X);
         _y.SetExtents(viewport.Y, content.Y);
+        if (changed)
+        {
+            ExtentsChanged?.Invoke(MakeArgs());
+        }
     }
 
     /// <summary>Apply a raw wheel delta (notches). Vertical wheel scrolls Y; X scrolls horizontally.</summary>
