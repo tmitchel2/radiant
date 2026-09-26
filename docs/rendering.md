@@ -188,7 +188,8 @@ It is a sixth batch kind (`Coverage`), so it keeps its place in draw order like 
   - **Pages:** 1024² RGBA textures packed in shelves, with a bind group each. Past four pages the
     atlas is emptied at the next frame.
   - **Generating:** about a millisecond a glyph. A run's new glyphs are generated together, on
-    several threads.
+    several threads: Inter's letters, digits and a few symbols (66 glyphs) take about 20 ms on
+    a 12-core Mac, against 70 ms on one thread.
   - **Colour:** the tint is a straight-alpha linear colour, as for coverage text. There is no
     gamma correction of edges: at the sizes MSDF is for, edges are a small part of the ink.
 - **`Hybrid`:** coverage for text at most `HybridThreshold` (24) device pixels and upright (moved

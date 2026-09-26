@@ -160,6 +160,11 @@ coverage rasterizer on every pixel more than a pixel from an edge, for Inter at 
 and 900 and JetBrains Mono; that overlaps leave no seam; and that a magnified corner stays sharp
 where a single-channel field rounds it.
 
+A wider sweep, every glyph of both fonts from U+0020 to U+2FFF at weights 100, 400 and 900 at a
+40 px em (10,008 fields, 6.2 million pixels), finds 6 pixels that disagree, in 5 glyphs, all on
+strokes about a texel wide (Inter 100's thinnest Greek and IPA letters, JetBrains Mono 900's ϖ).
+A distance field can't resolve features much under two texels; a larger em would.
+
 ## Performance
 
 Measured in Release on 10,000 characters of wrapped Latin text, 206 lines:
