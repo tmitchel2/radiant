@@ -1484,11 +1484,11 @@ namespace Radiant.Graphics2D
         }
 
         private void EmitShape(Vector2 center, Vector2 halfSize, float borderWidth,
-            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border)
+            SdfShapeKind kind, Vector4 prms, Vector4 fill, Vector4 border, float pad = 1.5f)
         {
-            // Expand the quad by an AA pad so the outer edge fade isn't clipped by the geometry.
-            const float aaPad = 1.5f;
-            var ext = new Vector2(halfSize.X + aaPad, halfSize.Y + aaPad);
+            // Expand the quad by a pad so the outer edge fade (the AA band, or a shadow's blur) isn't
+            // clipped by the geometry.
+            var ext = new Vector2(halfSize.X + pad, halfSize.Y + pad);
             var misc = new Vector4(halfSize.X, halfSize.Y, borderWidth, (float)(int)kind);
 
             SdfShapeVertex2D Corner(float sx, float sy)
@@ -1513,6 +1513,63 @@ namespace Radiant.Graphics2D
 
             AppendToBatch(BatchKind.SdfShape, start, 6, IntPtr.Zero);
         }
+
+        /// <summary>
+        /// Draws a soft shadow of a rounded rectangle, as CSS <c>box-shadow</c> does: the rectangle
+        /// grown by <paramref name="spread"/>, moved by <paramref name="offset"/>, and blurred.
+        /// Draw it before the surface it belongs to.
+        /// </summary>
+        /// <param name="x">The left of the rectangle casting the shadow.</param>
+        /// <param name="y">The top of the rectangle casting the shadow.</param>
+        /// <param name="width">The width of the rectangle casting the shadow.</param>
+        /// <param name="height">The height of the rectangle casting the shadow.</param>
+        /// <param name="radii">Its corner radii.</param>
+        /// <param name="blur">
+        /// The blur radius, as in CSS: the shadow fades over about this distance either side of its
+        /// edge. The Gaussian's standard deviation is half of it. Zero gives a hard shadow.
+        /// </param>
+        /// <param name="color">The shadow's color at full coverage.</param>
+        /// <param name="offset">How far the shadow is moved (typically down, for light from above).</param>
+        /// <param name="spread">How much larger than the rectangle the shadow is, on every side; may be negative.</param>
+        public void DrawShadow(float x, float y, float width, float height, CornerRadii radii, float blur,
+            Vector4 color, Vector2 offset = default, float spread = 0f)
+        {
+            var w = width + spread * 2f;
+            var h = height + spread * 2f;
+            if (w <= 0f || h <= 0f) return;
+
+            // Spread grows the corners with the box, as CSS does, but a square corner stays square.
+            static float Grow(float r, float by) => r > 0f ? MathF.Max(0f, r + by) : 0f;
+            var grown = new CornerRadii(
+                Grow(radii.TopLeft, spread), Grow(radii.TopRight, spread),
+                Grow(radii.BottomRight, spread), Grow(radii.BottomLeft, spread));
+            var left = x - spread + offset.X;
+            var top = y - spread + offset.Y;
+
+            var sigma = blur * 0.5f;
+            if (sigma < 0.01f)
+            {
+                EmitRoundedRect(left, top, w, h, grown, 0f, color, color);
+                return;
+            }
+
+            var halfW = w * 0.5f;
+            var halfH = h * 0.5f;
+            var maxR = MathF.Min(halfW, halfH);
+            var clamped = new Vector4(
+                Math.Clamp(grown.TopLeft, 0f, maxR),
+                Math.Clamp(grown.TopRight, 0f, maxR),
+                Math.Clamp(grown.BottomRight, 0f, maxR),
+                Math.Clamp(grown.BottomLeft, 0f, maxR));
+            // The blur reaches three standard deviations past the edge.
+            EmitShape(new Vector2(left + halfW, top + halfH), new Vector2(halfW, halfH), sigma,
+                SdfShapeKind.Shadow, clamped, color, color, pad: sigma * 3f + 1f);
+        }
+
+        /// <summary>A soft shadow of a rectangle with one corner radius; see the per-corner overload.</summary>
+        public void DrawShadow(float x, float y, float width, float height, float radius, float blur,
+            Vector4 color, Vector2 offset = default, float spread = 0f)
+            => DrawShadow(x, y, width, height, CornerRadii.All(radius), blur, color, offset, spread);
 
         /// <summary>Draws a rectangle outline.</summary>
         public void DrawRect(Vector2 position, Vector2 size, Vector4 color)

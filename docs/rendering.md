@@ -87,6 +87,18 @@ Every kind of draw follows a transform exactly:
 Clip rectangles are not transformed; they are always in window coordinates. A clip that has to
 rotate with its content needs a rounded or path clip, which is not implemented yet.
 
+## Shadows
+
+`DrawShadow(x, y, w, h, radii, blur, color, offset, spread)` draws a soft shadow of a rounded
+rectangle, as CSS `box-shadow` does: grown by `spread`, moved by `offset`, blurred by `blur` (the
+Gaussian's standard deviation is half the blur, as in CSS). Draw it before the surface that casts it;
+an elevation is typically two shadows, a tight key light and a soft ambient one.
+
+It is a shape kind in the SDF pipeline, computed analytically: the blur is separable, so it is
+integrated in closed form along x and with four samples along y. This is Evan Wallace's "Fast Rounded
+Rectangle Shadows". With square corners the result is within 4/255 of the exact Gaussian blur,
+which a GPU test checks pixel by pixel.
+
 ## Text
 
 `MsdfFont` atlases are baked offline by `src/MsdfBaker` and embedded in the Radiant assembly.

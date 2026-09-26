@@ -11,5 +11,8 @@ namespace Radiant.Graphics2D
 
         /// <summary>Circle / disc / ring (annulus) — by outer and inner radius.</summary>
         Circle = 1,
+
+        /// <summary>A Gaussian-blurred rounded rectangle: a soft shadow.</summary>
+        Shadow = 2,
     }
 }

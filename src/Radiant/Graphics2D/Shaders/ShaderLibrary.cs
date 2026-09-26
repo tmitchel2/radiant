@@ -188,17 +188,73 @@ fn sd_annulus(p: vec2<f32>, outer_radius: f32, inner_radius: f32) -> f32 {
     return d_outer;
 }
 
+// ---- Soft shadows -------------------------------------------------------------------------------
+// A Gaussian-blurred rounded rectangle, analytically: the blur is separable, so it is integrated in
+// closed form (via erf) along x, and sampled four times along y, where the Gaussian is narrow enough
+// that four samples suffice. The technique is Evan Wallace's 'Fast Rounded Rectangle Shadows' (2020).
+
+fn gaussian(x: f32, sigma: f32) -> f32 {
+    return exp(-(x * x) / (2.0 * sigma * sigma)) / (2.5066282746 * sigma);
+}
+
+// An approximation of the error function, good to about 5e-4.
+fn erf2(v: vec2<f32>) -> vec2<f32> {
+    let s = sign(v);
+    let a = abs(v);
+    var x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+    x = x * x;
+    return s - s / (x * x);
+}
+
+// The blurred coverage along x of the box's horizontal slice at height y.
+fn shadow_x(x: f32, y: f32, sigma: f32, corner: f32, half_size: vec2<f32>) -> f32 {
+    let delta = min(half_size.y - corner - abs(y), 0.0);
+    let curved = half_size.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
+    let integral = 0.5 + 0.5 * erf2((x + vec2<f32>(-curved, curved)) * (0.7071067812 / sigma));
+    return integral.y - integral.x;
+}
+
+// Coverage, 0 to 1, of a rounded box centred at the origin, blurred with standard deviation sigma.
+// radii = (TopLeft, TopRight, BottomRight, BottomLeft); the one for the point's quadrant is used.
+fn shadow_mask(p: vec2<f32>, half_size: vec2<f32>, radii: vec4<f32>, sigma: f32) -> f32 {
+    let top_lr = vec2<f32>(radii.x, radii.y);
+    let bot_lr = vec2<f32>(radii.w, radii.z);
+    let lr = select(bot_lr, top_lr, p.y < 0.0);
+    let corner = min(select(lr.x, lr.y, p.x > 0.0), min(half_size.x, half_size.y));
+
+    // The integrand is only non-zero within 3 sigma, and within the box.
+    let low = p.y - half_size.y;
+    let high = p.y + half_size.y;
+    let start = clamp(-3.0 * sigma, low, high);
+    let end = clamp(3.0 * sigma, low, high);
+    let step = (end - start) / 4.0;
+    var y = start + step * 0.5;
+    var value = 0.0;
+    for (var i = 0; i < 4; i = i + 1) {
+        value = value + shadow_x(p.x, p.y - y, sigma, corner, half_size) * gaussian(y, sigma) * step;
+        y = y + step;
+    }
+    return value;
+}
+
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let half_size = input.misc.xy;
     let border_width = input.misc.z;
     let shape_kind = input.misc.w;
+    let is_shadow = shape_kind > 1.5;
 
-    var dist: f32;
+    // Every branch only computes values: fwidth below must run in uniform control flow, so no
+    // shape may return early.
+    var dist: f32 = 0.0;
+    var shadow: f32 = 0.0;
     if (shape_kind < 0.5) {
         dist = sd_round_box(input.localPos, half_size, input.params);
-    } else {
+    } else if (shape_kind < 1.5) {
         dist = sd_annulus(input.localPos, input.params.x, input.params.y);
+    } else {
+        // For shadows, misc.z carries sigma rather than a border width.
+        shadow = shadow_mask(input.localPos, half_size, input.params, max(border_width, 1e-3));
     }
 
     // fwidth(dist) is the per-screen-pixel change in distance, so the transitions below stay one
@@ -218,7 +274,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // inner edge fades to clear rather than through the fill's (meaningless) RGB towards black.
     let fill = vec4<f32>(input.color.rgb * input.color.a, input.color.a);
     let border = vec4<f32>(input.borderColor.rgb * input.borderColor.a, input.borderColor.a);
-    return mix(fill, border, border_factor) * coverage;
+    let shape = mix(fill, border, border_factor) * coverage;
+    return select(shape, fill * shadow, is_shadow);
 }";
 
         public const string TexturedShader = @"
