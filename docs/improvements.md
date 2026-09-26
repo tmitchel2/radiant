@@ -332,7 +332,8 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **Forwarders are private.** A derived component can't call them. Records are usually sealed, but
   an option for `protected` may be wanted.
 - **Some planned generation is missing.** Snapshot structs, `[Lerpable]`, story knob metadata and
-  AOT factories aren't generated yet.
+  AOT factories aren't generated yet. (Nothing needs AOT factories so far: the gallery publishes
+  and runs under Native AOT without them.)
 - **Generation runs whole.** The generator collects every candidate record and dedupes by name,
   which re-runs output for every record on any change. Fine at this scale; key the pipeline by
   symbol if large projects feel slow.
@@ -432,3 +433,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 - **No window capture.** Agent sessions can't capture windows, so visual checks render offscreen
   (`HeadlessGpu` + `OffscreenReadback`) to PNG.
 - **GPU tests run on this Mac only**, by design: there is no remote CI.
+- **AOT publishes aren't part of the test run.** The analysers run on every build, but only a
+  publish shows that ILC and the linker are happy, and it takes a minute or two. A script that
+  publishes PlatformCheck and runs its self-test (like `src/build.sh`) would keep it honest.
+- **Silk.NET's AOT warnings are silenced wholesale.** `Directory.Publish.props` turns off IL2026,
+  IL2104, IL3000, IL3002, IL3050 and IL3053 for the whole app, which would hide the same warnings
+  from Radiant's own code at publish time (the build-time analysers still see them).

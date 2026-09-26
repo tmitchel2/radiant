@@ -3,8 +3,9 @@
 
          <Import Project="path/to/radiant/src/Directory.Publish.props" />
 
-       then `dotnet publish -c Release -r osx-arm64 -p:PublishAot=true`, and wrap the output in a macOS
-       .app bundle with tools/bundle-macos-app.sh. Nothing in Radiant imports it itself. -->
+       after setting <PublishAot>true</PublishAot> (which also runs the AOT analysers on every build),
+       then `dotnet publish -c Release -r osx-arm64`, and wrap the output in a macOS .app bundle with
+       tools/bundle-macos-app.sh. The gallery and PlatformCheck import it. -->
 
   <!-- Native AOT publish path -->
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">

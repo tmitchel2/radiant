@@ -271,6 +271,20 @@ can script and inspect them:
   dotnet run --project src/PlatformCheck -- --selftest
   ```
 
+### Under Native AOT
+
+The gallery and PlatformCheck set `PublishAot` and import `src/Directory.Publish.props`, so every
+build runs the trimming and AOT analysers over Radiant's code, and both publish as native
+binaries. The self-test passes the same checks under AOT, which covers the Objective-C interop:
+
+```
+dotnet publish src/PlatformCheck -c Release -r osx-arm64 -o out/check && out/check/PlatformCheck --selftest
+dotnet publish src/Radiant.Gallery -c Release -r osx-arm64 -o out/gallery && out/gallery/Radiant.Gallery --snapshot g.png
+```
+
+Silk.NET finds its window and input platforms by reflection, which AOT trims away, so
+`RadiantApplication` registers GLFW's by hand before it creates a window.
+
 ### Checking input methods by hand
 
 No test can make a real input method compose, so check that by hand:

@@ -9,7 +9,12 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Published ahead of time: `dotnet publish -c Release -r osx-arm64`. Also turns on the
+         trimming and AOT analysers for every build, so code that wouldn't survive it is caught. -->
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
+
+  <Import Project="..\Directory.Publish.props" />
 
   <ItemGroup>
     <ProjectReference Include="..\Radiant.Templates\Radiant.Templates.csproj" />

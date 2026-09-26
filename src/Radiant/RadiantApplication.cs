@@ -295,6 +295,10 @@ namespace Radiant
             options.WindowBorder = _style.Decorated ? WindowBorder.Resizable : WindowBorder.Hidden;
             options.ShouldSwapAutomatically = false;
 
+            // Silk.NET finds its platforms by reflection, which ahead-of-time compilation trims away:
+            // registering GLFW by hand works either way.
+            Silk.NET.Windowing.Glfw.GlfwWindowing.RegisterPlatform();
+            Silk.NET.Input.Glfw.GlfwInput.RegisterPlatform();
             _window = Window.Create(options);
 
             _window.Load += OnLoad;

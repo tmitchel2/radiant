@@ -9,7 +9,11 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Published ahead of time too, so the self-test can check the native interop under AOT. -->
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
+
+  <Import Project="..\Directory.Publish.props" />
 
   <!-- A window for checking the platform layer by hand (input methods, cursors, appearance,
        clipboard, dialogs), and with the selftest flag an automated check of text input against GLFW's
