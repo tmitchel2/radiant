@@ -72,6 +72,30 @@ public class LayoutTests
     }
 
     [TestMethod]
+    public void RecolouringTextKeepsItsShapingButResizingItDoesNot()
+    {
+        var style = new Signal<TextStyle>(new TextStyle { Size = 16, Color = new Vector4(1, 0, 0, 1) });
+        using var root = new UIRoot(new Host(ctx => new TextBlock("Hello") { Style = ctx.Watch(style) }));
+        root.Update(new Vector2(400, 300));
+        var text = (TextRenderNode)Only(root);
+        var shaped = text.LayoutAt(400);
+
+        style.Value = style.Value with { Color = new Vector4(0, 0, 1, 1) };
+        root.Update(new Vector2(400, 300));
+        var recoloured = text.LayoutAt(400);
+        style.Value = style.Value with { Size = 20 };
+        root.Update(new Vector2(400, 300));
+
+        Assert.AreSame(shaped, recoloured, "a theme's colour change is paint only");
+        Assert.AreNotSame(shaped, text.LayoutAt(400));
+    }
+
+    private sealed record Host(System.Func<BuildContext, Element?> Body) : Component
+    {
+        public override Element? Build(BuildContext context) => Body(context);
+    }
+
+    [TestMethod]
     public void TextWrapsToTheWidthItIsGiven()
     {
         var style = new TextStyle { Size = 16 };

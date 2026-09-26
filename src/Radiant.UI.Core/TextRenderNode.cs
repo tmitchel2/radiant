@@ -27,7 +27,12 @@ internal sealed class TextRenderNode : RenderNode
         {
             YogaStyle.Set(Yoga, Element.Layout, reset: old is not null);
         }
-        if (old is null || old.Text != Element.Text || !Equals(old.Content, Element.Content) || old.Style != Element.Style
+        // Plain text's colour is applied as it's drawn, so a new colour alone (a theme change) keeps
+        // the shaped text and its layout; styled spans carry their own colours, so any change reshapes.
+        var styleChanged = Element.Content is null
+            ? old is null || old.Style with { Color = Element.Style.Color } != Element.Style
+            : old is null || old.Style != Element.Style;
+        if (old is null || old.Text != Element.Text || !Equals(old.Content, Element.Content) || styleChanged
             || old.Alignment != Element.Alignment || old.MaxLines != Element.MaxLines || old.Wrap != Element.Wrap)
         {
             _shaped = null;
@@ -59,7 +64,8 @@ internal sealed class TextRenderNode : RenderNode
         var top = YGNodeLayoutGetPadding(Yoga, YGEdge.Top);
         var right = YGNodeLayoutGetPadding(Yoga, YGEdge.Right);
         var paragraph = LayoutAt(MathF.Max(0f, Size.X - left - right));
-        context.Renderer.DrawParagraph(paragraph, context.Origin + new System.Numerics.Vector2(left, top));
+        context.Renderer.DrawParagraph(paragraph, context.Origin + new System.Numerics.Vector2(left, top),
+            Element.Content is null ? Element.Style.Color : null);
     }
 
     private YGSize Measure(Node node, float width, MeasureMode widthMode, float height, MeasureMode heightMode)
