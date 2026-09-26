@@ -52,6 +52,14 @@ at 2×:
 | `SelectionControls` | check boxes (off, on, indeterminate, error, disabled), radios and switches |
 | `Fields` | filled and outlined text fields (label only, with a value and icon, with an error, disabled) and a slider |
 | `Display` | chips, badges, a card, an alert and a progress bar |
+| `Navigation`, `NavigationRail` | a top app bar, tabs with icons, a breadcrumb, pagination, a segmented button; a rail with a badge |
+| `Lists`, `Table` | list items (one and two lines, selected, disabled) and a tree; a sortable data table with checkboxes and a selected row |
+| `Feedback` | circular progress, avatars and an accordion with one section open |
+| `Menu`, `MenuKeyboard`, `Dialog`, `Tooltip` | an open menu, the same moved through with the arrows (its focus ring inside the item), a dialog over its scrim, and a tooltip after hovering |
+| `RightToLeft` | a top app bar, tabs, controls, a text field and a slider laid out right to left |
+
+They're in `ComponentGoldenTests` and `MoreComponentGoldenTests`, with `GoldenSheets` for the
+themed surface and the light and dark check.
 
 `Radiant.Tests` has the renderer's own goldens (`Gpu_ReferenceScene`; see
 [rendering.md](rendering.md)) and `Radiant.Testing.Tests` checks the harness itself.

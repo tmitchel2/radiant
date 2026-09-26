@@ -7,6 +7,7 @@ using Radiant.Layout;
 using Radiant.Testing;
 using Radiant.Theming;
 using Radiant.UI.Core;
+using static Radiant.Components.Tests.GoldenSheets;
 
 namespace Radiant.Components.Tests;
 
@@ -20,43 +21,8 @@ public class ComponentGoldenTests
 {
     private static readonly bool[] Modes = [false, true];
 
-    private static GpuCanvas Canvas(int width, int height)
-    {
-        if (GpuCanvas.TryCreate(width, height, pixelScale: 2f) is { } canvas)
-        {
-            return canvas;
-        }
-        Assert.Inconclusive("No GPU available.");
-        return null!;
-    }
-
-    // The content on the theme's surface, in light or dark.
-    private static Element Themed(bool dark, params Element?[] rows) => new ThemeProvider(
-        new ThemeController(new Theme { Colors = new Theme().Colors with { IsDark = dark } }),
-        new Surface
-        {
-            SurfaceColor = SurfaceName.Surface,
-            Layout = new LayoutStyle { FlexGrow = 1, Padding = Edges.All(16), RowGap = 12, AlignItems = Align.FlexStart },
-            Children = rows,
-        });
-
-    private static Box Row(params Element?[] items) => new()
-    {
-        Layout = new LayoutStyle { FlexDirection = FlexDirection.Row, AlignItems = Align.Center, ColumnGap = 12 },
-        Children = items,
-    };
-
-    private static void Check(string name, int width, int height, Func<bool, Element> sheet)
-    {
-        foreach (var dark in Modes)
-        {
-            using var canvas = Canvas(width, height);
-            Golden.AssertMatches(UISnapshot.Render(canvas, Themed(dark, sheet(dark))), $"{name}_{(dark ? "dark" : "light")}");
-        }
-    }
-
     [TestMethod]
-    public void Buttons() => Check("Buttons", 480, 300, _ => new Box
+    public void Buttons() => Check("Buttons", 480, 300, () => new Box
     {
         Layout = new LayoutStyle { RowGap = 12 },
         Children =
@@ -103,7 +69,7 @@ public class ComponentGoldenTests
     }
 
     [TestMethod]
-    public void SelectionControls() => Check("SelectionControls", 560, 200, _ => new Box
+    public void SelectionControls() => Check("SelectionControls", 560, 200, () => new Box
     {
         Layout = new LayoutStyle { RowGap = 12 },
         Children =
@@ -126,7 +92,7 @@ public class ComponentGoldenTests
     });
 
     [TestMethod]
-    public void Fields() => Check("Fields", 560, 300, _ => new Box
+    public void Fields() => Check("Fields", 560, 300, () => new Box
     {
         Layout = new LayoutStyle { RowGap = 16 },
         Children =
@@ -142,7 +108,7 @@ public class ComponentGoldenTests
     });
 
     [TestMethod]
-    public void Display() => Check("Display", 560, 360, _ => new Box
+    public void Display() => Check("Display", 560, 360, () => new Box
     {
         Layout = new LayoutStyle { RowGap = 16 },
         Children =
@@ -158,6 +124,4 @@ public class ComponentGoldenTests
             new Box { Layout = new LayoutStyle { Width = 400 }, Children = [new LinearProgress { Value = 0.4f, Label = "Upload" }] },
         ],
     });
-
-    private static IEnumerable<SemanticsNode> All(SemanticsNode node) => node.Children.SelectMany(All).Prepend(node);
 }

@@ -156,16 +156,21 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   `TextBlock` sized to its text gave trailing spaces no width, so a composition after "a " sat
   against the "a"; the real field needs the caret from text layout, spaces included.
 
-- **Goldens cover the core controls only.** `ComponentGoldenTests` has buttons and their states,
-  selection controls, fields and a few display components, in light and dark. Menus, dialogs,
-  navigation, lists, tables and the templates (the plan's three widths × two densities) have no
-  goldens yet, and neither do contrast levels or scheme variants.
+- **Goldens don't cover everything.** Controls, navigation, lists, tables, menus, dialogs,
+  tooltips and a right-to-left sheet have goldens, light and dark. The date and colour pickers,
+  sheets, snackbars, the palette, charts and the templates (the plan's three widths × two
+  densities) don't yet, nor do contrast levels or scheme variants.
 - **A missing golden passes.** `Golden.AssertMatches` writes a golden that isn't there and passes,
   so a forgotten `git add` goes unnoticed; a switch that fails instead (for a pre-commit run)
   would catch it.
 - **Two GPU test helpers.** `Radiant.Tests`' `GpuFrame` (linked into the UI tests) predates
   `Radiant.Testing.GpuCanvas` and does the same with BGRA bytes; the renderer's tests could move
   to the canvas, and `GoldenImageHelper` to `Golden`.
+- **Focus rings showed without the keyboard.** A menu or dialog focuses its first item as it
+  opens, and that always showed the ring, even when opened with a click. `UIRoot.UsingKeyboard`
+  now remembers whether the last input was a key or a press, and `FocusFirst` shows the ring only
+  after a key unless told otherwise (a browser's `:focus-visible` rule). Items that fill a menu,
+  list or row draw their ring inside (`PressableSurface.InsetFocusRing`), where it isn't clipped.
 - **Keyboard focus had no ring.** Found by the state goldens: a focused `PressableSurface` showed
   only the 10% state layer, the same as pressed. It now draws Material's focus indicator (3 wide,
   2 outside, in the secondary colour); clipped surfaces (`ClipContent`) clip it.
