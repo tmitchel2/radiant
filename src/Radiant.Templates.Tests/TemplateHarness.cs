@@ -63,5 +63,5 @@ internal static class TemplateHarness
     public static SemanticsNode? TryFind(UIRoot root, SemanticsRole role, string label) =>
         All(root).FirstOrDefault(n => n.Role == role && n.Label == label);
 
-    private static IEnumerable<SemanticsNode> All(SemanticsNode node) => node.Children.SelectMany(All).Prepend(node);
+    public static IEnumerable<SemanticsNode> All(SemanticsNode node) => node.Children.SelectMany(All).Prepend(node);
 }

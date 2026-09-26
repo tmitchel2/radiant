@@ -31,6 +31,12 @@ public sealed partial record SidebarLayout(string Title, IReadOnlyList<NavItem> 
     /// <summary>How wide the page's content may grow before it's centred with margins.</summary>
     public float MaxContentWidth { get; init; } = 1080f;
 
+    /// <summary>
+    /// Whether the page fills the space below the app bar instead of scrolling: for pages that
+    /// scroll their own panes, such as an editor beside a preview.
+    /// </summary>
+    public bool FillContent { get; init; }
+
     /// <inheritdoc/>
     public override Element? Build(BuildContext context)
     {
@@ -43,6 +49,7 @@ public sealed partial record SidebarLayout(string Title, IReadOnlyList<NavItem> 
             scroll.Scroll += OnScroll;
             return () => scroll.Scroll -= OnScroll;
         }, scroll);
+        var padding = new Edges(24, 8, 24, 32);
         var title = PageTitle ?? (Selected >= 0 && Selected < Items.Count ? Items[Selected].Label : Title);
         return new Surface
         {
@@ -58,15 +65,22 @@ public sealed partial record SidebarLayout(string Title, IReadOnlyList<NavItem> 
                     Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1 },
                     Children =
                     [
-                        new TopAppBar(title) { TestId = AppBar, Actions = Actions, Scrolled = scrolled.Value },
-                        new ScrollArea
-                        {
-                            TestId = Page,
-                            Controller = scroll,
-                            Layout = new LayoutStyle { FlexGrow = 1 },
-                            ContentLayout = new LayoutStyle { AlignItems = Align.Center, Padding = new Edges(24, 8, 24, 32) },
-                            Children = [new Box { Layout = new LayoutStyle { MaxWidth = MaxContentWidth, AlignSelf = Align.Stretch, RowGap = 24 }, Children = [Content] }],
-                        },
+                        new TopAppBar(title) { TestId = AppBar, Actions = Actions, Scrolled = !FillContent && scrolled.Value },
+                        FillContent
+                            ? new Box
+                            {
+                                TestId = Page,
+                                Layout = new LayoutStyle { FlexGrow = 1, FlexShrink = 1, MinHeight = 0, AlignItems = Align.Center, Padding = padding },
+                                Children = [new Box { Layout = new LayoutStyle { MaxWidth = MaxContentWidth, AlignSelf = Align.Stretch, FlexGrow = 1, FlexShrink = 1, MinHeight = 0 }, Children = [Content] }],
+                            }
+                            : new ScrollArea
+                            {
+                                TestId = Page,
+                                Controller = scroll,
+                                Layout = new LayoutStyle { FlexGrow = 1 },
+                                ContentLayout = new LayoutStyle { AlignItems = Align.Center, Padding = padding },
+                                Children = [new Box { Layout = new LayoutStyle { MaxWidth = MaxContentWidth, AlignSelf = Align.Stretch, RowGap = 24 }, Children = [Content] }],
+                            },
                     ],
                 },
             ],

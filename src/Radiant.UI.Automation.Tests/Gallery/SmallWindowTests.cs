@@ -28,6 +28,7 @@ public sealed class SmallWindowTests : RadiantUITest
     [DataRow("Mail")]
     [DataRow("Preferences")]
     [DataRow("Docking")]
+    [DataRow("Theme")]
     public async Task EveryPageFitsAndItsLastControlCanBeReached(string destination)
     {
         await Driver.NavigationDrawer().Item().WithLabel(new Radiant.Host.AgentControlProtocol.TextMatch("^" + destination, Radiant.Host.AgentControlProtocol.TextMatchMode.Regex)).TapAsync();

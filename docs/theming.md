@@ -178,3 +178,26 @@ flows down the tree works out what's readable on it. This is ported from Destash
   (see [platform.md](platform.md#appearance)).
 - **Resolved values:** `ResolvedTheme` computes every role once when resolved, so a lookup is an
   array index.
+
+## Editing a theme at runtime
+
+The gallery's Theme page (`src/Radiant.Gallery/ThemeLab`) edits the app's theme in place, which
+shows how an app can offer theme editing:
+
+- **Edits are `with` copies set on the controller.** An edit applies its change to
+  `controller.Theme` when it runs, not to a theme captured when the editor was built, and sets the
+  result: without a transition while a slider or colour is dragged, with one for a choice. The
+  editor shows `controller.Theme`, the target, rather than `context.UseTheme().Theme`, which is
+  partly blended during a transition.
+- **Each property is a lens**, a getter and a copy-with-setter composed through the records that
+  hold it (`Components.Button.Filled.Surface`), so one table of short lines covers every property,
+  and each row is a slider, switch, drop-down or colour swatch by the property's type.
+- **An edited theme keeps its preset's name**, so the preset it came from is known: the menus
+  still tick it, and Reset is `theme.WithStyle(preset)`, keeping the user's light or dark,
+  contrast, seed and reduced motion. A theme counts as modified when it differs from that.
+- **Type edits are worked out from the preset's scale**: an overall size, and a font and a weight
+  for each group of roles (display, headline, title, body, label, code). A weight moves each role
+  in the group by the same amount, so their order holds, and undoing every edit gives back the
+  preset's own `TypeScale`.
+- **Hand-picked palettes are edited colour by colour**, in whichever of `Light` and `Dark` is
+  showing; a seeded theme through its seed, variant, contrast and custom colours.

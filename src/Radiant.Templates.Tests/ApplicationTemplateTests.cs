@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Radiant.Components;
+using Radiant.Layout;
 using Radiant.UI.Core;
 using static Radiant.Templates.Tests.TemplateHarness;
 
@@ -153,6 +154,18 @@ public class ApplicationTemplateTests
 
         CollectionAssert.AreEqual(new[] { 0 }, chosen);
         Assert.IsTrue(All(root).Count(n => n.Label == "Settings") >= 2, "the app bar shows the chosen page's name");
+    }
+
+    [TestMethod]
+    public void ASidebarLayoutThatFillsGivesItsPageTheRestOfTheHeight()
+    {
+        NavItem[] items = [new("tune", "Editor")];
+        var page = new Box { Semantics = new Semantics { Role = SemanticsRole.Group, Label = "Editor page" }, Layout = new LayoutStyle { FlexGrow = 1 } };
+        using var root = Mount(new SidebarLayout("App", items, 0, _ => { }, page) { FillContent = true });
+
+        var bounds = Find(root, SemanticsRole.Group, "Editor page").Bounds;
+        Assert.IsTrue(bounds.Height > Viewport.Y / 2 && bounds.Y + bounds.Height > Viewport.Y - 80, $"the page fills below the app bar, but is {bounds}");
+        Assert.IsFalse(All(root).Any(n => n.Role == SemanticsRole.ScrollArea && All(n).Any(c => c.Label == "Editor page")), "the page isn't scrolled; its panes scroll themselves");
     }
 
     [TestMethod]

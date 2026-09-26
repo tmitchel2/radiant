@@ -7,7 +7,7 @@ namespace Radiant.UI.Automation.Tests.Gallery;
 public sealed class AuditTests : GalleryTest
 {
     public static IEnumerable<object[]> Destinations =>
-        new[] { "Components", "Dashboard", "Settings", "Sign in", "Empty state", "Table", "Landing page", "Store", "Workspace", "Mail", "New project", "Preferences", "Docking", "Studio" }
+        new[] { "Components", "Dashboard", "Settings", "Sign in", "Empty state", "Table", "Landing page", "Store", "Workspace", "Mail", "New project", "Preferences", "Docking", "Studio", "Theme" }
             .Select(d => new object[] { d });
 
     [TestMethod]
@@ -47,6 +47,8 @@ public sealed class AuditTests : GalleryTest
     [DataRow("Linen", "Components")]
     [DataRow("Linen", "Studio")]
     [DataRow("Linen", "Settings")]
+    [DataRow("Quartz", "Theme")]
+    [DataRow("Linen", "Theme")]
     public async Task EveryControlHasANameAndARoleInEveryTheme(string preset, string destination)
     {
         // Themes build some components differently (labels above fields, segmented tabs): they must still say what they are.
