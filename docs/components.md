@@ -98,11 +98,14 @@ the colour underneath, so the result can be opaque, which is also better for tex
 
 ## The gallery
 
-`Radiant.Gallery` shows the first milestone, a vertical slice: a card with every button variant,
-and a button that shuffles the theme (seed, variant, light or dark, corner scale), animating
-everything to it.
+`Radiant.Gallery` is a `SidebarLayout` app (see [templates.md](templates.md)). Its first page is
+the component catalogue, with a button that shuffles the theme (seed, variant, light or dark,
+corner scale) and animates everything to it; the other pages are the templates.
 
 ```
-dotnet run --project src/Radiant.Gallery                                   # in a window
-dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2   # to a PNG
+dotnet run --project src/Radiant.Gallery                                            # in a window
+dotnet run --project src/Radiant.Gallery -- --snapshot out.png --dark --scale 2     # to a PNG
+dotnet run --project src/Radiant.Gallery -- --snapshot out.png --page 6 --height 900  # one page
 ```
+
+Pages: 0 components, 1 dashboard, 2 settings, 3 sign in, 4 empty state, 5 landing page, 6 store.

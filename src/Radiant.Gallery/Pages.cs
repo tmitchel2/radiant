@@ -1,0 +1,164 @@
+using System.Collections.Generic;
+using Radiant.Components;
+using Radiant.Layout;
+using Radiant.Templates;
+using Radiant.Theming;
+using Radiant.UI.Core;
+
+namespace Radiant.Gallery;
+
+/// <summary>The gallery's sample pages, one per template family.</summary>
+internal static class Pages
+{
+    public static Element Dashboard() => new Box
+    {
+        Layout = new LayoutStyle { RowGap = 24 },
+        Children =
+        [
+            new PageHeading("Dashboard")
+            {
+                Description = "How the last 30 days went",
+                Actions = [new SurfaceButton("Export", ButtonVariant.Outlined) { Icon = "download" }, new SurfaceButton("New report") { Icon = "add" }],
+            },
+            new StatsGrid(
+            [
+                new Stat("Revenue", "$48,210") { Change = 0.124, Icon = "payments" },
+                new Stat("Orders", "1,284") { Change = 0.052, Icon = "shopping_bag" },
+                new Stat("Refunds", "37") { Change = -0.18, Icon = "receipt_long" },
+                new Stat("Visitors", "92.4k") { Change = 0.31, Icon = "groups" },
+            ]),
+            new StackedList(
+            [
+                new ListEntry("Ada Lovelace", "Ordered the Analytical Engine kit") { Meta = "2m ago", Status = "Paid" },
+                new ListEntry("Grace Hopper", "Returned a compiler, unused") { Meta = "1h ago", Status = "Refunded" },
+                new ListEntry("Alan Turing", "Subscribed to the monthly plan") { Meta = "3h ago" },
+                new ListEntry("Katherine Johnson", "Upgraded to Team") { Meta = "Yesterday", Status = "Paid" },
+            ]) { Title = "Recent activity" },
+        ],
+    };
+
+    public static Element Settings(ThemeController themes) => new SettingsPage(themes);
+
+    public static Element SignIn() => new Box
+    {
+        Layout = new LayoutStyle { AlignItems = Align.Center, Padding = Edges.Symmetric(0, 24) },
+        Children = [new SignInForm((_, _, _) => { })],
+    };
+
+    public static Element Marketing() => new Box
+    {
+        Layout = new LayoutStyle { RowGap = 40 },
+        Children =
+        [
+            new Hero("Desktop apps that feel native, built in C#")
+            {
+                Eyebrow = "Radiant 1.0",
+                Text = "A declarative UI, a Material-inspired theme system, sharp text and GPU rendering, in one platform.",
+                Actions = [new SurfaceButton("Get started") { Icon = "rocket_launch" }, new SurfaceButton("Read the docs", ButtonVariant.Text)],
+                Picture = SamplePictures.Gradient(250),
+            },
+            new FeatureGrid("Everything a desktop app needs",
+            [
+                new Feature("palette", "Themes from one colour", "Pick a seed and every colour, in light and dark, is worked out and readable."),
+                new Feature("text_fields", "Text done properly", "Shaping, bidi, line breaking and three ways to draw glyphs."),
+                new Feature("bolt", "Fast by design", "Only what changed is rebuilt, laid out and drawn."),
+                new Feature("widgets", "A full component set", "From buttons to data tables, all keyboard and screen-reader ready."),
+            ]) { Subtitle = "Radiant's layers, from pixels to page templates." },
+            new PricingTiers(
+            [
+                new PricingTier("Hobby", "$0", ["One app", "Community support"]) { Description = "For trying it out", Period = "" },
+                new PricingTier("Pro", "$12", ["Unlimited apps", "Priority support", "All templates"]) { Description = "For professionals", Featured = true },
+                new PricingTier("Team", "$49", ["Everything in Pro", "Shared themes", "Single sign-on"]) { Description = "For teams" },
+            ], null),
+        ],
+    };
+
+    public static Element Store() => new StorePage();
+
+    public static Element Empty() => new EmptyState("inbox", "No messages yet")
+    {
+        Description = "When someone writes to you, their messages will appear here.",
+        Action = new SurfaceButton("Compose") { Icon = "edit" },
+    };
+
+    private sealed record SettingsPage(ThemeController Themes) : Component
+    {
+        public override Element? Build(BuildContext context)
+        {
+            var notifications = context.UseState(true);
+            var digest = context.UseState(false);
+            var density = context.UseState(0);
+            var themes = Themes;
+            var theme = context.UseTheme();
+            return new Box
+            {
+                Layout = new LayoutStyle { RowGap = 32 },
+                Children =
+                [
+                    new PageHeading("Settings") { Description = "Manage your account and preferences" },
+                    new SettingsSection("Appearance",
+                    [
+                        new SettingsRow("Dark theme", new Switch(theme.Theme.Colors.IsDark, dark =>
+                            themes.Set(themes.Theme with { Colors = themes.Theme.Colors with { IsDark = dark } }, System.TimeSpan.FromMilliseconds(300))))
+                        {
+                            Description = "Use dark colours everywhere",
+                        },
+                        new SettingsRow("Density", new SelectField("Density", ["Comfortable", "Compact"], density.Value, i =>
+                        {
+                            density.Set(i);
+                            themes.Set(themes.Theme with { Density = -i });
+                        }) { Layout = new LayoutStyle { Width = 200 } }),
+                    ]) { Description = "How Radiant looks on this device." },
+                    new SettingsSection("Notifications",
+                    [
+                        new SettingsRow("Push notifications", new Switch(notifications.Value, notifications.Set)) { Description = "Alerts for mentions and replies" },
+                        new SettingsRow("Weekly digest", new Switch(digest.Value, digest.Set)) { Description = "A summary every Monday" },
+                    ]) { Description = "What we tell you about, and how." },
+                ],
+            };
+        }
+    }
+
+    private sealed record StorePage : Component
+    {
+        private static readonly int[] s_startingCart = [1, 0, 2, 0];
+
+        private static readonly Product[] s_products =
+        [
+            new("Aurora lamp", "$89", SamplePictures.Gradient(30)) { Detail = "Warm white", Rating = 4.8, Badge = "New" },
+            new("Tide mug", "$24", SamplePictures.Gradient(190)) { Detail = "Stoneware, 350 ml", Rating = 4.6 },
+            new("Meadow throw", "$120", SamplePictures.Gradient(110)) { Detail = "Wool blend", Rating = 4.9 },
+            new("Dusk print", "$45", SamplePictures.Gradient(290)) { Detail = "A3, framed", Rating = 4.4, Badge = "Sale" },
+        ];
+
+        public override Element? Build(BuildContext context)
+        {
+            var quantities = context.UseState(() => s_startingCart);
+            var lines = new List<CartLine>();
+            for (var i = 0; i < s_products.Length; i++)
+            {
+                if (quantities.Value[i] > 0)
+                {
+                    lines.Add(new CartLine(s_products[i], quantities.Value[i], decimal.Parse(s_products[i].Price.TrimStart('$'), System.Globalization.CultureInfo.InvariantCulture)));
+                }
+            }
+            var snackbars = context.UseSnackbars();
+            return new Box
+            {
+                Layout = new LayoutStyle { RowGap = 24 },
+                Children =
+                [
+                    new PageHeading("Shop") { Description = "Things for a calmer desk" },
+                    new ProductGrid(s_products, i =>
+                    {
+                        var next = (int[])quantities.Value.Clone();
+                        next[i]++;
+                        quantities.Set(next);
+                        snackbars.Show($"Added {s_products[i].Name} to your cart");
+                    }),
+                    new CartSummary(lines) { Shipping = 0 },
+                ],
+            };
+        }
+    }
+}

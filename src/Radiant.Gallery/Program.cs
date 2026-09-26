@@ -11,12 +11,13 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 // radiant-gallery                         opens the gallery in a window, following the system appearance
-// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--dialog] [--menu]
+// radiant-gallery --snapshot out.png [--dark] [--seed #rrggbb] [--variant Vibrant] [--scale 2] [--height 1400] [--page 0-6] [--dialog] [--menu]
 //                                         renders it offscreen to a PNG instead
 var theme = new Theme();
 string? snapshot = null;
 var startWithDialog = false;
 var startWithMenu = false;
+var startPage = 0;
 var followSystem = true;
 var scale = 1f;
 var height = 640;
@@ -31,24 +32,25 @@ for (var i = 0; i < args.Length; i++)
         case "--height": height = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--dialog": startWithDialog = true; break;
         case "--menu": startWithMenu = true; break;
+        case "--page": startPage = int.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         case "--scale": scale = float.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture); break;
         default: break;
     }
 }
 
 var themes = new ThemeController(theme);
-var app = new ThemeProvider(themes, new VerticalSlice(themes) { StartWithDialog = startWithDialog, StartWithMenu = startWithMenu });
+var app = new ThemeProvider(themes, new GalleryApp(themes) { StartPage = startPage, StartWithDialog = startWithDialog, StartWithMenu = startWithMenu });
 
 if (snapshot is null)
 {
     // In a window the theme follows the system's dark mode, accent and accessibility settings,
     // unless colours were chosen on the command line.
     RadiantUI.Run(app with { FollowAppearance = followSystem },
-        new UIAppOptions { Title = "Radiant Gallery", Width = 900, Height = 720, Background = ResolvedTheme.Resolve(theme).Background, Platform = MacPlatform.CreateOrHeadless });
+        new UIAppOptions { Title = "Radiant Gallery", Width = 1200, Height = 800, Background = ResolvedTheme.Resolve(theme).Background, Platform = MacPlatform.CreateOrHeadless });
     return;
 }
 
-Snapshot(app, snapshot, 900, height, scale, theme);
+Snapshot(app, snapshot, 1200, height, scale, theme);
 
 static unsafe void Snapshot(Element app, string path, int width, int height, float scale, Theme theme)
 {
@@ -72,7 +74,7 @@ static unsafe void Snapshot(Element app, string path, int width, int height, flo
         ui.Paint(renderer);
         renderer.EndFrame((Silk.NET.WebGPU.RenderPassEncoder*)pass);
     });
-    using var image = Image.LoadPixelData<Bgra32>(pixels, pixelWidth, pixelHeight);
+    using var image = SixLabors.ImageSharp.Image.LoadPixelData<Bgra32>(pixels, pixelWidth, pixelHeight);
     image.SaveAsPng(path);
     Console.WriteLine($"wrote {path}");
 }

@@ -8,6 +8,17 @@ Each entry says what's wrong, why it's that way now, and what would be better.
 
 ## UI core (`Radiant.UI.Core`)
 
+- **`Grid` lays out twice when its width changes.** Yoga has no grid, so the column width is
+  worked out after layout and applied to the children, then the root lays out again (up to four
+  passes, for nested grids). A custom layout node, or Yoga gaining grid, would do it in one. There
+  are no column spans, explicit rows or per-cell alignment yet.
+- **Layered facets are found by convention.** A facet type with a `T Merge(T over)` method is
+  merged over the target's value by the forwarders instead of replacing it. It's implicit; an
+  attribute on the facet property (`[Layered]`) would say so where it's declared. Components that
+  don't forward `IHasLayout` still merge by hand (`SurfaceIcon`, `TextField`).
+- **A jump fires `Scroll`.** `ScrollController.ScrollTo(…, animated: false)` now raises `Scroll`,
+  which it didn't, so listeners see jumps. Momentum and bounce raise it from `Update` as before.
+
 - **Image textures are never freed.** `ImageSource` keeps one texture per renderer in a weak table,
   but nothing disposes the GPU texture when the source goes. Pictures are also decoded
   synchronously on the UI thread, and there are no mipmaps, so heavy downscaling aliases. Add
@@ -23,7 +34,10 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   even when its children are equal element for element. A structural list comparison, or a
   generated one, would let unchanged subtrees skip.
 - **Nothing is idle.** `RadiantUI.Run` renders every frame. `UIRoot.FrameRequested` exists but
-  isn't used to idle the loop; add idle waiting, then damage regions (P11).
+  isn't used to idle the loop; add idle waiting, then damage regions (P11). `UIRoot.NeedsUpdate`
+  is already false for an idle themed app (the theme and `SidebarLayout` register tickers only
+  while something moves); keep new components to that, and watch for `AddTicker` calls that
+  never end.
 - **Effect order is approximate.** Effects run deepest first. That runs children before parents,
   but isn't React's strict post-order across sibling subtrees.
 - **Text sizes round up to whole pixels.** Rounding up keeps text from wrapping earlier when it's
@@ -126,6 +140,9 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   itself; a build-time subset of the icons an app actually uses would be better.
 - **Composited colours can be slightly off.** A faded surface (a disabled container) is mixed into
   the window background, not whatever is actually behind it.
+- **Icon buttons in fields were named by their icon.** `TextField`'s trailing button used the
+  icon's name ("visibility") as its label; `TrailingIconLabel` now names it, but it falls back to
+  the icon name when unset. Require a label when there's an `OnTrailingIconPress`, or analyse for it.
 - **Button heights are fixed.** They are 40 px plus density; Material 3's newer button sizes
   (XS–XL) aren't modelled.
 
@@ -135,6 +152,22 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   invisible (opacity 0) but its children can still be hit for that one frame.
 - **Escape only dismisses from inside.** `DismissableLayer` sees Escape only when focus is within
   it; Radix listens on the document. Add a root key observer if layers without focus need it.
+
+## Templates (`Radiant.Templates`)
+
+- **The password field is masked by the form.** `TextField` has no password mode, so
+  `SignInForm` shows a dot per character and maps edits on the dots back onto the real text. That
+  works for typing and deleting, but copy would copy dots, the platform isn't told it's secure
+  input (macOS secure event input, no input methods), and every form must repeat it. Add
+  `TextField.Obscured` (and `TextInput` support) and drop the mapping.
+- **Formatting is fixed to invariant culture.** Stats format their change as `+12.4%`, and the
+  cart as `$` plus two decimals. Apps need culture-aware number and currency formatting; take an
+  `IFormatProvider` or a formatter delegate.
+- **`SidebarLayout` doesn't adapt.** It's always a 260 px drawer; narrow windows want a rail or a
+  modal drawer, and the sidebar isn't resizable or collapsible.
+- **Blocks aren't stateful about their data.** `CartSummary` reports quantity changes but
+  doesn't apply them, and `SignInForm` has no busy state while signing in. That's intended (the
+  app owns the data) but each app writes the same glue; small controller types would help.
 
 ## Editing (`TextInput`)
 
@@ -157,8 +190,6 @@ Each entry says what's wrong, why it's that way now, and what would be better.
   symbolic tokens (colour roles, shape roles) and resolve them at paint time. Doing that needs a
   token type `Box` can take and a paint-time theme scope, so a dark section can sit inside a
   light app.
-- **The theme ticker never stops.** `ThemeProvider` keeps it registered for its lifetime, so
-  `UIRoot.NeedsUpdate` is always true. Register it only while the controller is animating.
 - **Schemes use the Phone platform.** Material's phone and watch are the only platforms upstream;
   check whether a desktop tuning is wanted.
 - **The type scale is sized for phones.** Material 3's body text is 14 px, larger than typical

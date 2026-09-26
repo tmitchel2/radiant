@@ -39,13 +39,11 @@ internal sealed record VerticalSlice(ThemeController Themes) : Component
         var tab = context.UseState(0);
         var filters = context.UseState(("Open", true, false));
         var themes = Themes;
-        return new ScrollArea
+        return new Box
         {
-            Layout = new LayoutStyle { FlexGrow = 1 },
-            ContentLayout = new LayoutStyle { Padding = Edges.All(32), RowGap = 24 },
+            Layout = new LayoutStyle { RowGap = 24 },
             Children =
             [
-                new SurfaceText("Radiant") { TextType = TextType.DisplaySmall },
                 new Card(
                     new SurfaceText("Vertical slice") { TextType = TextType.TitleLarge },
                     new SurfaceText("A card on elevation 1 with each kind of button. Shuffle the theme and every colour, "
